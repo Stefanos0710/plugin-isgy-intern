@@ -18,9 +18,59 @@ async function load() {
     return li;
   }));
   if (!s.pins?.length) pins.textContent = 'Keine.';
-  const { kuerzel, kuerzelLoaded } = await chrome.storage.local.get(['kuerzel', 'kuerzelLoaded']);
+  document.documentElement.style.setProperty('--accent', s.accent);
+  const { kuerzel, kuerzelLoaded, stundenplan } = await chrome.storage.local.get(['kuerzel', 'kuerzelLoaded', 'stundenplan']);
+  renderTimetable(stundenplan, kuerzel || {});
   $('kzInfo').textContent = kuerzel ? `${Object.keys(kuerzel).length} Kürzel gespeichert (geladen ${new Date(kuerzelLoaded).toLocaleString('de-DE')}).` : 'Noch keine Kürzel geladen.';
 }
+
+// Timetable saved by the content script; click a subject to toggle it in hiddenSubjects (saved right away).
+const hiddenSet = () => new Set($('hiddenSubjects').value.split(',').map((x) => x.trim()).filter(Boolean));
+function renderTimetable(sp, kz) {
+  const box = $('tt');
+  const plan = (sp?.plan || []).slice(0, 5);
+  if (!plan.some((d) => d?.length)) {
+    box.innerHTML = '<p>Noch kein Stundenplan gespeichert. Öffne einmal das Dashboard auf isgy-intern.de und lade diese Seite dann neu.</p>';
+    return;
+  }
+  const hidden = hiddenSet();
+  const hours = Math.max(...plan.map((d) => d?.length || 0));
+  const el = (tag, cls, ...kids) => { const e = document.createElement(tag); if (cls) e.className = cls; e.append(...kids); return e; };
+  const table = el('table', 'tt', el('tr', '', el('th', ''), ...['Mo', 'Di', 'Mi', 'Do', 'Fr'].map((d) => el('th', '', d))));
+  for (let i = 0; i < hours; i++) {
+    const tr = el('tr', '', el('th', '', String(i + 1)));
+    for (const day of plan) {
+      const td = el('td', '');
+      for (const slot of day?.[i] || []) {
+        const subj = String(slot.subject || '').trim();
+        if (!subj) continue;
+        const t = String(slot.teacher || '').trim();
+        const chip = el('button', 'chip' + (hidden.has(subj) ? ' off' : ''), subj, el('small', '', kz[t] || t));
+        chip.type = 'button';
+        chip.dataset.subject = subj;
+        chip.title = hidden.has(subj) ? `${subj} wieder einblenden` : `Ich habe ${subj} nicht`;
+        td.append(chip);
+      }
+      tr.append(td);
+    }
+    table.append(tr);
+  }
+  if (sp.cls) box.replaceChildren(el('small', '', `Klasse ${sp.cls}`), table);
+  else box.replaceChildren(table);
+}
+$('tt').onclick = async (e) => {
+  const subj = e.target.closest('.chip')?.dataset.subject;
+  if (!subj) return;
+  const hidden = hiddenSet();
+  hidden.has(subj) ? hidden.delete(subj) : hidden.add(subj);
+  $('hiddenSubjects').value = [...hidden].join(', ');
+  await chrome.storage.sync.set({ hiddenSubjects: $('hiddenSubjects').value });
+  for (const c of document.querySelectorAll('.chip[data-subject]')) {
+    const off = hidden.has(c.dataset.subject);
+    c.classList.toggle('off', off);
+    c.title = off ? `${c.dataset.subject} wieder einblenden` : `Ich habe ${c.dataset.subject} nicht`;
+  }
+};
 
 $('save').onclick = async () => {
   const out = {};
@@ -38,7 +88,7 @@ $('reset').onclick = async () => {
   if (pins) await chrome.storage.sync.set({ pins });
   load();
 };
-$('kzReset').onclick = async () => { await chrome.storage.local.remove(['kuerzel', 'kuerzelLoaded']); load(); };
+$('kzReset').onclick = async () => { await chrome.storage.local.remove(['kuerzel', 'kuerzelLoaded', 'kuerzelFailed', 'cache']); load(); };
 $('exportNotes').onclick = async () => {
   const { notes = [] } = await chrome.storage.local.get('notes');
   const a = document.createElement('a');

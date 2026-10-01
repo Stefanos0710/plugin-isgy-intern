@@ -1,4 +1,5 @@
 :root {
+  --ip-pin-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M16 3l5 5-2 1-3 3v4l-2 2-4-4-5 5-1-1 5-5-4-4 2-2h4l3-3z'/%3E%3C/svg%3E");
   --ip-accent: #e8730c;
   --ip-text: #1f2937;
   --ip-muted: #6b7280;
@@ -16,6 +17,8 @@
 main.ip-hide-original > :not(#isgy-plus) { display: none !important; }
 
 #isgy-plus {
+  position: relative;
+  width: 100%;
   container-type: inline-size;
   max-width: 1200px;
   margin: 8px auto 32px;
@@ -28,7 +31,8 @@ main.ip-hide-original > :not(#isgy-plus) { display: none !important; }
 .ip-muted { color: var(--ip-muted); font-size: 13px; }
 .ip-empty { color: var(--ip-muted); padding: 28px 8px; text-align: center; }
 
-.ip-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+.ip-head { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; margin-bottom: 28px; }
+@container (min-width: 760px) { .ip-actions { position: absolute; right: 0; top: 0; } }
 .ip-head h2 { margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -.01em; }
 .ip-head .ip-muted { font-size: 15px; }
 .ip-actions { display: flex; gap: 8px; }
@@ -105,7 +109,6 @@ main.ip-hide-original > :not(#isgy-plus) { display: none !important; }
   grid-column: 1 / -1; margin: 14px 0 2px; padding: 16px 18px;
   background: var(--ip-card); border-radius: 10px; border: 1px solid var(--ip-line); cursor: auto;
 }
-.ip-entry-head { font-weight: 700; margin-bottom: 8px; }
 .ip-entry-item + .ip-entry-item { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--ip-line); }
 .ip-entry p { margin: 6px 0; white-space: pre-line; }
 .ip-hw { background: var(--ip-sub-bg); padding: 10px 12px; border-radius: 8px; }
@@ -180,10 +183,17 @@ main.ip-hide-original > :not(#isgy-plus) { display: none !important; }
 
 /* ---------- Sidebar pins ---------- */
 .su-sidebar-nav__link { position: relative; }
-.ip-pin-btn { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); opacity: 0; font-size: 12px; cursor: pointer; filter: grayscale(1); transition: opacity .15s; }
-.su-sidebar-nav__link:hover .ip-pin-btn { opacity: .7; }
-.ip-pin-btn.is-pinned { filter: none; }
-.ip-pinned .ip-pin-btn { color: #fff; filter: none; }
+.ip-pin-btn { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); opacity: 0; font-size: 12px; cursor: pointer; transition: opacity .15s; }
+.ip-pin-btn[data-href] { width: 14px; height: 14px; background: currentColor;
+  -webkit-mask: var(--ip-pin-icon) center / contain no-repeat; mask: var(--ip-pin-icon) center / contain no-repeat; }
+.su-sidebar-nav__link:hover .ip-pin-btn { opacity: .6; }
+.su-sidebar-nav__link:hover .ip-pin-btn:hover, .ip-pin-btn[data-href].is-pinned { opacity: 1; }
+.ip-pinned .ip-pin-btn { color: #fff; }
+.ip-pinned.ip-pin-last { margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid rgba(255, 255, 255, .15); }
+
+/* Settings dialog */
+.ip-modal-wide { width: min(880px, 94vw); height: 86vh; max-height: 86vh; overflow: hidden; }
+.ip-modal-wide > .ip-settings { display: block; width: 100%; height: calc(86vh - 58px); border: 0; padding: 0; }
 
 @container (max-width: 520px) {
   .ip-card { padding: 18px; }
@@ -192,3 +202,32 @@ main.ip-hide-original > :not(#isgy-plus) { display: none !important; }
   .ip-search { min-width: 0; }
   .ip-search kbd { display: none; }
 }
+
+/* Aufgaben & Notizen */
+.ip-seg { display: flex; gap: 4px; padding: 4px; margin-bottom: 14px; background: var(--ip-soft); border-radius: 12px; }
+.ip-seg-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; height: 34px; border: 0; border-radius: 9px; background: none; font: inherit; font-size: 14px; font-weight: 600; color: var(--ip-muted); cursor: pointer; }
+.ip-seg-btn.is-active { background: var(--ip-card); color: var(--ip-text); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.ip-due { display: inline-block; margin-left: 8px; padding: 0 7px; border-radius: 999px; font-size: 12px; background: var(--ip-soft); color: var(--ip-muted); }
+.ip-due.is-soon { background: var(--ip-sub-bg); color: var(--ip-sub-text); }
+.ip-due.is-late { background: var(--ip-cancel-bg); color: var(--ip-cancel-text); }
+.ip-note-area { flex: 1; height: auto; padding: 10px 12px; resize: vertical; line-height: 1.4; }
+.ip-memos { display: flex; flex-direction: column; gap: 8px; }
+.ip-memo { background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 10px 12px; }
+.ip-memo-text { white-space: pre-wrap; word-break: break-word; outline: none; cursor: text; }
+.ip-memo-text:focus { box-shadow: 0 0 0 2px var(--ip-accent); border-radius: 4px; }
+.ip-memo-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; font-size: 12px; color: var(--ip-muted); }
+.ip-memo .ip-x { opacity: 0; } .ip-memo:hover .ip-x { opacity: 1; }
+.ip-seg-btn .ip-count { position: static; transform: none; }
+.ip-hidden { display: none !important; }
+
+/* Tagebuch: arrows at the top of an entry */
+.ip-entry-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.ip-entry-title { flex: 1; text-align: center; font-weight: 600; font-size: 14px; }
+.ip-nav { width: 32px; height: 32px; flex: none; border: 1px solid var(--ip-line); border-radius: 8px; background: var(--ip-card); color: var(--ip-text); font-size: 20px; line-height: 1; cursor: pointer; }
+.ip-nav:hover:not(:disabled) { border-color: var(--ip-accent); color: var(--ip-accent); }
+.ip-nav:disabled { opacity: .35; cursor: default; }
+
+/* Substitutions: old value struck through, new value after the arrow */
+.ip-old { color: var(--ip-muted); text-decoration: line-through; font-weight: 400; }
+.ip-new { color: var(--ip-sub-text); }
+.ip-lesson.is-cancel .ip-teacher, .ip-lesson.is-cancel .ip-room { text-decoration: line-through; }

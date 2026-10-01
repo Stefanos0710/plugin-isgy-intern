@@ -59,6 +59,18 @@
     'auth-session': (localStorage.getItem('session') || '').replace('__q_strn|', ''),
   });
 
+  // Persistent response cache in chrome.storage.local, so reloads don't refetch everything.
+  let CACHE = (await local.get('cache')).cache || {};
+  const cachedJSON = async (url, opt, ttl) => {
+    const hit = CACHE[url];
+    if (hit && Date.now() - hit.t < ttl) return hit.v;
+    const v = await getJSON(url, opt);
+    CACHE[url] = { t: Date.now(), v };
+    for (const k in CACHE) if (Date.now() - CACHE[k].t > 864e5) delete CACHE[k];
+    local.set({ cache: CACHE });
+    return v;
+  };
+
   // ---------- Kürzel (teacher codes) ----------
   // The PDF is fetched from the school server with the user's session, parsed in memory,
   // and only the code → name map is kept in chrome.storage.local. The PDF itself is never stored.
@@ -115,24 +127,51 @@
       if (code && KZ[code]) { tn.nodeValue = teacher(code); el.title = code; }
     }
   }
+  // Hide site clutter by text, since the markup has no stable ids: the "keine E-Mail Adresse" system notice
+  // (whole notice box) and the "Dashboard" title badge on the dashboard. Sidebar links and our own UI are kept.
+  function hideClutter() {
+    document.querySelectorAll('.su-sidebar-nav__header:not(.ip-pinned)').forEach((x) => { if (/^\s*Schuljahr/i.test(x.textContent)) x.classList.add('ip-hidden'); });
+    const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let n; (n = w.nextNode());) {
+      const t = n.nodeValue.trim();
+      const el = n.parentElement;
+      if (!t || !el || el.closest('#isgy-plus, .ip-modal, nav, [class*="sidebar"], .ip-hidden')) continue;
+      if (/keine E-Mail[- ]Adresse hinzugefügt/i.test(t)) {
+        let box = el;
+        while (box.parentElement && box.parentElement !== document.body && box.parentElement.tagName !== 'MAIN' && box.parentElement.textContent.trim().length < 250) box = box.parentElement;
+        box.classList.add('ip-hidden');
+      } else if (page === 'ext_dashboard' && t === 'Dashboard') {
+        let x = el;
+        while (x.parentElement && x.parentElement.textContent.trim() === 'Dashboard' && x.parentElement.tagName !== 'MAIN' && x.parentElement !== document.body) x = x.parentElement;
+        x.classList.add('ip-hidden');
+      }
+    }
+    // The site paints a grey (#ECF0F5) page background behind the dashboard; make it white around our panel.
+    const panel = document.getElementById('isgy-plus');
+    if (panel && S.hideOriginalDashboard) {
+      for (let x = panel.parentElement; x; x = x.parentElement) if (getComputedStyle(x).backgroundColor === 'rgb(236, 240, 245)') x.style.setProperty('background', '#fff', 'important');
+    }
+  }
   let rafQueued = false;
   new MutationObserver(() => {
     if (rafQueued) return;
     rafQueued = true;
-    requestAnimationFrame(() => { rafQueued = false; replaceCodes(); });
+    requestAnimationFrame(() => { rafQueued = false; replaceCodes(); hideClutter(); syncActive(); });
   }).observe(document.body, { childList: true, subtree: true, characterData: true });
 
   // ---------- Tagebuch ----------
   const dayCache = new Map();
   const tagebuchDay = (ds) => {
-    if (!dayCache.has(ds)) dayCache.set(ds, getJSON(`rest.php/tagebuch/getList/${ds}`).then((j) => j.data?.entries || []).catch(() => []));
+    if (!dayCache.has(ds)) dayCache.set(ds, cachedJSON(`rest.php/tagebuch/getList/${ds}`, undefined, 36e5).then((j) => j.data?.entries || []).catch(() => []));
     return dayCache.get(ds);
   };
+  // Newest entry for a subject on or before `from` (default today), searching up to lookbackDays back.
   const subjectCache = new Map();
-  function lastEntry(subject) {
-    if (!subjectCache.has(subject)) subjectCache.set(subject, (async () => {
+  function lastEntry(subject, from = today()) {
+    const key = subject + '|' + iso(from);
+    if (!subjectCache.has(key)) subjectCache.set(key, (async () => {
       const days = [];
-      for (let i = 0; i <= S.lookbackDays; i++) { const d = addDays(today(), -i); if (!isWeekend(d)) days.push(d); }
+      for (let i = 0; i <= S.lookbackDays; i++) { const d = addDays(from, -i); if (!isWeekend(d)) days.push(d); }
       for (let i = 0; i < days.length; i += 5) {
         const chunk = days.slice(i, i + 5);
         const lists = await Promise.all(chunk.map((d) => tagebuchDay(iso(d))));
@@ -143,24 +182,52 @@
       }
       return null;
     })());
-    return subjectCache.get(subject);
+    return subjectCache.get(key);
   }
-  function entryView(res, subject) {
-    if (!res) return h('div', { class: 'ip-muted' }, `Kein Tagebucheintrag für ${subject} in den letzten ${S.lookbackDays} Tagen.`);
+  function entryBody(res) {
     const seen = new Set();
-    return h('div', { class: 'ip-entry' },
-      h('div', { class: 'ip-entry-head' }, `Letzter Eintrag: ${DAYS[res.date.getDay()]}, ${deShort(res.date)}`),
+    return [
       res.entries.map((e) => {
         const key = e.topic + '|' + e.homework;
         if (seen.has(key)) return null;
         seen.add(key);
         return h('div', { class: 'ip-entry-item' },
-          h('div', { class: 'ip-muted' }, `${e.lesson}. Std · ${teacher(e.teacher)}${e.substitution ? ' · Vertretung' : ''}${e.cancelled ? ' · entfallen' : ''}`),
+          h('div', { class: 'ip-muted' }, `${e.lesson}. Std · ${teacherName(e.teacher)}${e.substitution ? ' · Vertretung' : ''}${e.cancelled ? ' · entfallen' : ''}`),
           e.topic && h('p', {}, h('b', {}, 'Thema: '), e.topic),
           clean(e.homework) ? h('p', { class: 'ip-hw' }, h('b', {}, 'Hausaufgabe: '), clean(e.homework).replace(/(\r?\n\s*)+/g, '\n')) : h('p', { class: 'ip-muted' }, 'Keine Hausaufgabe eingetragen.'),
           e.notes && h('p', {}, h('b', {}, 'Notiz: '), e.notes));
       }),
-      h('a', { class: 'ip-link', href: `index.php?page=ext_tagebuch&view=default&date=${iso(res.date)}` }, 'Im Tagebuch öffnen →'));
+      h('a', { class: 'ip-link', href: `index.php?page=ext_tagebuch&view=default&date=${iso(res.date)}` }, 'Im Tagebuch öffnen →'),
+    ];
+  }
+  // Entry view with arrows at the top to step back to earlier entries (‹ older, › newer again).
+  function entryView(first, subject) {
+    if (!first) return h('div', { class: 'ip-muted' }, `Kein Tagebucheintrag für ${subject} in den letzten ${S.lookbackDays} Tagen.`);
+    const history = [first];
+    let at = 0, busy = false;
+    const title = h('div', { class: 'ip-entry-title' });
+    const prev = h('button', { class: 'ip-nav', type: 'button', title: 'Früherer Eintrag', 'aria-label': 'Früherer Eintrag' }, '‹');
+    const next = h('button', { class: 'ip-nav', type: 'button', title: 'Neuerer Eintrag', 'aria-label': 'Neuerer Eintrag' }, '›');
+    const body = h('div', {});
+    const box = h('div', { class: 'ip-entry' }, h('div', { class: 'ip-entry-head' }, prev, title, next), body);
+    function draw() {
+      const res = history[at];
+      title.textContent = `${at === 0 ? 'Letzter Eintrag' : 'Eintrag'}: ${DAYS[res.date.getDay()]}, ${deShort(res.date)}`;
+      next.disabled = at === 0;
+      prev.disabled = busy || history.exhausted === at;
+      body.replaceChildren(...entryBody(res).flat().filter(Boolean));
+    }
+    prev.onclick = async () => {
+      if (at + 1 < history.length) { at++; return draw(); }
+      busy = true; prev.disabled = true;
+      const older = await lastEntry(subject, addDays(history[at].date, -1));
+      busy = false;
+      if (older) { history.push(older); at++; } else { history.exhausted = at; prev.title = 'Kein früherer Eintrag gefunden'; }
+      draw();
+    };
+    next.onclick = () => { if (at > 0) { at--; draw(); } };
+    draw();
+    return box;
   }
   function showModal(title, body) {
     const dlg = h('dialog', { class: 'ip-modal', onclose: () => dlg.remove() },
@@ -195,20 +262,24 @@
   };
   const classMatch = (k, cls) => String(k).split(/[,\s]+/).some((t) => t === cls || t.startsWith(cls + '_'));
 
-  // Dashboard shows just the name (code in tooltip) to keep rows calm.
-  const teacherName = (code) => (S.kuerzelFormat !== 'off' && KZ?.[clean(code)]) || clean(code);
+  // Always the real name (never the code); falls back to the code only while the Kürzel list is missing.
+  const teacherName = (code, fallback = '') => KZ?.[clean(code)] || clean(fallback) || clean(code);
 
-  function subLine(v) {
+  // One substitution: what it changes (new teacher / subject / room) plus a short "kind · info" line.
+  function subLine(v, full = false) {
     const kind = clean(v.info_2) || 'Änderung';
+    const neuT = clean(v.user_neu_kurz) ? teacherName(v.user_neu_kurz, v.user_neu_title) : clean(v.user_neu_title);
+    const neu = neuT && neuT !== 'XXX' ? neuT : '';
+    const neuF = clean(v.fach_neu) && clean(v.fach_neu) !== clean(v.fach_alt) ? clean(v.fach_neu_kurz || v.fach_neu) : '';
+    const neuR = clean(v.raum_neu) && clean(v.raum_neu) !== clean(v.raum_alt) ? clean(v.raum_neu) : '';
     const parts = [];
-    const neu = clean(v.user_neu_kurz) ? teacherName(v.user_neu_kurz) : clean(v.user_neu_title);
-    if (neu && neu !== 'XXX') parts.push(neu);
-    if (clean(v.fach_neu) && clean(v.fach_neu) !== clean(v.fach_alt)) parts.push(clean(v.fach_neu_kurz || v.fach_neu));
-    if (clean(v.raum_neu) && clean(v.raum_neu) !== clean(v.raum_alt)) parts.push('Raum ' + clean(v.raum_neu));
+    if (full) parts.push(...[neu, neuF, neuR && 'Raum ' + neuR].filter(Boolean));
     if (clean(v.info_1)) parts.push(clean(v.info_1));
-    const cancel = /entf|fällt aus|frei/i.test(kind) || neu === 'XXX';
-    return { cancel, el: h('div', { class: 'ip-sub' }, h('b', {}, kind), parts.length ? ' · ' + parts.join(' · ') : '') };
+    const cancel = /entf|fällt aus|frei/i.test(kind) || neuT === 'XXX';
+    return { cancel, neu, neuF, neuR, el: h('div', { class: 'ip-sub' }, h('b', {}, kind), parts.length ? ' · ' + parts.join(' · ') : '') };
   }
+  // Old value struck through, new value after it.
+  const changed = (old, neu) => neu && neu !== old ? [h('s', { class: 'ip-old' }, old), ' → ', h('b', { class: 'ip-new' }, neu)] : old;
 
   function hideSubject(subject) {
     S.hiddenSubjects = [...new Set([...S.hiddenSubjects.split(','), subject].map((s) => s.trim()).filter(Boolean))].join(', ');
@@ -228,6 +299,8 @@
       tabindex: 0, role: 'button', 'aria-expanded': 'false',
       onclick: async (e) => {
         if (e.target.closest('a')) return;
+        // Only one lesson open at a time.
+        if (detail.hidden) document.querySelectorAll('.ip-lesson[aria-expanded="true"]').forEach((o) => { if (o !== row) { o.querySelector('.ip-detail').hidden = true; o.setAttribute('aria-expanded', 'false'); } });
         detail.hidden = !detail.hidden;
         row.setAttribute('aria-expanded', String(!detail.hidden));
         if (!detail.hidden && !detail.childElementCount) {
@@ -242,10 +315,10 @@
       h('div', { class: 'ip-num' }, it.from === it.to ? it.from : `${it.from}–${it.to}`),
       h('div', { class: 'ip-time' }, TIMES[it.from] || '')),
     h('div', { class: 'ip-what' },
-      h('div', { class: 'ip-subj' }, slot.subject, hw, isNow ? h('span', { class: 'ip-pill ip-pill-now' }, 'jetzt') : null),
-      h('div', { class: 'ip-teacher', title: clean(slot.teacher) }, teacherName(slot.teacher)),
+      h('div', { class: 'ip-subj' }, changed(slot.subject, subs.map((x) => x.neuF).find(Boolean)), hw, isNow ? h('span', { class: 'ip-pill ip-pill-now' }, 'jetzt') : null),
+      h('div', { class: 'ip-teacher', title: clean(slot.teacher) }, changed(teacherName(slot.teacher), subs.map((x) => x.neu).find(Boolean))),
       subs.map((s) => s.el)),
-    h('div', { class: 'ip-room' }, slot.room),
+    h('div', { class: 'ip-room' }, changed(slot.room, subs.map((x) => x.neuR).find(Boolean))),
     detail);
     lastEntry(slot.subject).then((r) => { if (r?.entries.some((e) => clean(e.homework))) hw.hidden = false; });
     return row;
@@ -271,15 +344,15 @@
     });
     const now = iso(date) === iso(today()) ? Number(sp.currentStunde) : -1;
     const orphan = vp.filter((v) => !used.has(v));
-    const dayNotes = notes.filter((x) => x.date === iso(date) && !x.done);
+    const dayNotes = notes.filter((x) => x.type !== 'note' && x.date === iso(date) && !x.done);
     return {
       subCount: vp.length,
       el: h('div', { class: 'ip-day' },
-        dayNotes.map((x) => h('div', { class: 'ip-callout' }, x.text)),
+        dayNotes.map((x) => h('div', { class: 'ip-callout' }, '☐ ', x.text)),
         items.length ? h('div', { class: 'ip-lessons' }, items.map((it) => lessonRow(it, now >= it.from && now <= it.to))) : h('div', { class: 'ip-empty' }, 'Kein Unterricht.'),
         orphan.length ? h('div', { class: 'ip-lessons ip-orphans' }, h('div', { class: 'ip-label' }, 'Weitere Vertretungen'),
           orphan.map((v) => {
-            const s = subLine(v);
+            const s = subLine(v, true);
             return h('div', { class: 'ip-lesson is-sub' + (s.cancel ? ' is-cancel' : '') },
               h('div', { class: 'ip-when' }, h('div', { class: 'ip-num' }, clean(v.stunde))),
               h('div', { class: 'ip-what' }, h('div', { class: 'ip-subj' }, clean(v.fach_alt)), s.el));
@@ -317,28 +390,75 @@
     return card;
   }
 
+  // Two kinds in one list: to-dos (checkbox, optional due date) and free-text notes. Old entries have no type → to-do.
   function notesCard() {
-    const list = h('div', { class: 'ip-notes' });
-    const text = h('input', { type: 'text', placeholder: 'Notiz hinzufügen …', class: 'ip-input', 'aria-label': 'Neue Notiz' });
-    const date = h('input', { type: 'date', class: 'ip-input ip-date-in is-empty', oninput: () => date.classList.toggle('is-empty', !date.value), title: 'Optional: Tag, an dem die Notiz im Stundenplan erscheint', 'aria-label': 'Datum (optional)' });
-    const add = () => {
-      if (!text.value.trim()) return;
-      notes.push({ id: Date.now(), text: text.value.trim(), date: date.value || '', done: false });
-      text.value = ''; date.value = ''; date.classList.add('is-empty');
-      saveNotes(); draw();
+    const isNote = (n) => n.type === 'note';
+    let tab = 'todo';
+    const body = h('div', {});
+    const tabs = h('div', { class: 'ip-seg', role: 'tablist' });
+    const card = h('section', { class: 'ip-card' }, h('h3', {}, 'Aufgaben & Notizen'), tabs, body);
+    const save = () => { saveNotes(); draw(); };
+    const dueLabel = (ds) => {
+      const diff = Math.round((new Date(ds + 'T00:00') - today()) / 864e5);
+      return { text: diff === 0 ? 'Heute' : diff === 1 ? 'Morgen' : diff < 0 ? `überfällig · ${deShort(new Date(ds + 'T00:00'))}` : `${DAYS[new Date(ds + 'T00:00').getDay()].slice(0, 2)}, ${deShort(new Date(ds + 'T00:00'))}`, cls: diff < 0 ? ' is-late' : diff <= 1 ? ' is-soon' : '' };
     };
-    text.addEventListener('keydown', (e) => { if (e.key === 'Enter') add(); });
+
+    function todoView() {
+      const text = h('input', { type: 'text', placeholder: 'Neue Aufgabe …', class: 'ip-input', 'aria-label': 'Neue Aufgabe' });
+      const date = h('input', { type: 'date', class: 'ip-input ip-date-in is-empty', oninput: () => date.classList.toggle('is-empty', !date.value), title: 'Optional: fällig am (erscheint dann auch im Stundenplan)', 'aria-label': 'Fällig am (optional)' });
+      const add = () => {
+        if (!text.value.trim()) return;
+        notes.push({ id: Date.now(), type: 'todo', text: text.value.trim(), date: date.value || '', done: false });
+        save();
+        body.querySelector('.ip-input')?.focus();
+      };
+      text.addEventListener('keydown', (e) => { if (e.key === 'Enter') add(); });
+      const todos = notes.filter((n) => !isNote(n)).sort((a, b) => a.done - b.done || (a.date || '9').localeCompare(b.date || '9') || a.id - b.id);
+      const done = todos.filter((n) => n.done).length;
+      return [
+        h('div', { class: 'ip-note-add' }, text, date, h('button', { class: 'ip-btn', onclick: add, 'aria-label': 'Hinzufügen' }, '+')),
+        h('div', { class: 'ip-notes' }, todos.length ? todos.map((n) => {
+          const due = n.date && !n.done ? dueLabel(n.date) : null;
+          return h('label', { class: 'ip-note' + (n.done ? ' is-done' : '') },
+            h('input', { type: 'checkbox', checked: n.done, onchange: (e) => { n.done = e.target.checked; save(); } }),
+            h('span', { class: 'ip-note-text' }, n.text, due ? h('span', { class: 'ip-due' + due.cls }, due.text) : null),
+            h('button', { class: 'ip-x', title: 'Löschen', onclick: (e) => { e.preventDefault(); notes = notes.filter((x) => x !== n); save(); } }, '×'));
+        }) : h('div', { class: 'ip-empty' }, 'Keine Aufgaben. 🎉')),
+        done ? h('button', { class: 'ip-textbtn', onclick: () => { notes = notes.filter((n) => isNote(n) || !n.done); save(); } }, `${done} erledigte entfernen`) : null,
+      ];
+    }
+
+    function noteView() {
+      const text = h('textarea', { class: 'ip-input ip-note-area', rows: 2, placeholder: 'Neue Notiz … (Strg+Enter speichert)', 'aria-label': 'Neue Notiz' });
+      const add = () => {
+        if (!text.value.trim()) return;
+        notes.push({ id: Date.now(), type: 'note', text: text.value.trim() });
+        save();
+      };
+      text.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) add(); });
+      const list = notes.filter(isNote).sort((a, b) => b.id - a.id);
+      return [
+        h('div', { class: 'ip-note-add' }, text, h('button', { class: 'ip-btn', onclick: add, 'aria-label': 'Hinzufügen' }, '+')),
+        h('div', { class: 'ip-memos' }, list.length ? list.map((n) => {
+          // Edit in place; saved when leaving the field.
+          const area = h('div', { class: 'ip-memo-text', contenteditable: 'plaintext-only', spellcheck: 'false',
+            onblur: () => { const v = area.innerText.trim(); if (v && v !== n.text) { n.text = v; saveNotes(); } else if (!v) { notes = notes.filter((x) => x !== n); save(); } } }, n.text);
+          return h('div', { class: 'ip-memo' }, area,
+            h('div', { class: 'ip-memo-foot' }, new Date(n.id).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }),
+              h('button', { class: 'ip-x', title: 'Löschen', onclick: () => { notes = notes.filter((x) => x !== n); save(); } }, '×')));
+        }) : h('div', { class: 'ip-empty' }, 'Noch keine Notizen.')),
+      ];
+    }
+
     function draw() {
-      const sorted = [...notes].sort((a, b) => a.done - b.done || (a.date || '9').localeCompare(b.date || '9') || a.id - b.id);
-      list.replaceChildren(...sorted.map((n) => h('label', { class: 'ip-note' + (n.done ? ' is-done' : '') },
-        h('input', { type: 'checkbox', checked: n.done, onchange: (e) => { n.done = e.target.checked; saveNotes(); draw(); } }),
-        h('span', { class: 'ip-note-text' }, n.text, n.date ? h('small', {}, deShort(new Date(n.date + 'T00:00'))) : null),
-        h('button', { class: 'ip-x', title: 'Löschen', onclick: (e) => { e.preventDefault(); notes = notes.filter((x) => x !== n); saveNotes(); draw(); } }, '×'))));
-      if (!notes.length) list.append(h('div', { class: 'ip-empty' }, 'Noch nichts notiert.'));
+      const open = notes.filter((n) => !isNote(n) && !n.done).length;
+      tabs.replaceChildren(
+        h('button', { class: 'ip-seg-btn' + (tab === 'todo' ? ' is-active' : ''), role: 'tab', onclick: () => { tab = 'todo'; draw(); } }, 'Aufgaben', open ? h('span', { class: 'ip-count' }, open) : null),
+        h('button', { class: 'ip-seg-btn' + (tab === 'note' ? ' is-active' : ''), role: 'tab', onclick: () => { tab = 'note'; draw(); } }, 'Notizen'));
+      body.replaceChildren(...(tab === 'todo' ? todoView() : noteView()).filter(Boolean));
     }
     draw();
-    return h('section', { class: 'ip-card' }, h('h3', {}, 'Notizen'),
-      h('div', { class: 'ip-note-add' }, text, date, h('button', { class: 'ip-btn', onclick: add, 'aria-label': 'Hinzufügen' }, '+')), list);
+    return card;
   }
 
   async function dashboard() {
@@ -370,8 +490,9 @@
     setHidden(S.hideOriginalDashboard);
 
     try {
-      const sp = await getJSON('rest.php/stundenplan/getStundenplan', { method: 'POST', body: new FormData() });
+      const sp = await cachedJSON('rest.php/stundenplan/getStundenplan', { method: 'POST', body: new FormData() }, 18e5);
       const cls = sp.active;
+      local.set({ stundenplan: { plan: sp.plan, cls } }); // for the subject picker on the options page
       const hidden = new Set(S.hiddenSubjects.split(',').map((s) => s.trim()).filter(Boolean));
       let vplan = [];
       try {
@@ -410,6 +531,32 @@
     sync.set({ pins: S.pins });
     renderPins();
   }
+  // If the current page is pinned, show the site's "active" marker (orange bar) on the pinned entry only, not on the original.
+  const here = () => { const u = new URL(location.href); u.hash = ''; return u.href; };
+  function syncActive() {
+    const list = navList();
+    if (!list) return;
+    const isActive = (c) => /active|current|selected/i.test(c) && !c.startsWith('ip-');
+    const pinned = [...list.querySelectorAll('.ip-pinned a.su-sidebar-nav__link')].find((a) => a.href === here());
+    for (const a of list.querySelectorAll('a.su-sidebar-nav__link')) {
+      if (a.closest('.ip-pinned')) continue;
+      for (const el of [a, a.closest('li')]) {
+        if (!el) continue;
+        for (const c of [...el.classList].filter(isActive)) {
+          if (pinned) { el.classList.remove(c); el.dataset.ipActive = (el.dataset.ipActive || '') + ' ' + c; }
+        }
+        if (!pinned && el.dataset.ipActive) { el.classList.add(...el.dataset.ipActive.trim().split(/\s+/)); delete el.dataset.ipActive; }
+      }
+    }
+    if (pinned) {
+      // Copy the active classes the original link had (stored above, or still present if the original is not in the list).
+      const src = [...list.querySelectorAll('a.su-sidebar-nav__link')].find((a) => !a.closest('.ip-pinned') && a.href === pinned.href);
+      for (const [from, to] of [[src, pinned], [src?.closest('li'), pinned.closest('li')]]) {
+        const cls = (from?.dataset.ipActive || '').trim().split(/\s+/).filter(Boolean);
+        if (cls.length) to.classList.add(...cls);
+      }
+    }
+  }
   function renderPins() {
     const list = navList();
     if (!list) return;
@@ -424,22 +571,29 @@
           orig ? orig.cloneNode(true) : h('i', { class: 'fas fa-thumbtack' }), h('span', {}, ' ' + p.label),
           h('span', { class: 'ip-pin-btn is-pinned', title: 'Lösen', onclick: (e) => { e.preventDefault(); e.stopPropagation(); togglePin(p.href); } }, '✕')));
     });
-    const header = h('li', { class: 'su-sidebar-nav__header ip-pinned' }, h('b', {}, '📌 Angepinnt'));
+    const header = h('li', { class: 'su-sidebar-nav__header ip-pinned' }, h('b', {}, 'Angepinnt'));
     const first = list.querySelector('.su-sidebar-nav__header');
+    items.at(-1).classList.add('ip-pin-last');
     (first ? first.after.bind(first) : list.prepend.bind(list))(header, ...items);
+    syncActive();
   }
   function sidebar() {
     const list = navList();
     if (!list) return;
     for (const a of list.querySelectorAll('a.su-sidebar-nav__link[href]')) {
       const href = a.getAttribute('href');
-      a.append(h('span', { class: 'ip-pin-btn', 'data-href': href, title: 'Anpinnen / lösen', onclick: (e) => { e.preventDefault(); e.stopPropagation(); togglePin(href, linkLabel(a)); } }, '📌'));
+      a.append(h('span', { class: 'ip-pin-btn', 'data-href': href, title: 'Anpinnen / lösen', onclick: (e) => { e.preventDefault(); e.stopPropagation(); togglePin(href, linkLabel(a)); } }));
     }
     renderPins();
   }
 
   // ---------- Command palette & shortcuts ----------
-  function openOptions() { chrome.runtime.sendMessage('open-options'); }
+  // Settings open in a centered dialog (the options page in an iframe) instead of a new tab.
+  function openOptions() {
+    if (document.querySelector('.ip-settings')) return;
+    const dlg = showModal('Einstellungen', h('iframe', { class: 'ip-settings', src: chrome.runtime.getURL('options.html') }));
+    dlg.classList.add('ip-modal-wide');
+  }
   const gotoMap = () => Object.fromEntries(String(S.gotoKeys).split('\n').map((l) => l.split('=')).filter((p) => p.length >= 2 && p[0].trim()).map(([k, ...v]) => [k.trim(), v.join('=').trim()]));
   function commands() {
     const seen = new Set();
@@ -450,7 +604,7 @@
     return [
       ...(S.pins || []).map((p) => ({ label: '📌 ' + p.label, href: p.href })),
       ...nav.map((c) => ({ ...c, label: '→ ' + c.label })),
-      { label: '⚙ Einstellungen öffnen', run: openOptions },
+      { label: 'Einstellungen öffnen', run: openOptions },
       { label: '📌 Aktuelle Seite anpinnen / lösen', run: () => togglePin(current, pageTitle) },
       { label: '📝 Notiz hinzufügen', run: () => { const t = prompt('Notiz:'); if (t) { notes.push({ id: Date.now(), text: t, date: '', done: false }); saveNotes(); } } },
       { label: '🔍 Letzten Tagebucheintrag für Fach suchen …', run: () => { const s = prompt('Fach-Kürzel (z. B. M_1, D, E_1):'); if (s) showLastEntry(s.trim()); } },
@@ -521,9 +675,11 @@
   // ---------- boot ----------
   sidebar();
   if (page === 'ext_dashboard') dashboard();
-  if (!KZ && S.kuerzelFormat !== 'off') {
+  const { kuerzelFailed = 0 } = await local.get('kuerzelFailed');
+  if (!KZ && Date.now() - kuerzelFailed > 36e5) {
     loadKuerzel().then(() => { replaceCodes(); if (page === 'ext_dashboard') { document.getElementById('isgy-plus')?.remove(); dashboard(); } })
-      .catch((err) => console.warn('[ISGY Plus] Kürzel', err));
+      .catch((err) => { local.set({ kuerzelFailed: Date.now() }); console.warn('[ISGY Plus] Kürzel', err); });
   }
   replaceCodes();
+  hideClutter();
 })();

@@ -15,9 +15,10 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["lib/pdf.min.mjs", "lib/pdf.worker.min.mjs"],
+      "resources": ["lib/pdf.min.mjs", "lib/pdf.worker.min.mjs", "options.html", "options.js", "src/defaults.js"],
       "matches": ["https://www.isgy-intern.de/*", "https://isgy-intern.de/*"]
     }
   ],
+  "action": { "default_title": "ISGY Intern Plus – Einstellungen" },
   "options_page": "options.html"
 }
