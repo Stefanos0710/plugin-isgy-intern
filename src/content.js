@@ -195,16 +195,19 @@
   };
   const classMatch = (k, cls) => String(k).split(/[,\s]+/).some((t) => t === cls || t.startsWith(cls + '_'));
 
-  function subBadge(v) {
+  // Dashboard shows just the name (code in tooltip) to keep rows calm.
+  const teacherName = (code) => (S.kuerzelFormat !== 'off' && KZ?.[clean(code)]) || clean(code);
+
+  function subLine(v) {
     const kind = clean(v.info_2) || 'Änderung';
     const parts = [];
-    const neu = clean(v.user_neu_kurz) ? teacher(v.user_neu_kurz) : clean(v.user_neu_title);
+    const neu = clean(v.user_neu_kurz) ? teacherName(v.user_neu_kurz) : clean(v.user_neu_title);
     if (neu && neu !== 'XXX') parts.push(neu);
     if (clean(v.fach_neu) && clean(v.fach_neu) !== clean(v.fach_alt)) parts.push(clean(v.fach_neu_kurz || v.fach_neu));
     if (clean(v.raum_neu) && clean(v.raum_neu) !== clean(v.raum_alt)) parts.push('Raum ' + clean(v.raum_neu));
     if (clean(v.info_1)) parts.push(clean(v.info_1));
     const cancel = /entf|fällt aus|frei/i.test(kind) || neu === 'XXX';
-    return h('div', { class: 'ip-badge' + (cancel ? ' ip-cancel' : '') }, h('b', {}, kind), parts.length ? ' · ' + parts.join(' · ') : '');
+    return { cancel, el: h('div', { class: 'ip-sub' }, h('b', {}, kind), parts.length ? ' · ' + parts.join(' · ') : '') };
   }
 
   function hideSubject(subject) {
@@ -214,36 +217,41 @@
     dashboard();
   }
 
-  function lessonRow(label, n, slot, subs) {
-    const hideBtn = h('button', { class: 'ip-btn ip-ghost ip-small', title: 'Fach hab ich nicht – im Dashboard ausblenden (rückgängig in den Einstellungen)', onclick: (e) => { e.stopPropagation(); hideSubject(slot.subject); } }, `${slot.subject} ausblenden`);
+  function lessonRow(it, isNow) {
+    const { slot } = it;
+    const subs = it.subs.map(subLine);
+    const cancelled = subs.some((s) => s.cancel);
     const detail = h('div', { class: 'ip-detail', hidden: true, onclick: (e) => e.stopPropagation() });
-    const hw = h('span', { class: 'ip-hw-dot', hidden: true, title: 'Hausaufgabe im letzten Eintrag' }, 'HA');
+    const hw = h('span', { class: 'ip-pill', hidden: true, title: 'Im letzten Eintrag steht eine Hausaufgabe' }, 'HA');
     const row = h('div', {
-      class: 'ip-lesson' + (subs.length ? ' ip-has-sub' : ''), tabindex: 0, role: 'button',
+      class: 'ip-lesson' + (subs.length ? ' is-sub' : '') + (cancelled ? ' is-cancel' : '') + (isNow ? ' is-now' : ''),
+      tabindex: 0, role: 'button', 'aria-expanded': 'false',
       onclick: async (e) => {
         if (e.target.closest('a')) return;
         detail.hidden = !detail.hidden;
+        row.setAttribute('aria-expanded', String(!detail.hidden));
         if (!detail.hidden && !detail.childElementCount) {
           detail.append(h('div', { class: 'ip-muted' }, 'Suche letzten Tagebucheintrag …'));
-          detail.replaceChildren(entryView(await lastEntry(slot.subject), slot.subject), hideBtn);
+          detail.replaceChildren(entryView(await lastEntry(slot.subject), slot.subject),
+            h('button', { class: 'ip-textbtn', title: 'Rückgängig in den Einstellungen', onclick: () => hideSubject(slot.subject) }, `Ich habe ${slot.subject} nicht – ausblenden`));
         }
       },
-      onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); row.click(); } },
+      onkeydown: (e) => { if (e.target === row && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); row.click(); } },
     },
-    h('div', { class: 'ip-lesson-main' },
-      h('span', { class: 'ip-num' }, label),
-      h('span', { class: 'ip-time' }, TIMES[n] || ''),
-      h('span', { class: 'ip-subj' }, slot.subject),
-      hw,
-      h('span', { class: 'ip-teacher' }, teacher(slot.teacher)),
-      h('span', { class: 'ip-room' }, slot.room)),
-    subs.map(subBadge),
+    h('div', { class: 'ip-when' },
+      h('div', { class: 'ip-num' }, it.from === it.to ? it.from : `${it.from}–${it.to}`),
+      h('div', { class: 'ip-time' }, TIMES[it.from] || '')),
+    h('div', { class: 'ip-what' },
+      h('div', { class: 'ip-subj' }, slot.subject, hw, isNow ? h('span', { class: 'ip-pill ip-pill-now' }, 'jetzt') : null),
+      h('div', { class: 'ip-teacher', title: clean(slot.teacher) }, teacherName(slot.teacher)),
+      subs.map((s) => s.el)),
+    h('div', { class: 'ip-room' }, slot.room),
     detail);
     lastEntry(slot.subject).then((r) => { if (r?.entries.some((e) => clean(e.homework))) hw.hidden = false; });
     return row;
   }
 
-  function dayCard(date, label, sp, vplan, hidden) {
+  function dayView(date, sp, vplan, hidden) {
     const plan = sp.plan?.[(date.getDay() + 6) % 7] || [];
     const vp = vplan.filter((v) => v.date === deFull(date));
     const items = [];
@@ -261,18 +269,27 @@
         else items.push({ from: n, to: n, slot: s, subs });
       }
     });
-    const rows = items.map((it) => lessonRow(it.from === it.to ? `${it.from}.` : `${it.from}.–${it.to}.`, it.from, it.slot, it.subs));
+    const now = iso(date) === iso(today()) ? Number(sp.currentStunde) : -1;
     const orphan = vp.filter((v) => !used.has(v));
     const dayNotes = notes.filter((x) => x.date === iso(date) && !x.done);
-    return h('section', { class: 'ip-card' },
-      h('h3', {}, label, h('small', {}, ` ${DAYS[date.getDay()]}, ${deShort(date)}`)),
-      dayNotes.map((x) => h('div', { class: 'ip-note-inline' }, '📝 ', x.text)),
-      rows.length ? rows : h('div', { class: 'ip-muted' }, 'Kein Unterricht eingetragen.'),
-      orphan.length ? [h('div', { class: 'ip-sub-head' }, 'Weitere Vertretungen'), orphan.map((v) => h('div', { class: 'ip-lesson ip-has-sub' }, h('div', { class: 'ip-lesson-main' }, h('span', { class: 'ip-num' }, v.stunde + '.'), h('span', { class: 'ip-subj' }, clean(v.fach_alt))), subBadge(v)))] : null);
+    return {
+      subCount: vp.length,
+      el: h('div', { class: 'ip-day' },
+        dayNotes.map((x) => h('div', { class: 'ip-callout' }, x.text)),
+        items.length ? h('div', { class: 'ip-lessons' }, items.map((it) => lessonRow(it, now >= it.from && now <= it.to))) : h('div', { class: 'ip-empty' }, 'Kein Unterricht.'),
+        orphan.length ? h('div', { class: 'ip-lessons ip-orphans' }, h('div', { class: 'ip-label' }, 'Weitere Vertretungen'),
+          orphan.map((v) => {
+            const s = subLine(v);
+            return h('div', { class: 'ip-lesson is-sub' + (s.cancel ? ' is-cancel' : '') },
+              h('div', { class: 'ip-when' }, h('div', { class: 'ip-num' }, clean(v.stunde))),
+              h('div', { class: 'ip-what' }, h('div', { class: 'ip-subj' }, clean(v.fach_alt)), s.el));
+          })) : null),
+    };
   }
 
   async function eventsCard(cls) {
-    const card = h('section', { class: 'ip-card ip-wide' }, h('h3', {}, 'Termine Klassenkalender', h('small', {}, ` nächste ${S.eventDays} Tage`)));
+    const list = h('div', { class: 'ip-events' }, h('div', { class: 'ip-muted' }, 'Lade …'));
+    const card = h('section', { class: 'ip-card' }, h('h3', {}, 'Termine'), list);
     try {
       const H = await authHeaders();
       const kals = await getJSON('rest.php/klassenkalender/getKalenders', { headers: H });
@@ -281,19 +298,20 @@
       fd.append('kalenders', ids.join(','));
       const ev = await getJSON('rest.php/klassenkalender/getEvents', { method: 'POST', body: fd, headers: H });
       const from = iso(today()), to = iso(addDays(today(), S.eventDays));
-      const list = (Array.isArray(ev) ? ev : []).filter((e) => (e.dateEnd || e.dateStart) >= from && e.dateStart <= to)
+      const items = (Array.isArray(ev) ? ev : []).filter((e) => (e.dateEnd || e.dateStart) >= from && e.dateStart <= to)
         .sort((a, b) => (a.dateStart + a.timeStart).localeCompare(b.dateStart + b.timeStart));
-      if (!list.length) card.append(h('div', { class: 'ip-muted' }, 'Keine Termine.'));
-      for (const e of list) {
+      list.replaceChildren(...items.map((e) => {
         const d = new Date(e.dateStart + 'T00:00');
-        card.append(h('div', { class: 'ip-event' },
-          h('span', { class: 'ip-date' }, `${DAYS[d.getDay()].slice(0, 2)} ${deShort(d)}`),
-          e.lnw ? h('span', { class: 'ip-tag', style: `background:${e.lnw.color || '#888'}`, title: e.lnw.title }, e.lnw.short) : null,
-          h('span', { class: 'ip-ev-title' }, e.title, e.fach_title ? h('small', {}, ` · ${e.fach_title}`) : null),
-          h('small', { class: 'ip-muted' }, [e.stunde && `${e.stunde}. Std`, e.place].filter(Boolean).join(' · '))));
-      }
+        const title = clean(e.title).replace(new RegExp('^' + cls + ':\\s*'), '');
+        return h('div', { class: 'ip-event' },
+          h('div', { class: 'ip-datebox' }, h('b', {}, d.getDate()), h('span', {}, DAYS[d.getDay()].slice(0, 2))),
+          h('div', { class: 'ip-ev-body' },
+            h('div', { class: 'ip-ev-title' }, e.lnw ? h('span', { class: 'ip-tag', style: `--tag:${e.lnw.color || '#888'}`, title: e.lnw.title }, e.lnw.short) : null, e.fach_title || title),
+            h('div', { class: 'ip-muted' }, [e.fach_title && title, e.stunde && `${e.stunde}. Std`, e.place].filter(Boolean).join(' · '))));
+      }));
+      if (!items.length) list.replaceChildren(h('div', { class: 'ip-empty' }, `Keine Termine in den nächsten ${S.eventDays} Tagen.`));
     } catch (err) {
-      card.append(h('div', { class: 'ip-muted' }, 'Klassenkalender konnte nicht geladen werden.'));
+      list.replaceChildren(h('div', { class: 'ip-empty' }, 'Klassenkalender nicht erreichbar.'));
       console.warn('[ISGY Plus]', err);
     }
     return card;
@@ -301,43 +319,53 @@
 
   function notesCard() {
     const list = h('div', { class: 'ip-notes' });
-    const text = h('input', { type: 'text', placeholder: 'Neue Notiz … (Enter)', class: 'ip-input' });
-    const date = h('input', { type: 'date', class: 'ip-input ip-date-in', title: 'Optional: Datum (erscheint dann beim Tag)' });
+    const text = h('input', { type: 'text', placeholder: 'Notiz hinzufügen …', class: 'ip-input', 'aria-label': 'Neue Notiz' });
+    const date = h('input', { type: 'date', class: 'ip-input ip-date-in is-empty', oninput: () => date.classList.toggle('is-empty', !date.value), title: 'Optional: Tag, an dem die Notiz im Stundenplan erscheint', 'aria-label': 'Datum (optional)' });
     const add = () => {
       if (!text.value.trim()) return;
       notes.push({ id: Date.now(), text: text.value.trim(), date: date.value || '', done: false });
-      text.value = ''; date.value = '';
+      text.value = ''; date.value = ''; date.classList.add('is-empty');
       saveNotes(); draw();
     };
     text.addEventListener('keydown', (e) => { if (e.key === 'Enter') add(); });
     function draw() {
       const sorted = [...notes].sort((a, b) => a.done - b.done || (a.date || '9').localeCompare(b.date || '9') || a.id - b.id);
-      list.replaceChildren(...sorted.map((n) => h('div', { class: 'ip-note' + (n.done ? ' ip-done' : '') },
+      list.replaceChildren(...sorted.map((n) => h('label', { class: 'ip-note' + (n.done ? ' is-done' : '') },
         h('input', { type: 'checkbox', checked: n.done, onchange: (e) => { n.done = e.target.checked; saveNotes(); draw(); } }),
-        h('span', { class: 'ip-note-text' }, n.text, n.date ? h('small', {}, ' · ' + deShort(new Date(n.date + 'T00:00'))) : null),
-        h('button', { class: 'ip-x', title: 'Löschen', onclick: () => { notes = notes.filter((x) => x !== n); saveNotes(); draw(); } }, '×'))));
-      if (!notes.length) list.append(h('div', { class: 'ip-muted' }, 'Noch keine Notizen.'));
+        h('span', { class: 'ip-note-text' }, n.text, n.date ? h('small', {}, deShort(new Date(n.date + 'T00:00'))) : null),
+        h('button', { class: 'ip-x', title: 'Löschen', onclick: (e) => { e.preventDefault(); notes = notes.filter((x) => x !== n); saveNotes(); draw(); } }, '×'))));
+      if (!notes.length) list.append(h('div', { class: 'ip-empty' }, 'Noch nichts notiert.'));
     }
     draw();
-    return h('section', { class: 'ip-card' }, h('h3', {}, 'Notizen'), h('div', { class: 'ip-note-add' }, text, date, h('button', { class: 'ip-btn', onclick: add }, '+')), list);
+    return h('section', { class: 'ip-card' }, h('h3', {}, 'Notizen'),
+      h('div', { class: 'ip-note-add' }, text, date, h('button', { class: 'ip-btn', onclick: add, 'aria-label': 'Hinzufügen' }, '+')), list);
   }
 
   async function dashboard() {
     const main = document.querySelector('main.dashboard-front-main') || document.querySelector('main');
     if (!main) return;
-    const toggleBtn = h('button', { class: 'ip-btn ip-ghost' });
+    const toggleBtn = h('button', { class: 'ip-textbtn' });
     const setHidden = (v) => {
       main.classList.toggle('ip-hide-original', v);
-      toggleBtn.textContent = v ? 'Original-Dashboard anzeigen' : 'Original-Dashboard ausblenden';
+      toggleBtn.textContent = v ? 'Altes Dashboard anzeigen' : 'Altes Dashboard ausblenden';
     };
     toggleBtn.onclick = () => { S.hideOriginalDashboard = !S.hideOriginalDashboard; sync.set({ hideOriginalDashboard: S.hideOriginalDashboard }); setHidden(S.hideOriginalDashboard); };
-    const grid = h('div', { class: 'ip-grid' }, h('div', { class: 'ip-muted' }, 'Lade Stundenplan …'));
+
+    const tabs = h('div', { class: 'ip-tabs', role: 'tablist' });
+    const dayBox = h('div', {}, h('div', { class: 'ip-empty' }, 'Lade Stundenplan …'));
+    const side = h('div', { class: 'ip-side' });
     const panel = h('div', { id: 'isgy-plus' },
-      h('div', { class: 'ip-head' }, h('h2', {}, 'Mein Tag'),
-        h('span', { class: 'ip-hint' }, 'Fach anklicken → letzter Tagebucheintrag · Strg+K Befehle · ? Hilfe'),
-        toggleBtn,
-        h('button', { class: 'ip-btn ip-ghost', title: 'Einstellungen', onclick: openOptions }, '⚙')),
-      grid);
+      h('header', { class: 'ip-head' },
+        h('div', {},
+          h('h2', {}, 'Mein Tag'),
+          h('div', { class: 'ip-muted' }, new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' }))),
+        h('div', { class: 'ip-actions' },
+          h('button', { class: 'ip-search', onclick: openPalette, title: 'Seiten & Befehle suchen' }, 'Suchen', h('kbd', {}, 'Strg K')),
+          h('button', { class: 'ip-icon', title: 'Einstellungen', 'aria-label': 'Einstellungen', onclick: openOptions }, '⚙'))),
+      h('div', { class: 'ip-layout' },
+        h('section', { class: 'ip-card ip-main' }, tabs, dayBox),
+        side),
+      h('footer', { class: 'ip-foot' }, h('span', {}, 'Stunde anklicken für den letzten Tagebucheintrag · ', h('kbd', {}, '?'), ' Tastenkürzel'), toggleBtn));
     main.prepend(panel);
     setHidden(S.hideOriginalDashboard);
 
@@ -353,12 +381,23 @@
       const days = [];
       for (let d = today(); days.length < 2; d = addDays(d, 1)) if (!isWeekend(d)) days.push(d);
       const label = (d) => { const diff = Math.round((d - today()) / 864e5); return diff === 0 ? 'Heute' : diff === 1 ? 'Morgen' : DAYS[d.getDay()]; };
-      grid.replaceChildren(
-        ...days.map((d) => dayCard(d, label(d), sp, vplan, hidden)),
-        S.showNotes ? notesCard() : '',
-        await eventsCard(cls));
+      const views = days.map((d) => dayView(d, sp, vplan, hidden));
+      // After the last lesson of today, open the next day first.
+      const lastToday = (sp.plan?.[(days[0].getDay() + 6) % 7] || []).reduce((m, x, i) => (x.length ? i + 1 : m), 0);
+      const start = iso(days[0]) === iso(today()) && Number(sp.currentStunde) > lastToday ? 1 : 0;
+      const btns = days.map((d, i) => h('button', { class: 'ip-tab', role: 'tab', onclick: () => select(i) },
+        h('b', {}, label(d)), h('span', {}, `${DAYS[d.getDay()].slice(0, 2)}, ${deShort(d)}`),
+        views[i].subCount ? h('span', { class: 'ip-count', title: `${views[i].subCount} Vertretung(en)` }, views[i].subCount) : null));
+      const select = (i) => {
+        btns.forEach((b, j) => { b.classList.toggle('is-active', j === i); b.setAttribute('aria-selected', String(j === i)); });
+        dayBox.replaceChildren(views[i].el);
+      };
+      tabs.replaceChildren(...btns);
+      select(start);
+      if (S.showNotes) side.append(notesCard());
+      side.append(await eventsCard(cls));
     } catch (err) {
-      grid.replaceChildren(h('div', { class: 'ip-muted' }, 'Stundenplan konnte nicht geladen werden: ' + err.message));
+      dayBox.replaceChildren(h('div', { class: 'ip-empty' }, 'Stundenplan konnte nicht geladen werden: ' + err.message));
     }
   }
 
