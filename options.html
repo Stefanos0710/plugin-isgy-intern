@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>ISGY Intern Plus – Einstellungen</title>
+  <style>
+    body { font: 14px/1.5 system-ui, sans-serif; max-width: 720px; margin: 32px auto; padding: 0 16px; color: #1f2937; background: #f7f8fa; }
+    h1 { font-size: 22px; } h2 { font-size: 16px; margin-top: 28px; border-bottom: 1px solid #e3e6ea; padding-bottom: 4px; }
+    label { display: block; margin: 10px 0; }
+    label > span { display: block; font-weight: 600; }
+    small { color: #6b7280; display: block; }
+    input[type=text], input[type=number], select, textarea { font: inherit; padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 6px; width: 100%; box-sizing: border-box; }
+    textarea { font-family: ui-monospace, monospace; font-size: 12px; }
+    .row { display: flex; align-items: center; gap: 8px; } .row span { font-weight: 600; }
+    button { font: inherit; padding: 6px 14px; border-radius: 6px; border: 1px solid #e8730c; background: #e8730c; color: #fff; cursor: pointer; }
+    button.ghost { background: transparent; color: #e8730c; }
+    #status { margin-left: 10px; color: #15803d; }
+    ul#pins { padding-left: 18px; }
+  </style>
+</head>
+<body>
+  <h1>ISGY Intern Plus – Einstellungen</h1>
+
+  <h2>Dashboard</h2>
+  <label class="row"><input type="checkbox" id="hideOriginalDashboard"><span>Original-Dashboard ausblenden (nur „Mein Tag“ zeigen)</span></label>
+  <label class="row"><input type="checkbox" id="showNotes"><span>Notizen anzeigen</span></label>
+  <label><span>Ausgeblendete Fächer</span><input type="text" id="hiddenSubjects" placeholder="z. B. Ev, Eth"><small>Fächer, die du nicht hast (z. B. Religion/Ethik-Alternativen). Kommagetrennt, genau wie im Stundenplan geschrieben.</small></label>
+  <label><span>Termine aus dem Klassenkalender – wie viele Tage voraus</span><input type="number" id="eventDays" min="1" max="365"></label>
+  <label><span>Tagebuch – wie viele Tage zurück suchen</span><input type="number" id="lookbackDays" min="7" max="180"></label>
+
+  <h2>Kürzel</h2>
+  <label><span>Anzeige</span>
+    <select id="kuerzelFormat">
+      <option value="name-code">Name (Kürzel)</option>
+      <option value="name">Nur Name</option>
+      <option value="off">Aus – Kürzel lassen</option>
+    </select></label>
+  <label><span>URL der Kürzel-PDF</span><input type="text" id="kuerzelPdfUrl"><small>Relativ zu isgy-intern.de. Nur ändern, wenn die Schule eine neue Liste hochlädt.</small></label>
+  <p><span id="kzInfo"></span> <button class="ghost" id="kzReset" type="button">Kürzel-Liste löschen</button><small>Danach wird die Liste beim nächsten Besuch von isgy-intern.de neu aus der PDF gelesen. Die PDF selbst wird nie gespeichert, nur die Zuordnung Kürzel → Name, und das nur lokal in deinem Browser.</small></p>
+
+  <h2>Tastatur &amp; Befehle</h2>
+  <label class="row"><input type="checkbox" id="shortcutsEnabled"><span>Tastenkürzel aktiv</span></label>
+  <label><span>Befehlspalette öffnen</span><input type="text" id="paletteKey" placeholder="ctrl+k"><small>Format: ctrl+k, alt+p, shift+ctrl+space … „/“ öffnet sie zusätzlich immer.</small></label>
+  <label><span>„g“-Sprünge</span><textarea id="gotoKeys" rows="10"></textarea><small>Eine Zeile pro Sprung: <code>Taste=Link</code>. Erst <kbd>g</kbd>, dann die Taste drücken. Alt+1…9 öffnet angepinnte Seiten, <kbd>?</kbd> zeigt alle Kürzel.</small></label>
+
+  <h2>Aussehen</h2>
+  <label class="row"><input type="color" id="accent"><span>Akzentfarbe</span></label>
+
+  <h2>Angepinnte Seiten</h2>
+  <ul id="pins"></ul>
+  <small>Anpinnen: in der linken Leiste über einen Eintrag fahren und auf 📌 klicken.</small>
+
+  <h2>Notizen</h2>
+  <button class="ghost" id="exportNotes" type="button">Notizen exportieren (JSON)</button>
+
+  <p style="margin-top:28px"><button id="save" type="button">Speichern</button><button class="ghost" id="reset" type="button">Standard wiederherstellen</button><span id="status"></span></p>
+  <small>Änderungen gelten nach dem Neuladen der Seite.</small>
+
+  <script src="src/defaults.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

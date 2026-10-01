@@ -1,0 +1,85 @@
+:root { --ip-accent: #e8730c; --ip-border: #e3e6ea; --ip-muted: #6b7280; --ip-sub: #fff4e5; --ip-cancel: #fde8e8; }
+
+/* Dashboard */
+main.ip-hide-original > :not(#isgy-plus) { display: none !important; }
+#isgy-plus { margin: 0 0 20px; font-size: 14px; }
+#isgy-plus .ip-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+#isgy-plus .ip-head h2 { margin: 0; font-size: 22px; font-weight: 700; }
+#isgy-plus .ip-hint { color: var(--ip-muted); font-size: 12px; margin-right: auto; }
+.ip-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; align-items: start; }
+.ip-card { background: #fff; border: 1px solid var(--ip-border); border-radius: 10px; padding: 14px 16px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+.ip-card.ip-wide { grid-column: 1 / -1; }
+.ip-card h3 { margin: 0 0 10px; font-size: 17px; font-weight: 700; border-left: 4px solid var(--ip-accent); padding-left: 8px; }
+.ip-card h3 small { color: var(--ip-muted); font-weight: 400; font-size: 13px; }
+.ip-muted { color: var(--ip-muted); font-size: 13px; }
+
+.ip-lesson { border-radius: 8px; padding: 7px 8px; cursor: pointer; border: 1px solid transparent; }
+.ip-lesson + .ip-lesson { margin-top: 2px; }
+.ip-lesson:hover, .ip-lesson:focus-visible { background: #f6f7f9; border-color: var(--ip-border); outline: none; }
+.ip-lesson.ip-has-sub { background: var(--ip-sub); }
+.ip-lesson-main { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.ip-num { font-weight: 700; min-width: 40px; }
+.ip-time { color: var(--ip-muted); font-size: 12px; width: 38px; font-variant-numeric: tabular-nums; }
+.ip-subj { font-weight: 700; min-width: 44px; }
+.ip-teacher { flex: 1; }
+.ip-room { color: var(--ip-muted); font-size: 12px; }
+.ip-hw-dot { background: var(--ip-accent); color: #fff; border-radius: 4px; font-size: 10px; font-weight: 700; padding: 1px 4px; }
+.ip-badge { margin: 4px 0 0 48px; font-size: 12px; color: #8a4b00; }
+.ip-badge.ip-cancel { color: #b42318; }
+.ip-sub-head { margin-top: 10px; font-weight: 700; font-size: 13px; }
+.ip-detail { margin: 8px 0 2px 48px; padding: 8px 10px; background: #fff; border-left: 3px solid var(--ip-accent); border-radius: 4px; cursor: auto; }
+.ip-entry-head { font-weight: 700; margin-bottom: 4px; }
+.ip-entry-item + .ip-entry-item { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--ip-border); }
+.ip-entry p { margin: 4px 0; white-space: pre-line; }
+.ip-hw { background: #fff8ec; padding: 4px 6px; border-radius: 4px; }
+.ip-link { display: inline-block; margin-top: 6px; font-size: 12px; }
+.ip-note-inline { background: #eef6ff; border-radius: 6px; padding: 4px 8px; margin-bottom: 6px; font-size: 13px; }
+
+.ip-event { display: flex; gap: 10px; align-items: baseline; padding: 5px 0; border-bottom: 1px solid #f0f1f3; flex-wrap: wrap; }
+.ip-event:last-child { border-bottom: 0; }
+.ip-date { font-weight: 700; width: 70px; font-variant-numeric: tabular-nums; }
+.ip-tag { color: #fff; border-radius: 4px; padding: 0 5px; font-size: 11px; font-weight: 700; }
+.ip-ev-title { flex: 1; }
+
+/* Notes */
+.ip-note-add { display: flex; gap: 6px; margin-bottom: 8px; }
+.ip-input { border: 1px solid var(--ip-border); border-radius: 6px; padding: 6px 8px; font: inherit; min-width: 0; }
+.ip-note-add .ip-input:first-child { flex: 1; }
+.ip-date-in { width: 130px; }
+.ip-note { display: flex; gap: 8px; align-items: flex-start; padding: 4px 0; }
+.ip-note-text { flex: 1; white-space: pre-wrap; word-break: break-word; }
+.ip-note-text small { color: var(--ip-muted); }
+.ip-done .ip-note-text { text-decoration: line-through; color: var(--ip-muted); }
+
+.ip-btn { border: 1px solid var(--ip-accent); background: var(--ip-accent); color: #fff; border-radius: 6px; padding: 5px 10px; font: inherit; cursor: pointer; }
+.ip-btn.ip-ghost { background: transparent; color: var(--ip-accent); }
+.ip-btn.ip-small { font-size: 12px; padding: 2px 8px; margin-top: 8px; }
+.ip-x { border: 0; background: none; font-size: 18px; line-height: 1; cursor: pointer; color: var(--ip-muted); padding: 0 4px; }
+.ip-x:hover { color: #b42318; }
+
+/* Timetable slots of the site become clickable */
+.stundenplan-slot { cursor: pointer; }
+
+/* Modal + palette */
+.ip-modal { border: 0; border-radius: 12px; padding: 0; width: min(560px, 92vw); max-height: 80vh; box-shadow: 0 20px 50px rgba(0,0,0,.25); font-size: 14px; }
+.ip-modal::backdrop { background: rgba(15, 23, 42, .4); }
+.ip-modal-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--ip-border); position: sticky; top: 0; background: #fff; }
+.ip-modal > :not(.ip-modal-head) { padding: 12px 16px; }
+.ip-palette .ip-input { width: 100%; font-size: 15px; padding: 8px 10px; }
+.ip-pal-list { margin-top: 8px; max-height: 50vh; overflow: auto; }
+.ip-pal-item { padding: 7px 10px; border-radius: 6px; cursor: pointer; }
+.ip-pal-item.is-sel, .ip-pal-item:hover { background: var(--ip-accent); color: #fff; }
+.ip-help td { padding: 4px 10px 4px 0; vertical-align: top; }
+.ip-help kbd { background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 4px; padding: 1px 5px; font-size: 12px; white-space: nowrap; }
+
+/* Sidebar pins */
+.su-sidebar-nav__link { position: relative; }
+.ip-pin-btn { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); opacity: 0; font-size: 12px; cursor: pointer; filter: grayscale(1); transition: opacity .15s; }
+.su-sidebar-nav__link:hover .ip-pin-btn { opacity: .8; }
+.ip-pin-btn.is-pinned { filter: none; }
+.ip-pinned .ip-pin-btn { color: #fff; filter: none; }
+
+@media (max-width: 600px) {
+  .ip-badge, .ip-detail { margin-left: 0; }
+  #isgy-plus .ip-hint { display: none; }
+}

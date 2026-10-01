@@ -1,0 +1,4 @@
+# Never commit the school's Kürzel/e-mail list (personal data).
+*.pdf
+node_modules/
+*.zip
