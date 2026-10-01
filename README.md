@@ -23,11 +23,48 @@ Browser-Erweiterung (Chrome / Edge / Brave, Manifest V3) für [isgy-intern.de](h
 
 ## Installation
 
-1. Repo herunterladen (`Code → Download ZIP`) und entpacken, oder `git clone` ausführen
-2. `chrome://extensions` öffnen (in Edge: `edge://extensions`)
-3. Oben rechts den **Entwicklermodus** aktivieren
-4. **„Entpackte Erweiterung laden“** klicken und den Ordner mit der `manifest.json` auswählen
-5. isgy-intern.de öffnen und einloggen
+### 1. Paket bauen
+Du brauchst nur [Node.js](https://nodejs.org) (ab Version 18), sonst nichts.
+
+```bash
+node build.mjs
+```
+
+Danach liegt im Ordner `dist/` alles, was du brauchst:
+
+| Ordner / Datei | Für |
+| --- | --- |
+| `dist/chromium/` und `dist/isgy-intern-plus-<version>-chromium.zip` | Chrome, Edge, Brave, Opera, Vivaldi, Arc und alle anderen Chromium-Browser |
+| `dist/firefox/` und `dist/isgy-intern-plus-<version>-firefox.zip` | Firefox |
+
+### 2. Im Browser hinzufügen
+
+**Chrome / Brave / Vivaldi / Arc**
+1. `chrome://extensions` öffnen (Brave: `brave://extensions`)
+2. Oben rechts den **Entwicklermodus** einschalten
+3. **„Entpackte Erweiterung laden“** klicken und den Ordner `dist/chromium` auswählen
+
+**Microsoft Edge**
+1. `edge://extensions` öffnen
+2. Links unten **Entwicklermodus** einschalten
+3. **„Entpackte Erweiterung laden“** klicken und `dist/chromium` auswählen
+
+**Opera**
+1. `opera://extensions` öffnen und **Entwicklermodus** einschalten
+2. **„Entpackte Erweiterung laden“** klicken und `dist/chromium` auswählen
+
+**Firefox**
+1. `about:debugging#/runtime/this-firefox` öffnen
+2. **„Temporäres Add-on laden …“** klicken und `dist/firefox/manifest.json` auswählen
+3. Wichtig: Temporäre Add-ons verschwinden beim Schließen von Firefox und müssen dann neu geladen werden. Für eine dauerhafte Installation musst du die Erweiterung bei [addons.mozilla.org](https://addons.mozilla.org/developers/) signieren lassen (die Datei `…-firefox.zip` als „selbst verteilt“ hochladen) oder Firefox Developer Edition / Nightly verwenden und dort `xpinstall.signatures.required` in `about:config` auf `false` setzen.
+
+**Safari** wird nicht direkt unterstützt. Auf einem Mac lässt sich der Chromium-Ordner mit `xcrun safari-web-extension-converter dist/chromium` in ein Safari-Projekt umwandeln.
+
+### 3. Benutzen
+isgy-intern.de öffnen und einloggen. Das Dashboard erscheint jetzt als „Mein Tag“. Beim ersten Besuch wird die Kürzel-Liste einmalig geladen.
+
+### Aktualisieren
+Neue Version holen (`git pull`), erneut `node build.mjs` ausführen und die Erweiterung auf der Erweiterungsseite des Browsers neu laden (Pfeil-Symbol).
 
 ## Datenschutz
 
@@ -39,6 +76,7 @@ Browser-Erweiterung (Chrome / Edge / Brave, Manifest V3) für [isgy-intern.de](h
 ## Aufbau
 
 ```
+build.mjs            Baut die Pakete für Chromium-Browser und Firefox (dist/)
 manifest.json        Erweiterungs-Manifest (MV3)
 src/defaults.js      Standard-Einstellungen
 src/content.js       Läuft auf isgy-intern.de: Dashboard, Kürzel, Pins, Befehle
