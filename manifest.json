@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ISGY Intern Plus",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Aufgeräumtes Dashboard, Kürzel → Namen, letzte Tagebucheinträge, Pins, Notizen und Tastaturbefehle für isgy-intern.de",
   "permissions": ["storage"],
   "background": { "service_worker": "src/background.js" },
