@@ -1,7 +1,7 @@
 // Builds installable packages: node build.mjs  (Node >= 18, no dependencies)
 // dist/chromium/ + .zip → Chrome, Edge, Brave, Opera, Vivaldi, Arc …
 // dist/firefox/  + .zip → Firefox
-import { readFileSync, writeFileSync, mkdirSync, rmSync, cpSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, rmSync, cpSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { deflateRawSync } from 'node:zlib';
 
@@ -50,7 +50,9 @@ function zip(dir) {
   return Buffer.concat([...parts, cdBuf, end]);
 }
 
-rmSync('dist', { recursive: true, force: true });
+// Only clear build output, never dist/signed (signed .xpi files can't be recreated without a new Mozilla signing).
+for (const f of ['chromium', 'firefox']) rmSync(join('dist', f), { recursive: true, force: true });
+for (const f of existsSync('dist') ? readdirSync('dist') : []) if (f.endsWith('.zip')) rmSync(join('dist', f));
 for (const [name, tweak] of Object.entries(targets)) {
   const out = join('dist', name);
   mkdirSync(out, { recursive: true });

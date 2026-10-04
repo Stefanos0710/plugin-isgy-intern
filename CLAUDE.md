@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-- `node build.mjs` (or `npm run build`) — Node >= 18. Wipes `dist/` and writes `dist/chromium/` and `dist/firefox/` plus `isgy-intern-plus-<version>-<target>.zip` (zip is hand-written with `node:zlib`).
+- `node build.mjs` (or `npm run build`) — Node >= 18. Clears `dist/chromium`, `dist/firefox` and old zips (keeps `dist/signed/`) and writes `dist/chromium/` and `dist/firefox/` plus `isgy-intern-plus-<version>-<target>.zip` (zip is hand-written with `node:zlib`).
 - To try changes: load `dist/chromium` as an unpacked extension (or `dist/firefox/manifest.json` via `about:debugging`) and reload after each rebuild. Source files in the repo root are not directly loadable for Firefox.
 
 ## Architecture
