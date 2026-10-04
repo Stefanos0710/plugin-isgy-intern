@@ -53,10 +53,32 @@ Danach liegt im Ordner `dist/` alles, was du brauchst:
 1. `opera://extensions` öffnen und **Entwicklermodus** einschalten
 2. **„Entpackte Erweiterung laden“** klicken und `dist/chromium` auswählen
 
-**Firefox**
+**Firefox (dauerhaft)**
+
+Firefox lädt nur von Mozilla signierte Erweiterungen dauerhaft. Das Signieren ist kostenlos, geht automatisch und die Erweiterung wird dabei **nicht veröffentlicht** (Kanal „unlisted“, nur für dich).
+
+Einmalig:
+1. Kostenloses Konto auf [addons.mozilla.org](https://addons.mozilla.org) erstellen und einloggen
+2. Unter [API-Schlüssel](https://addons.mozilla.org/developers/addon/api/key/) „Neue Zugangsdaten erzeugen“ klicken. Du bekommst einen **JWT-Aussteller** (`user:…`) und ein **JWT-Geheimnis**. Beides nicht weitergeben und nicht ins Repo schreiben.
+
+Signieren (PowerShell):
+```powershell
+$env:WEB_EXT_API_KEY = "user:12345:67"
+$env:WEB_EXT_API_SECRET = "dein-geheimnis"
+npm run sign:firefox
+```
+Nach etwa einer Minute liegt die signierte Datei in `dist/signed/` (`….xpi`). Dann in Firefox:
+1. `about:addons` öffnen
+2. Zahnrad ⚙ → **„Add-on aus Datei installieren …“** → die `.xpi` auswählen
+
+Die Erweiterung bleibt jetzt auch nach dem Schließen von Firefox installiert.
+
+Bei einem Update: `version` in `manifest.json` erhöhen (Mozilla signiert jede Versionsnummer nur einmal), erneut `npm run sign:firefox` ausführen und die neue `.xpi` installieren.
+
+**Firefox (nur zum Ausprobieren)**
 1. `about:debugging#/runtime/this-firefox` öffnen
-2. **„Temporäres Add-on laden …“** klicken und `dist/firefox/manifest.json` auswählen
-3. Wichtig: Temporäre Add-ons verschwinden beim Schließen von Firefox und müssen dann neu geladen werden. Für eine dauerhafte Installation musst du die Erweiterung bei [addons.mozilla.org](https://addons.mozilla.org/developers/) signieren lassen (die Datei `…-firefox.zip` als „selbst verteilt“ hochladen) oder Firefox Developer Edition / Nightly verwenden und dort `xpinstall.signatures.required` in `about:config` auf `false` setzen.
+2. **„Temporäres Add-on laden …“** → `dist/firefox/manifest.json` auswählen
+3. Verschwindet beim Schließen von Firefox.
 
 **Safari** wird nicht direkt unterstützt. Auf einem Mac lässt sich der Chromium-Ordner mit `xcrun safari-web-extension-converter dist/chromium` in ein Safari-Projekt umwandeln.
 

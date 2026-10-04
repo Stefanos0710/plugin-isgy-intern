@@ -17,7 +17,7 @@ const targets = {
       ...rest,
       background: { scripts: [background.service_worker] },
       options_ui: { page: options_page, open_in_tab: true },
-      browser_specific_settings: { gecko: { id: 'isgy-intern-plus@stefanos0710.github.io', strict_min_version: '121.0' } },
+      browser_specific_settings: { gecko: { id: 'isgy-intern-plus@stefanos0710.github.io', strict_min_version: '121.0', data_collection_permissions: { required: ['none'] } } },
     };
   },
 };
