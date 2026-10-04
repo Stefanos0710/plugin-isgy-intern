@@ -5,6 +5,6 @@
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
-    "sign:firefox": "node build.mjs && npx --yes web-ext@10 sign --channel=unlisted --source-dir=dist/firefox --artifacts-dir=dist/signed"
+    "sign:firefox": "node sign-firefox.mjs"
   }
 }

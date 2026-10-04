@@ -61,10 +61,13 @@ Einmalig:
 1. Kostenloses Konto auf [addons.mozilla.org](https://addons.mozilla.org) erstellen und einloggen
 2. Unter [API-Schlüssel](https://addons.mozilla.org/developers/addon/api/key/) „Neue Zugangsdaten erzeugen“ klicken. Du bekommst einen **JWT-Aussteller** (`user:…`) und ein **JWT-Geheimnis**. Beides nicht weitergeben und nicht ins Repo schreiben.
 
-Signieren (PowerShell):
-```powershell
-$env:WEB_EXT_API_KEY = "user:12345:67"
-$env:WEB_EXT_API_SECRET = "dein-geheimnis"
+Signieren: die Schlüssel in eine Datei `.env` im Projektordner schreiben (Vorlage: `.env.example`, die Datei ist in `.gitignore` und landet nie auf GitHub):
+```
+WEB_EXT_API_KEY=user:12345:67
+WEB_EXT_API_SECRET=dein-geheimnis
+```
+und ausführen:
+```bash
 npm run sign:firefox
 ```
 Nach etwa einer Minute liegt die signierte Datei in `dist/signed/` (`….xpi`). Dann in Firefox:
