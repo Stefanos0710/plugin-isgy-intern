@@ -9,7 +9,7 @@
     {
       "matches": ["https://www.isgy-intern.de/*", "https://isgy-intern.de/*"],
       "js": ["src/defaults.js", "src/content.js"],
-      "css": ["src/content.css"],
+      "css": ["src/theme.css", "src/content.css"],
       "run_at": "document_idle"
     }
   ],

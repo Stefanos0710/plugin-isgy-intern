@@ -1,0 +1,155 @@
+/* Modern look for every portal page. Off when <html> has .ip-no-theme (setting "Modernes Design").
+   Most of the portal's own components (su-*) are driven by the design tokens from style/core/su-tokens.css,
+   so overriding those tokens restyles them all; the rest are AdminLTE/Bootstrap leftovers styled directly. */
+html:not(.ip-no-theme) {
+  --ip-page-bg: #f3f4f7;
+  --ip-card-shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 4px 16px rgba(16, 24, 40, .05);
+  --ip-ease: cubic-bezier(.2, .7, .2, 1);
+
+  /* Beats ".skin-yellow .su-theme" from su-skins.css. */
+  & body,
+  & body .su-theme,
+  & body .su-app {
+    --su-font-sans: inherit;
+    --su-color-canvas: transparent;
+    --su-color-surface-soft: #f6f7f9;
+    --su-color-table-stripe: #f9fafb;
+    --su-color-border: #eceef1;
+    --su-color-border-strong: #dfe3e8;
+    --su-radius-control: 10px;
+    --su-radius-panel: 16px;
+    --su-color-primary: var(--ip-accent, #e8730c);
+    --su-color-primary-hover: color-mix(in srgb, var(--ip-accent, #e8730c) 88%, #000);
+    --su-color-primary-active: color-mix(in srgb, var(--ip-accent, #e8730c) 80%, #000);
+    --su-color-primary-soft: color-mix(in srgb, var(--ip-accent, #e8730c) 10%, #fff);
+    --su-color-primary-soft-hover: color-mix(in srgb, var(--ip-accent, #e8730c) 16%, #fff);
+    --su-color-primary-border: color-mix(in srgb, var(--ip-accent, #e8730c) 35%, #fff);
+    --su-color-focus-ring: color-mix(in srgb, var(--ip-accent, #e8730c) 25%, transparent);
+    --su-heading-accent: var(--ip-accent, #e8730c);
+    --su-heading-accent-soft: color-mix(in srgb, var(--ip-accent, #e8730c) 14%, #fff);
+  }
+
+  /* ---------- Page canvas: one calm grey, no white block behind it ---------- */
+  & .content-wrapper,
+  & .content-wrapper > .content { background: var(--ip-page-bg); }
+  & .content.body { padding: 24px clamp(12px, 2.5vw, 32px) 40px; }
+  & .content .su-theme[class*="-ui"],
+  & .dashboard-front-ui { background: transparent; border: 0; box-shadow: none; }
+
+  /* ---------- Page title (the tab-like link above each page) ---------- */
+  & .content.body > .flex-row:first-child { margin-bottom: 20px; }
+  & .page-submenue { display: flex; flex-wrap: wrap; gap: 6px; background: none; border: 0; }
+  & .page-submenue a {
+    display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border: 0; border-radius: 999px;
+    background: transparent; color: #6b7280; font-size: 15px; font-weight: 600; text-decoration: none;
+    transition: background .2s, color .2s, box-shadow .2s;
+  }
+  & .page-submenue a:hover { background: rgba(255, 255, 255, .7); color: #1f2937; }
+  & .page-submenue a.active,
+  & .page-submenue-mobile a:only-child {
+    background: #fff; color: #1f2937; box-shadow: 0 1px 3px rgba(16, 24, 40, .1);
+  }
+  & .page-submenue-mobile a:only-child { font-size: 22px; font-weight: 700; padding: 0; background: none; box-shadow: none; letter-spacing: -.01em; }
+  & .page-submenue a i { color: var(--ip-accent, #e8730c); }
+
+  /* ---------- Cards ---------- */
+  & .content .box,
+  & .content .su-panel,
+  & .content .panel,
+  & .content .card {
+    background: #fff; border: 0; border-radius: 16px; box-shadow: var(--ip-card-shadow);
+  }
+  & .content .box { padding: 8px; margin-bottom: 24px; }
+  & .content .box-header { border: 0; padding: 14px 16px 6px; }
+  & .content .box-header .box-title { font-size: 17px; font-weight: 700; }
+  & .content .box-body { padding: 12px 16px 16px; }
+  & .content .su-panel .su-panel { box-shadow: none; border: 1px solid #eceef1; }
+  & .dashboard-front-card { transition: transform .2s var(--ip-ease), box-shadow .2s; }
+  & .dashboard-front-card:hover { transform: translateY(-2px); box-shadow: 0 2px 4px rgba(16, 24, 40, .05), 0 14px 30px rgba(16, 24, 40, .08); }
+
+  /* ---------- Info banners ---------- */
+  & .content .callout {
+    border: 0; border-radius: 14px; padding: 14px 18px; margin-bottom: 20px;
+    background: #eff6ff !important; color: #1e3a8a !important; box-shadow: var(--ip-card-shadow);
+  }
+  & .content .callout a, & .content .callout .btn { color: #1d4ed8 !important; }
+  & .content .su-alert, & .content .su-toast { border-radius: 12px; }
+
+  /* ---------- Tables ---------- */
+  & .content .table, & .content .si-table, & .content .su-table { border-collapse: separate; border-spacing: 0; }
+  & .content .table > thead > tr > th,
+  & .content .si-table thead th,
+  & .content .su-table__head-cell {
+    background: transparent; border: 0; border-bottom: 1px solid #eceef1;
+    color: #6b7280; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; padding: 10px 12px;
+  }
+  & .content .table > tbody > tr > td,
+  & .content .si-table td { border-top: 0; border-bottom: 1px solid #f0f1f4; padding: 11px 12px; vertical-align: middle; }
+  & .content .table > tbody > tr:last-child > td,
+  & .content .si-table tbody tr:last-child td { border-bottom: 0; }
+  & .content .table-striped > tbody > tr:nth-of-type(odd) { background: #fafbfc; }
+  & .content .table > tbody > tr,
+  & .content .si-table tbody tr,
+  & .content .su-table__row { transition: background .15s; }
+  & .content .table-hover > tbody > tr:hover,
+  & .content .si-table tbody tr:hover,
+  & .content .su-table__row:hover { background: #f6f7f9; }
+
+  /* ---------- Timetable page ---------- */
+  & .stundenplan-table-wrap { border: 0; }
+  & .stundenplan-hour-cell, & .stundenplan-hour-head { background: transparent !important; }
+  & .stundenplan-slot {
+    background: #f6f7f9; border: 0; border-radius: 10px; padding: 8px 10px;
+    transition: background .15s, transform .15s var(--ip-ease), box-shadow .15s;
+  }
+  & .stundenplan-slot:hover { background: #fff; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(16, 24, 40, .08); }
+  & .stundenplan-slot-subject { font-weight: 700; }
+
+  /* ---------- Tagebuch ---------- */
+  & .tagebuch-schedule { border: 0; }
+  & .tagebuch-schedule__row { border-color: #f0f1f4; }
+
+  /* ---------- Controls ---------- */
+  & .content .btn, & .content .si-btn {
+    border-radius: 10px; transition: filter .15s, transform .1s, box-shadow .15s, background .15s;
+  }
+  & .content .btn:active, & .content .si-btn:active, & .content .su-button:active { transform: scale(.97); }
+  & .content .btn-primary, & .content .si-btn-active {
+    background: var(--ip-accent, #e8730c); border-color: var(--ip-accent, #e8730c); color: #fff;
+  }
+  & .content .btn-primary:hover { filter: brightness(.95); }
+  & .content .form-control, & .content .si-input, & .content select.si-input {
+    height: 40px; border-radius: 10px; border: 1px solid #e3e6ea; background: #f6f7f9; box-shadow: none;
+    transition: border-color .15s, background .15s, box-shadow .15s;
+  }
+  & .content textarea.form-control, & .content textarea.si-input { height: auto; }
+  & .content .form-control:focus, & .content .si-input:focus {
+    border-color: var(--ip-accent, #e8730c); background: #fff;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ip-accent, #e8730c) 20%, transparent); outline: none;
+  }
+  & .content .nav-tabs-custom { border-radius: 16px; box-shadow: var(--ip-card-shadow); overflow: hidden; }
+  & .content .label, & .content .badge { border-radius: 999px; padding: .25em .7em; }
+
+  /* ---------- Footer: quiet everywhere, gone on the dashboard ---------- */
+  & .main-footer { background: transparent; border: 0; color: #9ca3af; font-size: 12px; }
+  & .main-footer a { color: inherit; }
+  & body:has(main.dashboard-front-main) .main-footer { display: none; }
+}
+
+/* ---------- Entrance animations on every page ---------- */
+@keyframes ip-theme-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: no-preference) {
+  html:not(.ip-no-theme) {
+    & .content.body > :is(.flex-row, .box, .callout, #app, div),
+    & .content #app .su-panel,
+    & .content #app .box {
+      animation: ip-theme-rise .5s var(--ip-ease) backwards;
+    }
+    & .content.body > :nth-child(2) { animation-delay: .06s; }
+    & .content.body > :nth-child(3) { animation-delay: .12s; }
+    & .content #app .su-panel:nth-of-type(2) { animation-delay: .08s; }
+    & .content #app .su-panel:nth-of-type(3) { animation-delay: .16s; }
+    & .content .table > tbody > tr,
+    & .content .si-table tbody tr { animation: ip-theme-rise .35s var(--ip-ease) .15s backwards; }
+  }
+}

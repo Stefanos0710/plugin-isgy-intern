@@ -13,6 +13,7 @@
     if (ch.pins) renderPins();
   });
   document.documentElement.style.setProperty('--ip-accent', S.accent);
+  document.documentElement.classList.toggle('ip-no-theme', !S.modernTheme);
   const page = new URLSearchParams(location.search).get('page') || '';
 
   // ---------- helpers ----------
@@ -349,7 +350,7 @@
       subCount: vp.length,
       el: h('div', { class: 'ip-day' },
         dayNotes.map((x) => h('div', { class: 'ip-callout' }, '☐ ', x.text)),
-        items.length ? h('div', { class: 'ip-lessons' }, items.map((it) => lessonRow(it, now >= it.from && now <= it.to))) : h('div', { class: 'ip-empty' }, 'Kein Unterricht.'),
+        items.length ? h('div', { class: 'ip-lessons' }, items.map((it, i) => { const r = lessonRow(it, now >= it.from && now <= it.to); r.style.setProperty('--i', i); return r; })) : h('div', { class: 'ip-empty' }, 'Kein Unterricht.'),
         orphan.length ? h('div', { class: 'ip-lessons ip-orphans' }, h('div', { class: 'ip-label' }, 'Weitere Vertretungen'),
           orphan.map((v) => {
             const s = subLine(v, true);
@@ -471,14 +472,20 @@
     };
     toggleBtn.onclick = () => { S.hideOriginalDashboard = !S.hideOriginalDashboard; sync.set({ hideOriginalDashboard: S.hideOriginalDashboard }); setHidden(S.hideOriginalDashboard); };
 
+    const hr = new Date().getHours();
+    const greeting = hr < 11 ? 'Guten Morgen' : hr < 17 ? 'Hallo' : 'Guten Abend';
+    const firstName = clean(document.querySelector('.su-sidebar-user__info p')?.textContent).split(/\s+/)[0];
+    const dateText = new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
+    const chips = h('div', { class: 'ip-chips' });
     const tabs = h('div', { class: 'ip-tabs', role: 'tablist' });
-    const dayBox = h('div', {}, h('div', { class: 'ip-empty' }, 'Lade Stundenplan …'));
+    const skeleton = h('div', { class: 'ip-lessons' }, Array.from({ length: 5 }, (_, i) => h('div', { class: 'ip-skel', style: `--i:${i}` })));
+    const dayBox = h('div', {}, skeleton);
     const side = h('div', { class: 'ip-side' });
     const panel = h('div', { id: 'isgy-plus' },
       h('header', { class: 'ip-head' },
-        h('div', {},
-          h('h2', {}, 'Mein Tag'),
-          h('div', { class: 'ip-muted' }, new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' }))),
+        h('div', { class: 'ip-date-kicker' }, dateText),
+        h('h2', {}, firstName ? `${greeting}, ${firstName}` : greeting, h('span', { class: 'ip-wave', 'aria-hidden': 'true' }, '👋')),
+        chips,
         h('div', { class: 'ip-actions' },
           h('button', { class: 'ip-search', onclick: openPalette, title: 'Seiten & Befehle suchen' }, 'Suchen', h('kbd', {}, 'Strg K')),
           h('button', { class: 'ip-icon', title: 'Einstellungen', 'aria-label': 'Einstellungen', onclick: openOptions }, '⚙'))),
@@ -499,13 +506,28 @@
         const vl = await getJSON('rest.php/vplan/getList', { headers: await authHeaders() });
         vplan = Object.values(vl).flatMap((x) => x?.data || []).filter((v) => classMatch(v.klasse, cls));
       } catch (err) { console.warn('[ISGY Plus] vplan', err); }
+      // Show every school day up to the last published Vertretungsplan date (max. one month ahead), at least the rest of this week.
+      const lastVp = Math.max(...vplan.map((v) => { const [d, m, y] = String(v.date).split('.').map(Number); return new Date(y, m - 1, d).getTime() || 0; }), 0);
+      const friday = addDays(today(), (12 - today().getDay()) % 7);
+      const end = Math.min(addDays(today(), 31).getTime(), Math.max(lastVp, friday.getTime()));
       const days = [];
-      for (let d = today(); days.length < 2; d = addDays(d, 1)) if (!isWeekend(d)) days.push(d);
+      for (let d = today(); d <= end || days.length < 2; d = addDays(d, 1)) if (!isWeekend(d)) days.push(d);
       const label = (d) => { const diff = Math.round((d - today()) / 864e5); return diff === 0 ? 'Heute' : diff === 1 ? 'Morgen' : DAYS[d.getDay()]; };
       const views = days.map((d) => dayView(d, sp, vplan, hidden));
       // After the last lesson of today, open the next day first.
       const lastToday = (sp.plan?.[(days[0].getDay() + 6) % 7] || []).reduce((m, x, i) => (x.length ? i + 1 : m), 0);
       const start = iso(days[0]) === iso(today()) && Number(sp.currentStunde) > lastToday ? 1 : 0;
+      // Status chips under the greeting: class, when school ends / starts, number of substitutions.
+      const hoursOf = (d) => (sp.plan?.[(d.getDay() + 6) % 7] || []).map((x, i) => (x.some((s) => !hidden.has(s.subject)) ? i + 1 : 0)).filter(Boolean);
+      const endOf = (n) => { const [hh, mm] = (TIMES[n] || '').split(':').map(Number); if (isNaN(hh)) return ''; const t = hh * 60 + mm + 45; return `${pad(Math.floor(t / 60))}:${pad(t % 60)}`; };
+      const chip = (text, cls2 = '') => h('span', { class: 'ip-chip ' + cls2 }, text);
+      const focus = days[start], hrs = hoursOf(focus);
+      const subs = vplan.filter((v) => v.date === deFull(focus)).length;
+      chips.replaceChildren(
+        cls ? chip(`Klasse ${cls}`) : null,
+        hrs.length ? chip(iso(focus) === iso(today()) ? `Heute ${hrs.length} Std · Schluss ${endOf(hrs.at(-1))}` : `${label(focus)} ab ${TIMES[hrs[0]] || hrs[0] + '. Std'} · ${hrs.length} Std`) : null,
+        start === 1 && iso(days[0]) === iso(today()) ? chip('Schulschluss für heute ✓', 'is-ok') : null,
+        subs ? chip(`${subs} ${subs === 1 ? 'Vertretung' : 'Vertretungen'} ${iso(focus) === iso(today()) ? 'heute' : label(focus) === 'Morgen' ? 'morgen' : 'am ' + label(focus)}`, 'is-warn') : null);
       const btns = days.map((d, i) => h('button', { class: 'ip-tab', role: 'tab', onclick: () => select(i) },
         h('b', {}, label(d)), h('span', {}, `${DAYS[d.getDay()].slice(0, 2)}, ${deShort(d)}`),
         views[i].subCount ? h('span', { class: 'ip-count', title: `${views[i].subCount} Vertretung(en)` }, views[i].subCount) : null));

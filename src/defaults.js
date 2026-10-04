@@ -21,5 +21,6 @@ const ISGY_DEFAULTS = {
     'm=index.php?page=ext_inbox\n' +
     'f=index.php?page=ext_downloads&view=default',
   accent: '#e8730c',
+  modernTheme: true, // restyle all portal pages (src/theme.css)
   pins: [], // [{href, label}]
 };

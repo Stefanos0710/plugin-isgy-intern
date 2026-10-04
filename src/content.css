@@ -31,10 +31,27 @@ main.ip-hide-original > :not(#isgy-plus) { display: none !important; }
 .ip-muted { color: var(--ip-muted); font-size: 13px; }
 .ip-empty { color: var(--ip-muted); padding: 28px 8px; text-align: center; }
 
-.ip-head { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; margin-bottom: 28px; }
+.ip-head { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; margin: 12px 0 32px; }
 @container (min-width: 760px) { .ip-actions { position: absolute; right: 0; top: 0; } }
-.ip-head h2 { margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -.01em; }
-.ip-head .ip-muted { font-size: 15px; }
+.ip-date-kicker { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--ip-accent); }
+.ip-head h2 {
+  display: flex; align-items: center; gap: 12px; margin: 0;
+  font-size: clamp(28px, 4.2cqi, 40px); font-weight: 800; letter-spacing: -.025em; line-height: 1.15;
+}
+.ip-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; min-height: 32px; margin-top: 4px; }
+.ip-chip {
+  display: inline-flex; align-items: center; height: 32px; padding: 0 14px; border-radius: 999px;
+  background: var(--ip-card); color: var(--ip-text); font-size: 13px; font-weight: 600;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, .06), 0 2px 8px rgba(16, 24, 40, .04);
+}
+.ip-chip.is-warn { background: var(--ip-sub-bg); color: var(--ip-sub-text); }
+.ip-chip.is-ok { background: #ecfdf3; color: #067647; }
+.ip-skel {
+  height: 62px; border-radius: 12px;
+  background: linear-gradient(90deg, var(--ip-soft) 25%, #eceef2 37%, var(--ip-soft) 63%) 0 0 / 400% 100%;
+  animation: ip-shimmer 1.4s ease infinite; animation-delay: calc(var(--i, 0) * 90ms);
+}
+@keyframes ip-shimmer { from { background-position: 100% 0; } to { background-position: 0 0; } }
 .ip-actions { display: flex; gap: 8px; }
 .ip-search, .ip-icon {
   display: inline-flex; align-items: center; gap: 10px; height: 40px; padding: 0 14px;
@@ -59,7 +76,7 @@ main.ip-hide-original > :not(#isgy-plus) { display: none !important; }
 .ip-main { padding: 20px; }
 
 /* Day tabs */
-.ip-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 5px; background: var(--ip-soft); border-radius: 12px; margin-bottom: 16px; }
+.ip-tabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 6px; padding: 5px; background: var(--ip-soft); border-radius: 12px; margin-bottom: 16px; }
 .ip-tab {
   position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 0;
   padding: 10px 16px; border: 0; border-radius: 9px; background: transparent; font: inherit; cursor: pointer; color: var(--ip-muted); text-align: left;
@@ -231,3 +248,46 @@ main.ip-hide-original > :not(#isgy-plus) { display: none !important; }
 .ip-old { color: var(--ip-muted); text-decoration: line-through; font-weight: 400; }
 .ip-new { color: var(--ip-sub-text); }
 .ip-lesson.is-cancel .ip-teacher, .ip-lesson.is-cancel .ip-room { text-decoration: line-through; }
+
+/* ---------- Animations ---------- */
+@keyframes ip-rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes ip-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ip-pop { from { opacity: 0; transform: scale(.96) translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes ip-wave { 0%, 60%, 100% { transform: rotate(0); } 10%, 30% { transform: rotate(14deg); } 20% { transform: rotate(-8deg); } 40% { transform: rotate(-4deg); } 50% { transform: rotate(10deg); } }
+
+.ip-head h2 {
+  background: linear-gradient(100deg, var(--ip-text) 0%, var(--ip-text) 35%, var(--ip-accent) 50%, var(--ip-text) 65%, var(--ip-text) 100%) 0 0 / 250% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent !important;
+}
+.ip-wave { display: inline-block; font-size: .85em; transform-origin: 70% 70%; -webkit-text-fill-color: initial; color: initial; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .ip-date-kicker { animation: ip-rise .5s cubic-bezier(.2, .7, .2, 1) backwards; }
+  .ip-head h2 { animation: ip-rise .6s .05s cubic-bezier(.2, .7, .2, 1) backwards, ip-shine 1.6s .5s ease-in-out backwards; }
+  .ip-wave { animation: ip-wave 2.2s .6s ease-in-out; }
+  .ip-chip { animation: ip-pop .4s cubic-bezier(.2, .7, .2, 1) backwards; }
+  .ip-chip:nth-child(2) { animation-delay: .08s; } .ip-chip:nth-child(3) { animation-delay: .16s; } .ip-chip:nth-child(4) { animation-delay: .24s; }
+  .ip-actions { animation: ip-fade .6s .2s ease-out backwards; }
+  .ip-day { animation: ip-fade .25s ease-out; }
+  .ip-tab.is-active b { animation: ip-pop .25s ease-out; }
+  .ip-count { animation: ip-pop .35s .3s cubic-bezier(.2, .7, .2, 1) backwards; }
+  .ip-layout > *, .ip-side > * { animation: ip-rise .5s cubic-bezier(.2, .7, .2, 1) backwards; }
+  .ip-main { animation-delay: .08s; }
+  .ip-side > :nth-child(1) { animation-delay: .16s; }
+  .ip-side > :nth-child(2) { animation-delay: .24s; }
+  .ip-lesson { animation: ip-rise .4s cubic-bezier(.2, .7, .2, 1) backwards; animation-delay: calc(var(--i, 0) * 45ms); }
+  .ip-orphans .ip-lesson, .ip-event, .ip-note, .ip-memo { animation: ip-rise .35s ease-out backwards; }
+  .ip-detail { animation: ip-rise .25s ease-out backwards; }
+  .ip-modal[open] { animation: ip-pop .22s cubic-bezier(.2, .7, .2, 1); }
+  .ip-modal[open]::backdrop { animation: ip-fade .22s ease-out; }
+  .ip-card { transition: box-shadow .2s, transform .2s; }
+  .ip-card:hover { transform: translateY(-2px); box-shadow: 0 2px 4px rgba(16, 24, 40, .05), 0 12px 28px rgba(16, 24, 40, .08); }
+  .ip-tab, .ip-seg-btn { transition: background .2s, box-shadow .2s, color .2s, transform .15s; }
+  .ip-tab:hover:not(.is-active) { background: rgba(255, 255, 255, .6); }
+  .ip-tab:active, .ip-btn:active, .ip-seg-btn:active { transform: scale(.97); }
+  .ip-lesson { transition: background .15s, transform .15s; }
+  .ip-lesson:hover { transform: translateX(3px); }
+  .ip-pill-now { animation: ip-pulse 2s ease-in-out infinite; }
+}
+@keyframes ip-shine { from { background-position: 100% 0; } to { background-position: 0 0; } }
+@keyframes ip-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, .45); } 50% { box-shadow: 0 0 0 5px rgba(22, 163, 74, 0); } }
