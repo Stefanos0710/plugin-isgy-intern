@@ -7,9 +7,13 @@
   const sync = chrome.storage.sync;
   const local = chrome.storage.local;
   const S = Object.assign({}, ISGY_DEFAULTS, await sync.get(null));
+  const cleanPins = (pins) => (Array.isArray(pins) ? pins : []).filter((p) => p && typeof p.href === 'string' && p.href)
+    .map((p) => ({ href: p.href, label: typeof p.label === 'string' && p.label.trim() && !/^(null|undefined)+$/i.test(p.label.trim()) ? p.label.trim() : p.href.replace(/^index\.php\?page=(ext_)?/, '').split('&')[0] }));
+  S.pins = cleanPins(S.pins);
   chrome.storage.onChanged.addListener((ch, area) => {
     if (area !== 'sync') return;
     for (const [k, { newValue }] of Object.entries(ch)) S[k] = newValue ?? ISGY_DEFAULTS[k];
+    S.pins = cleanPins(S.pins);
     if (ch.pins) renderPins();
   });
   document.documentElement.style.setProperty('--ip-accent', S.accent);
@@ -138,19 +142,13 @@
       const el = n.parentElement;
       if (!t || !el || el.closest('#isgy-plus, .ip-modal, nav, [class*="sidebar"], .ip-hidden')) continue;
       if (/keine E-Mail[- ]Adresse hinzugefügt/i.test(t)) {
-        let box = el;
-        while (box.parentElement && box.parentElement !== document.body && box.parentElement.tagName !== 'MAIN' && box.parentElement.textContent.trim().length < 250) box = box.parentElement;
-        box.classList.add('ip-hidden');
+        // Only the notice itself (.callout); never a page container, or the whole page would disappear.
+        (el.closest('.callout, .alert') || el).classList.add('ip-hidden');
       } else if (page === 'ext_dashboard' && t === 'Dashboard') {
         let x = el;
         while (x.parentElement && x.parentElement.textContent.trim() === 'Dashboard' && x.parentElement.tagName !== 'MAIN' && x.parentElement !== document.body) x = x.parentElement;
         x.classList.add('ip-hidden');
       }
-    }
-    // The site paints a grey (#ECF0F5) page background behind the dashboard; make it white around our panel.
-    const panel = document.getElementById('isgy-plus');
-    if (panel && S.hideOriginalDashboard) {
-      for (let x = panel.parentElement; x; x = x.parentElement) if (getComputedStyle(x).backgroundColor === 'rgb(236, 240, 245)') x.style.setProperty('background', '#fff', 'important');
     }
   }
   let rafQueued = false;
@@ -549,7 +547,7 @@
   const navList = () => document.querySelector('.su-sidebar-nav__list');
   function togglePin(href, label) {
     const pins = S.pins || [];
-    S.pins = pins.some((p) => p.href === href) ? pins.filter((p) => p.href !== href) : [...pins, { href, label }];
+    S.pins = cleanPins(pins.some((p) => p.href === href) ? pins.filter((p) => p.href !== href) : [...pins, { href, label }]);
     sync.set({ pins: S.pins });
     renderPins();
   }
@@ -695,13 +693,15 @@
   });
 
   // ---------- boot ----------
-  sidebar();
-  if (page === 'ext_dashboard') dashboard();
+  // Each step on its own: an error in one must not stop the others (sidebar, Kürzel, clutter removal ...).
+  const step = (name, fn) => { try { const r = fn(); if (r?.catch) r.catch((e) => console.warn('[ISGY Plus]', name, e)); } catch (e) { console.warn('[ISGY Plus]', name, e); } };
+  step('sidebar', sidebar);
+  if (page === 'ext_dashboard') step('dashboard', dashboard);
   const { kuerzelFailed = 0 } = await local.get('kuerzelFailed');
   if (!KZ && Date.now() - kuerzelFailed > 36e5) {
     loadKuerzel().then(() => { replaceCodes(); if (page === 'ext_dashboard') { document.getElementById('isgy-plus')?.remove(); dashboard(); } })
       .catch((err) => { local.set({ kuerzelFailed: Date.now() }); console.warn('[ISGY Plus] Kürzel', err); });
   }
-  replaceCodes();
-  hideClutter();
+  step('replaceCodes', replaceCodes);
+  step('hideClutter', hideClutter);
 })();
