@@ -5,7 +5,7 @@ import { readFileSync, writeFileSync, mkdirSync, rmSync, cpSync, readdirSync, st
 import { join, relative } from 'node:path';
 import { deflateRawSync } from 'node:zlib';
 
-const FILES = ['manifest.json', 'options.html', 'options.js', 'src', 'lib'];
+const FILES = ['manifest.json', 'options.html', 'options.js', 'src', 'lib', 'icons'];
 const manifest = JSON.parse(readFileSync('manifest.json', 'utf8'));
 
 const targets = {

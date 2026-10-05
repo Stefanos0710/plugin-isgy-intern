@@ -1,3 +1,5 @@
+<p align="center"><img src="logo-plus.png" width="128" alt="ISGY Intern Plus"></p>
+
 # ISGY Intern Plus
 
 Browser-Erweiterung (Chrome / Edge / Brave, Manifest V3) für [isgy-intern.de](https://www.isgy-intern.de), die das Portal aufräumt und praktischer macht.
@@ -108,6 +110,7 @@ src/content.js       Läuft auf isgy-intern.de: Dashboard, Kürzel, Pins, Befehl
 src/content.css      Styles
 src/background.js    Öffnet die Einstellungsseite
 options.html/.js     Einstellungsseite
+icons/               Erweiterungs-Icons (ISGY-Logo + „Plus“)
 lib/                 pdf.js (Mozilla, Apache-2.0) zum Lesen der Kürzel-PDF
 ```
 

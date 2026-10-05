@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ISGY Intern Plus",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Aufgeräumtes Dashboard, Kürzel → Namen, letzte Tagebucheinträge, Pins, Notizen und Tastaturbefehle für isgy-intern.de",
   "permissions": ["storage"],
   "host_permissions": ["https://www.isgy-intern.de/*", "https://isgy-intern.de/*"],
@@ -16,10 +16,14 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["lib/pdf.min.mjs", "lib/pdf.worker.min.mjs", "options.html", "options.js", "src/defaults.js"],
+      "resources": ["lib/pdf.min.mjs", "lib/pdf.worker.min.mjs", "options.html", "options.js", "src/defaults.js", "icons/*"],
       "matches": ["https://www.isgy-intern.de/*", "https://isgy-intern.de/*"]
     }
   ],
-  "action": { "default_title": "ISGY Intern Plus – Einstellungen" },
+  "icons": { "16": "icons/icon-16.png", "32": "icons/icon-32.png", "48": "icons/icon-48.png", "128": "icons/icon-128.png" },
+  "action": {
+    "default_title": "ISGY Intern Plus – Einstellungen",
+    "default_icon": { "16": "icons/icon-16.png", "32": "icons/icon-32.png", "48": "icons/icon-48.png", "128": "icons/icon-128.png" }
+  },
   "options_page": "options.html"
 }
