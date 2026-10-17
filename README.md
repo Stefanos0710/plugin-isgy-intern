@@ -1,8 +1,18 @@
-<p align="center"><img src="logo-plus.png" width="128" alt="ISGY Intern Plus"></p>
+<p align="center"><img src="logo-plus.png" width="128" alt="ISGY Intern Plus – Kreidetafel-Logo mit PLUS-Badge"></p>
 
 # ISGY Intern Plus
 
-Browser-Erweiterung (Chrome / Edge / Brave, Manifest V3) für [isgy-intern.de](https://www.isgy-intern.de), die das Portal aufräumt und praktischer macht.
+Browser-Erweiterung (Chrome / Edge / Brave / Firefox, Manifest V3) und MCP-Server für das Schulportal [isgy-intern.de](https://www.isgy-intern.de) des Gymnasiums Ismaning: Die Erweiterung räumt das Portal auf („Mein Tag“-Dashboard, Lehrernamen statt Kürzel, Aufgaben & Notizen) – der MCP-Server lässt **Claude, ChatGPT und Gemini** Stundenplan, Vertretungen, Hausaufgaben und Prüfungen lesen.
+
+<p align="center">
+  <a href="https://isgy-intern-plus.vercel.app"><b>isgy-intern-plus.vercel.app</b></a><br>
+  Funktioniert mit
+  <img src="mcp/assets/claude.svg" width="18" height="18" alt=""> Claude ·
+  <picture><source media="(prefers-color-scheme: dark)" srcset="mcp/assets/openai-white.svg"><img src="mcp/assets/openai.svg" width="18" height="18" alt=""></picture> ChatGPT ·
+  <img src="mcp/assets/gemini.svg" width="18" height="18" alt=""> Gemini
+</p>
+
+<sub>Inoffiziell, kein Angebot des Gymnasiums Ismaning. Claude ist eine Marke von Anthropic, ChatGPT/OpenAI von OpenAI, Gemini von Google; die Logos dienen nur der Kennzeichnung der unterstützten Dienste.</sub>
 
 ## Funktionen
 

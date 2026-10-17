@@ -333,6 +333,88 @@ await step('delete account', async () => {
   assert.equal(dbState.notes.size, 0);
 });
 
+await step('SEO: home page meta, canonical, Open Graph, JSON-LD', async () => {
+  const r = await fetch(BASE + '/');
+  const h = await r.text();
+  assert.equal(r.status, 200);
+  assert.match(r.headers.get('x-robots-tag'), /index, follow/);
+  assert.match(r.headers.get('cache-control'), /s-maxage=3600/);
+  const title = h.match(/<title>([^<]+)<\/title>/)[1];
+  assert.ok(title.length >= 30 && title.length <= 65, `title length ${title.length}: ${title}`);
+  const desc = h.match(/<meta name="description" content="([^"]+)"/)[1];
+  assert.ok(desc.length >= 100 && desc.length <= 165, `description length ${desc.length}`);
+  assert.match(h, /<meta name="robots" content="index,follow/);
+  assert.match(h, /<link rel="canonical" href="https:\/\/isgy-intern-plus\.vercel\.app\/">/);
+  assert.match(h, /<meta property="og:image" content="https:\/\/isgy-intern-plus\.vercel\.app\/assets\/og\.png">/);
+  assert.match(h, /<meta name="twitter:card" content="summary_large_image">/);
+  assert.equal((h.match(/<h1[ >]/g) || []).length, 1, 'exactly one h1');
+  assert.ok(!/<img(?![^>]*\balt=)[^>]*>/.test(h), 'every img has an alt');
+  assert.ok(h.includes('id="ai-claude"') && h.includes('id="ai-openai"') && h.includes('id="ai-gemini"'), 'logo sprite');
+  assert.ok(h.includes('<use href="#ai-claude"/>'));
+  const ld = [...h.matchAll(/<script type="application\/ld\+json">([^<]+)<\/script>/g)].map((m) => JSON.parse(m[1]));
+  assert.deepEqual(ld.map((x) => x['@type']), ['WebSite', 'SoftwareApplication', 'SoftwareApplication', 'FAQPage']);
+  const faq = ld.find((x) => x['@type'] === 'FAQPage').mainEntity;
+  assert.ok(faq.length >= 5);
+  for (const q of faq) assert.ok(h.includes(q.name.replace(/&/g, '&amp;')), 'FAQ question is visible on the page: ' + q.name);
+  // pages that must not be indexed
+  for (const path of ['/konto', '/schluessel', '/nirgends']) {
+    const x = await fetch(BASE + path);
+    assert.match(x.headers.get('x-robots-tag'), /noindex/);
+    assert.match(await x.text(), /<meta name="robots" content="noindex,nofollow">/);
+  }
+  assert.equal((await fetch(BASE + '/nirgends')).status, 404);
+});
+
+await step('SEO: robots, sitemap, manifest, llms.txt, HEAD, legacy redirect', async () => {
+  const robots = await (await fetch(BASE + '/robots.txt')).text();
+  assert.match(robots, /Sitemap: https:\/\/isgy-intern-plus\.vercel\.app\/sitemap\.xml/);
+  assert.match(robots, /Disallow: \/konto/);
+  const sm = await fetch(BASE + '/sitemap.xml');
+  assert.match(sm.headers.get('content-type'), /xml/);
+  const smt = await sm.text();
+  assert.match(smt, /<loc>https:\/\/isgy-intern-plus\.vercel\.app\/<\/loc>/);
+  assert.match(smt, /image:loc/);
+  const man = await (await fetch(BASE + '/site.webmanifest')).json();
+  assert.equal(man.lang, 'de');
+  for (const i of man.icons) assert.equal((await fetch(BASE + i.src)).status, 200, i.src);
+  assert.match(await (await fetch(BASE + '/llms.txt')).text(), /^# ISGY Intern Plus/);
+  const head = await fetch(BASE + '/', { method: 'HEAD' });
+  assert.equal(head.status, 200);
+  assert.equal((await head.text()), '');
+  const legacy = await fetch(BASE + '/', { redirect: 'manual', headers: { 'x-forwarded-host': 'isgy-intern-mcp.vercel.app' } });
+  assert.equal(legacy.status, 301);
+  assert.equal(legacy.headers.get('location'), 'https://isgy-intern-plus.vercel.app/');
+  // the old address still serves the connection itself
+  const oauth = await fetch(BASE + '/.well-known/oauth-authorization-server', { headers: { 'x-forwarded-host': 'isgy-intern-mcp.vercel.app' } });
+  assert.equal(oauth.status, 200);
+});
+
+await step('logos and icons are served with the right types', async () => {
+  const want = { '/assets/logo-512.png': 'image/png', '/assets/og.png': 'image/png', '/assets/claude.svg': 'image/svg+xml', '/assets/openai.svg': 'image/svg+xml', '/assets/gemini.svg': 'image/svg+xml', '/favicon.ico': 'image/x-icon', '/apple-touch-icon.png': 'image/png' };
+  for (const [path, type] of Object.entries(want)) {
+    const r = await fetch(BASE + path);
+    assert.equal(r.status, 200, path);
+    assert.equal(r.headers.get('content-type'), type, path);
+    assert.match(r.headers.get('cache-control'), /max-age/);
+    const buf = Buffer.from(await r.arrayBuffer());
+    if (type === 'image/png') assert.equal(buf.subarray(1, 4).toString(), 'PNG', path + ' is a real PNG');
+    else if (type === 'image/svg+xml') assert.match(buf.toString(), /^<svg/, path);
+  }
+  assert.equal(await (await fetch(BASE + '/assets/../lib/db.js')).status, 404);
+  assert.equal(await (await fetch(BASE + '/assets/nope.png')).status, 404);
+});
+
+await step('login page shows the real logo of the connecting assistant', async () => {
+  const reg = async (name, uri) => (await (await fetch(BASE + '/register', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ redirect_uris: [uri], client_name: name }) })).json()).client_id;
+  for (const [name, uri, brand] of [['Claude', 'https://claude.ai/api/mcp/auth_callback', 'claude'], ['ChatGPT', 'https://chatgpt.com/connector_platform_oauth_redirect', 'openai'], ['Gemini CLI', 'http://localhost:7777/oauth/callback', 'gemini'], ['Cursor', 'https://cursor.com/cb', null]]) {
+    const id = await reg(name, uri);
+    const page = await (await fetch(`${BASE}/authorize?response_type=code&client_id=${id}&redirect_uri=${encodeURIComponent(uri)}&code_challenge=abc&code_challenge_method=S256`)).text();
+    if (brand) assert.ok(page.includes(`<use href="#ai-${brand}"/>`), name);
+    else assert.ok(!page.includes('class="av brand"'), name);
+    assert.ok(page.includes('/assets/logo-96.png'), 'ISGY logo on the login page');
+  }
+});
+
 await step('home page', async () => {
   const r = await fetch(BASE + '/');
   assert.match(await r.text(), /http:\/\/localhost:3100\/mcp/);

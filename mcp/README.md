@@ -68,6 +68,14 @@ Dazu gibt es fertige **Prompts** (in Claude über das „+“-Menü): *Mein Schu
 - Auf der Kontoseite: Zugang entfernen, „Überall abmelden“ (macht alle Tokens von KI-Assistenten und Erweiterung ungültig) und Konto samt Notizen löschen.
 - Es gibt keine E-Mail-Bestätigung und kein Passwort-Zurücksetzen. Das Ganze ist inoffiziell und kein Angebot der Schule.
 
+## Website & SEO
+
+Die Startseite (`/`) ist die einzige Seite für Suchmaschinen: eigener Titel und Beschreibung, `canonical`, Open Graph / Twitter Cards (Vorschaubild `assets/og.png`), strukturierte Daten (JSON-LD: `WebSite`, `SoftwareApplication`, `FAQPage`), sichtbare FAQ, `robots.txt`, `sitemap.xml` (mit Bildern), `site.webmanifest`, Favicons und eine `llms.txt` für KI-Crawler. Alle anderen Seiten (Anmeldung, Konto, Schlüssel) sind `noindex`. Die alte Adresse `isgy-intern-mcp.vercel.app` leitet nur die Startseite weiter; bestehende Verbindungen laufen weiter.
+
+Logos: Claude, OpenAI und Gemini sind die echten Marken-Logos (MIT-lizenzierte SVGs aus `@lobehub/icons-static-svg`), das ISGY-Logo kommt aus `logo-plus.png`. Alles liegt in `assets/`; das Vorschaubild entsteht aus `scripts/og.html` (1200×630 rendern). Nach Änderungen an der Startseite `UPDATED` in `lib/site.js` hochsetzen.
+
+Nach dem ersten Deploy einmalig in der [Google Search Console](https://search.google.com/search-console) und den [Bing Webmaster Tools](https://www.bing.com/webmasters) die Domain hinzufügen und `https://isgy-intern-plus.vercel.app/sitemap.xml` einreichen.
+
 ## Selbst betreiben / entwickeln
 
 Ordner `mcp/` als eigenes Vercel-Projekt (Root Directory `mcp`, Framework „Other“). Umgebungsvariablen:
@@ -78,6 +86,7 @@ Ordner `mcp/` als eigenes Vercel-Projekt (Root Directory `mcp`, Framework „Oth
 | `SUPABASE_URL`, `SUPABASE_KEY`, `SUPABASE_API_SECRET` | für Konten: Projekt-URL, publishable/anon key und ein zufälliges Geheimnis. Datenbank einmalig mit [supabase/0001_accounts_notes.sql](supabase/0001_accounts_notes.sql) einrichten und den SHA-256 des Geheimnisses eintragen (`insert into private.config values ('api_secret_sha256', '<hex>')`). Ohne diese Variablen läuft der Server ohne Konten. |
 | `ISGY_KUERZEL_PDF` | optional: Pfad der Kürzel-PDF, falls die automatische Suche sie nicht findet |
 | `ISGY_BASE_URL`, `PUBLIC_URL` | optional, nur für Tests / eigene Domain |
+| `SITE_URL`, `LEGACY_HOSTS` | optional: öffentliche Adresse für `canonical`/Sitemap (Standard `https://isgy-intern-plus.vercel.app`) und ältere Hostnamen, deren Startseite weiterleitet |
 
 ```bash
 cd mcp
@@ -86,4 +95,4 @@ npm test          # Ende-zu-Ende-Test mit dem offiziellen MCP-SDK gegen ein nach
 npm run dev       # http://localhost:3000/mcp  (gegen das echte isgy-intern.de)
 ```
 
-Aufbau: `api/index.js` (einzige Vercel-Funktion, Routing), `lib/mcp.js` (JSON-RPC/MCP), `lib/oauth.js` (OAuth 2.1 mit dynamischer Client-Registrierung und PKCE, zustandslos), `lib/portal.js` (Zugriff auf isgy-intern.de), `lib/tools.js` (die Tools), `lib/pages.js` (Seiten), `lib/accounts.js` + `lib/konto.js` (Konten, Kontoseite, Erweiterungs-API `/api/ext/login|sync`), `lib/db.js` (Supabase-RPC).
+Aufbau: `api/index.js` (einzige Vercel-Funktion, Routing), `lib/mcp.js` (JSON-RPC/MCP), `lib/oauth.js` (OAuth 2.1 mit dynamischer Client-Registrierung und PKCE, zustandslos), `lib/portal.js` (Zugriff auf isgy-intern.de), `lib/tools.js` (die Tools), `lib/pages.js` (Seiten), `lib/site.js` (Adresse, Logos, robots/sitemap/Manifest), `lib/accounts.js` + `lib/konto.js` (Konten, Kontoseite, Erweiterungs-API `/api/ext/login|sync`), `lib/db.js` (Supabase-RPC).

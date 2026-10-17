@@ -3,6 +3,7 @@ import { handleRpc } from '../lib/mcp.js';
 import { protectedResource, authServer, register, authorizeGet, authorizePost, token, authFromBearer, keyGet, keyPost } from '../lib/oauth.js';
 import { kontoGet, kontoPost, extApi } from '../lib/konto.js';
 import { homePage, errorPage } from '../lib/pages.js';
+import { SITE, LEGACY_HOSTS, asset, robotsTxt, sitemapXml, manifestJson, llmsTxt } from '../lib/site.js';
 import { loadPdfjs } from '../lib/portal.js';
 
 const CORS = {
@@ -17,8 +18,13 @@ const PAGE_HEADERS = {
   'Cache-Control': 'no-store',
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'same-origin',
-  'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; frame-ancestors 'none'; base-uri 'none'",
+  'X-Content-Type-Options': 'nosniff',
+  'X-Robots-Tag': 'noindex, nofollow', // only the start page is meant for search engines
+  'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'",
 };
+// The start page is public and identical for everyone: let the CDN cache it.
+const HOME_HEADERS = { ...PAGE_HEADERS, 'X-Robots-Tag': 'index, follow', 'Cache-Control': 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400' };
+const FILE_CACHE = 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400';
 
 function origin(req) {
   if (process.env.PUBLIC_URL) return process.env.PUBLIC_URL.replace(/\/+$/, '');
@@ -48,8 +54,8 @@ function parse(req, text) {
 function send(res, status, body, headers = {}) {
   res.statusCode = status;
   for (const [k, v] of Object.entries({ ...CORS, ...headers })) res.setHeader(k, v);
-  if (body === null || body === undefined) return res.end();
-  if (typeof body === 'string') return res.end(body);
+  if (body === null || body === undefined || res.isHead) return res.end(); // HEAD: headers only
+  if (typeof body === 'string' || Buffer.isBuffer(body)) return res.end(body);
   if (!headers['Content-Type']) res.setHeader('Content-Type', 'application/json');
   res.end(JSON.stringify(body));
 }
@@ -65,7 +71,8 @@ export default async function handler(req, res) {
   const url = new URL(req.url, o);
   const path = url.pathname.replace(/\/+$/, '') || '/';
   const q = Object.fromEntries(url.searchParams);
-  const m = req.method;
+  res.isHead = req.method === 'HEAD';
+  const m = res.isHead ? 'GET' : req.method;
   try {
     if (m === 'OPTIONS') return send(res, 204, null);
 
@@ -115,7 +122,22 @@ export default async function handler(req, res) {
       return sendResult(res, await extApi(x[1], typeof body === 'object' ? body : {}, req.headers.authorization));
     }
 
-    if (path === '/' && m === 'GET') return send(res, 200, homePage(o), PAGE_HEADERS);
+    if (path === '/' && m === 'GET') {
+      // Older addresses keep working for the connection itself, but the start page lives in one place (duplicate-content / canonical).
+      if (LEGACY_HOSTS.includes(new URL(o).host)) return send(res, 301, null, { Location: SITE + '/', 'Cache-Control': 'public, max-age=3600' });
+      return send(res, 200, homePage(o), HOME_HEADERS);
+    }
+
+    // ----- SEO + static files -----
+    const text = { '/robots.txt': [robotsTxt, 'text/plain; charset=utf-8'], '/sitemap.xml': [sitemapXml, 'application/xml; charset=utf-8'],
+      '/site.webmanifest': [manifestJson, 'application/manifest+json; charset=utf-8'], '/llms.txt': [llmsTxt, 'text/plain; charset=utf-8'] }[path];
+    if (text && m === 'GET') return send(res, 200, text[0](), { 'Content-Type': text[1], 'Cache-Control': FILE_CACHE, 'X-Content-Type-Options': 'nosniff' });
+    const fileName = { '/favicon.ico': 'favicon.ico', '/apple-touch-icon.png': 'apple-touch-icon.png', '/apple-touch-icon-precomposed.png': 'apple-touch-icon.png' }[path]
+      || (/^\/assets\/([a-z0-9-]+\.(?:png|svg|ico|webp))$/.exec(path) || [])[1];
+    if (fileName && m === 'GET') {
+      const f = asset(fileName);
+      if (f) return send(res, 200, f.body, { 'Content-Type': f.type, 'Cache-Control': FILE_CACHE, 'X-Content-Type-Options': 'nosniff' });
+    }
     if (path === '/health') {
       // Also proves the pdf.js bundle (only loaded lazily for the Kürzel list) made it into the deployment.
       const pdfjs = await loadPdfjs().then((m) => m.version, (e) => 'fehlt: ' + e.message);
