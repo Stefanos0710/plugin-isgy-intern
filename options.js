@@ -97,3 +97,43 @@ $('exportNotes').onclick = async () => {
   a.click();
 };
 load();
+
+// ---------- KI-Konto ----------
+async function loadAi() {
+  const { aiAccount: a } = await chrome.storage.local.get('aiAccount');
+  const server = a?.server || ISGY_AI_SERVER;
+  $('aiOpen').href = server + '/konto';
+  $('aiReg').href = server + '/konto?neu=1';
+  const on = !!a?.token;
+  $('aiOn').hidden = !on;
+  $('aiOff').hidden = on;
+  if (on) {
+    $('aiEmail').textContent = a.email;
+    $('aiDot').classList.toggle('err', !!a.error);
+    $('aiInfo').textContent = a.error ? a.error
+      : a.lastSync ? `· zuletzt synchronisiert ${new Date(a.lastSync).toLocaleString('de-DE')}${a.credKind === 's' ? ' · Sitzung wird automatisch erneuert' : a.credKind === 'pw' ? ' · Portal-Passwort im Konto' : ''}`
+        : '· synchronisiert beim nächsten Öffnen von isgy-intern.de';
+  } else {
+    $('aiErr').textContent = a?.error ? `Abgemeldet: ${a.error}` : '';
+    if (a?.email) $('aiMail').value = a.email;
+  }
+}
+$('aiLogin').onclick = async () => {
+  const btn = $('aiLogin');
+  btn.disabled = true;
+  $('aiErr').textContent = '';
+  const res = await chrome.runtime.sendMessage({ type: 'ai-login', email: $('aiMail').value, password: $('aiPw').value, server: ISGY_AI_SERVER })
+    .catch((e) => ({ error: e.message }));
+  btn.disabled = false;
+  $('aiPw').value = '';
+  if (res?.error) $('aiErr').textContent = res.error;
+  loadAi();
+};
+$('aiPw').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('aiLogin').click(); });
+$('aiLogout').onclick = async () => {
+  const { aiAccount: a } = await chrome.storage.local.get('aiAccount');
+  await chrome.storage.local.set({ aiAccount: { server: a?.server, email: a?.email, token: '' } });
+  loadAi();
+};
+chrome.storage.onChanged.addListener((ch, area) => { if (area === 'local' && ch.aiAccount) loadAi(); });
+loadAi();

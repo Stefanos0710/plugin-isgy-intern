@@ -1,0 +1,21 @@
+{
+  "name": "isgy-intern-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "MCP-Server für isgy-intern.de (Claude, ChatGPT, Gemini), gehostet auf Vercel",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "node dev-server.mjs",
+    "test": "node test/run.mjs"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "^0.1.100",
+    "pdfjs-dist": "5.7.284"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1"
+  }
+}
