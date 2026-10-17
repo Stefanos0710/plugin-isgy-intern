@@ -82,15 +82,20 @@ await step('OAuth flow with password + initialize', async () => {
 
 await step('tools/list', async () => {
   const { tools } = await client.listTools();
-  assert.deepEqual(tools.map((t) => t.name), ['tagesplan', 'stundenplan', 'vertretungen', 'hausaufgaben', 'tagebuch', 'letzter_eintrag', 'termine', 'lehrer']);
+  assert.deepEqual(tools.map((t) => t.name).sort(), ['fach', 'hausaufgaben', 'lehrer', 'letzter_eintrag', 'pruefungen', 'stundenplan', 'tagebuch', 'tagesplan', 'termine', 'uebersicht', 'vertretungen']);
   assert.ok(tools.every((t) => t.annotations.readOnlyHint));
 });
 
 const calls = [
-  ['tagesplan', { datum: D1 }, [/Klasse 10b/, /ENTFÄLLT/, /Lehrkraft: Max Mustermann \(Mm\)/, /Raum: 204/, /Schulaufgabe/]],
+  ['uebersicht', {}, [/^Stand: /, /Überblick für Klasse 10b/, /PRÜFUNGEN/, /Schulaufgabe/, /S\. 42 Nr\. 3a–c/, /nächste Stunde/]],
+  ['pruefungen', {}, [/📝 .*Schulaufgabe/, /Themen im Unterricht \(M/, /Quadratische Funktionen/]],
+  ['pruefungen', { fach: 'Englisch' }, [/Keine Prüfungen in E_1/]],
+  ['fach', { fach: 'Mathe' }, [/Fach M – Klasse 10b/, /Lehrkraft: Max Mustermann \(Mm\)/, /Wochenstunden: 4/, /Anstehende Prüfungen/, /Nächste Stunden/]],
+  ['tagesplan', { datum: 'morgen' }, [/Klasse 10b/]],
+  ['tagesplan', { datum: D1 }, [/Klasse 10b/, /ENTFÄLLT/, /Lehrkraft: Max Mustermann \(Mm\)/, /Raum: 204/, /Schulaufgabe/, /Unterricht 07:55–10:30/, /Hausaufgaben für diesen Tag/, /- M: S\. 42/]],
   ['tagesplan', {}, [/Klasse 10b/]],
-  ['stundenplan', {}, [/Montag:/, /1\.–2\. Std \(07:55\) M · Max Mustermann \(Mm\) · Raum 204/]],
-  ['vertretungen', {}, [/Vertretungen \(Klasse 10b\)/, /3\. Std D \(Sabine Weber \(Sw\)\)/]],
+  ['stundenplan', {}, [/Montag:/, /1\.–2\. Std 07:55–09:25  M · Max Mustermann \(Mm\) · Raum 204/, /Wochenstunden je Fach: .*M 4/]],
+  ['vertretungen', {}, [/Vertretungen \(Klasse 10b\)/, /3\. Std \(09:45–10:30\): D bei Sabine Weber \(Sw\), Raum 101 → VERTRETUNG/, /Veröffentlichte Tage/]],
   ['vertretungen', { alle_klassen: true }, [/9a/]],
   ['hausaufgaben', { tage: 3 }, [/S\. 42 Nr\. 3a–c/, /Vocab unit 3/]],
   ['tagebuch', { fach: 'Mathe' }, [/Quadratische Funktionen/]],
@@ -108,6 +113,13 @@ for (const [name, args, res] of calls) {
     if (process.env.VERBOSE) console.log(t.replace(/^/gm, '    '));
   });
 }
+
+await step('prompts', async () => {
+  const { prompts } = await client.listPrompts();
+  assert.ok(prompts.some((p) => p.name === 'lernplan'));
+  const r = await client.getPrompt({ name: 'lernplan', arguments: { fach: 'Physik' } });
+  assert.match(r.messages[0].content.text, /fach="Physik"/);
+});
 
 await step('refresh token grant', async () => {
   const r = await fetch(BASE + '/token', { method: 'POST', body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: prov.s.tokens.refresh_token, client_id: prov.s.client.client_id }) });

@@ -29,16 +29,23 @@ Beim Verbinden öffnet sich eine Anmeldeseite mit zwei Wegen:
 
 ## Tools
 
+Jede Antwort beginnt mit „Stand: <Datum, Uhrzeit>“, damit der Assistent „heute“/„morgen“ richtig einordnet. Lehrerkürzel sind überall schon in Namen aufgelöst.
+
 | Tool | Wofür |
 | --- | --- |
-| `tagesplan` | Unterricht eines Tages mit eingearbeiteten Vertretungen/Entfällen + Termine (ohne Datum: heute bzw. nach Schulschluss der nächste Schultag) |
-| `stundenplan` | regulärer Wochenplan mit Lehrkräften, Räumen und Zeiten |
-| `vertretungen` | Vertretungsplan, eigene Klasse oder alle |
-| `hausaufgaben` | alle Hausaufgaben der letzten Schultage aus dem Klassentagebuch |
+| `uebersicht` | alles auf einen Blick: laufende/nächste Stunde, heute bzw. nächster Schultag mit Vertretungen, fällige und alle Hausaufgaben der letzten Tage, Prüfungen und Termine |
+| `tagesplan` | ein Tag im Detail: Stunden mit Uhrzeiten, Vertretungen/Entfälle, Freistunden, Schulschluss, die für den Tag fälligen Hausaufgaben, Prüfungen danach |
+| `hausaufgaben` | Hausaufgaben der letzten Schultage, je mit der nächsten Stunde des Fachs (= übliche Fälligkeit), optional ein Fach |
+| `pruefungen` | Schulaufgaben, Exen, Kurzarbeiten … mit den Unterrichtsthemen der letzten Wochen als Lernstoff |
+| `fach` | Steckbrief eines Fachs: Lehrkraft, Wochenstunden, nächste Stunden, Prüfungen, letzte Tagebucheinträge |
+| `vertretungen` | Vertretungsplan, eigene Klasse oder alle, und welche Tage schon veröffentlicht sind |
+| `stundenplan` | regulärer Wochenplan mit Uhrzeiten und Wochenstunden je Fach |
 | `tagebuch` | Tagebucheinträge für Tag/Zeitraum, optional ein Fach |
-| `letzter_eintrag` | neuester Eintrag eines Fachs („Was haben wir zuletzt in Mathe gemacht?“) |
-| `termine` | Klassenkalender (Schulaufgaben, Exen, Ausflüge …) |
+| `letzter_eintrag` | neueste Einträge eines Fachs und wann die nächste Stunde ist |
+| `termine` | Klassenkalender, Prüfungen markiert |
 | `lehrer` | Kürzel ↔ Name |
+
+Dazu gibt es fertige **Prompts** (in Claude über das „+“-Menü): *Mein Schultag*, *Wochenvorschau*, *Hausaufgaben-Check* und *Lernplan für eine Prüfung*.
 
 ## Datenschutz & Sicherheit
 

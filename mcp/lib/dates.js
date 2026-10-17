@@ -7,12 +7,15 @@ const pad = (n) => String(n).padStart(2, '0');
 const parts = (d) => Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
   .formatToParts(d).map((p) => [p.type, p.value]));
 
+// ISGY_NOW pins the clock for tests (e.g. 2026-10-19T06:50:00Z).
+const now = () => (process.env.ISGY_NOW ? new Date(process.env.ISGY_NOW) : new Date());
+
 export function today() {
-  const p = parts(new Date());
+  const p = parts(now());
   return `${p.year}-${p.month}-${p.day}`;
 }
 export function nowMinutes() {
-  const p = parts(new Date());
+  const p = parts(now());
   return Number(p.hour) * 60 + Number(p.minute);
 }
 const toDate = (ds) => { const [y, m, d] = ds.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d)); };
@@ -57,3 +60,25 @@ export function parseDay(input, fallback = today()) {
   }
   return '';
 }
+
+// 'heute', 'morgen', 'in 3 Tagen', 'gestern', 'vor 5 Tagen'
+export function rel(ds) {
+  const n = diffDays(today(), ds);
+  if (n === 0) return 'heute';
+  if (n === 1) return 'morgen';
+  if (n === 2) return 'übermorgen';
+  if (n === -1) return 'gestern';
+  return n > 0 ? `in ${n} Tagen` : `vor ${-n} Tagen`;
+}
+// 'Mo, 19.10.'
+export const short = (ds) => `${DAYS[weekday(ds)].slice(0, 2)}, ${ds.slice(8, 10)}.${ds.slice(5, 7)}.`;
+// Lesson n as '07:55–08:40'
+export function lessonTime(n) {
+  const t = TIMES[n];
+  if (!t) return '';
+  const [h, m] = t.split(':').map(Number);
+  const end = h * 60 + m + 45;
+  return `${t}–${pad(Math.floor(end / 60))}:${pad(end % 60)}`;
+}
+export const lessonStart = (n) => { const t = TIMES[n]; if (!t) return null; const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+export const nowLabel = () => { const m = nowMinutes(); return `${label(today())}, ${pad(Math.floor(m / 60))}:${pad(m % 60)} Uhr`; };

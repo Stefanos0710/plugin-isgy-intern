@@ -1,140 +1,387 @@
-// HTML pages: login (OAuth authorize), personal access key, start page with setup instructions.
+// HTML pages: start page with setup instructions, login (OAuth authorize), personal access key, errors.
+// Self-contained (inline CSS/JS, inline SVG), so the strict CSP in api/index.js holds. Light + dark, mobile first.
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 const CSS = `
-:root{--accent:#e8730c;--bg:#f6f5f2;--card:#fff;--text:#1d1d1f;--muted:#6b6b70;--line:#e3e1dc;--err:#b42318;--errbg:#fdecea;--ok:#067647}
-@media (prefers-color-scheme:dark){:root{--bg:#141415;--card:#1f1f21;--text:#f2f2f3;--muted:#a1a1a8;--line:#333336;--errbg:#3a1714;--err:#ff8a7a;--ok:#5fd39b}}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-main{max-width:34rem;margin:0 auto;padding:2.5rem 1rem 4rem}main.wide{max-width:46rem}
-.brand{display:flex;align-items:center;gap:.6rem;font-weight:700;font-size:1.05rem;margin-bottom:1.25rem}
-.brand i{display:inline-grid;place-items:center;width:2rem;height:2rem;border-radius:.6rem;background:var(--accent);color:#fff;font-style:normal}
-.card{background:var(--card);border:1px solid var(--line);border-radius:1rem;padding:1.5rem;margin-bottom:1rem}
-h1{font-size:1.4rem;margin:0 0 .4rem}h2{font-size:1.1rem;margin:1.5rem 0 .5rem}p{margin:.4rem 0}.muted{color:var(--muted);font-size:.92rem}
-label{display:block;font-weight:600;font-size:.92rem;margin:1rem 0 .3rem}
-input[type=text],input[type=password],textarea{width:100%;padding:.7rem .8rem;border:1px solid var(--line);border-radius:.6rem;background:var(--bg);color:var(--text);font:inherit}
-textarea{min-height:6rem;font-family:ui-monospace,monospace;font-size:.8rem;word-break:break-all}
-input:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
-button{margin-top:1.2rem;width:100%;padding:.8rem;border:0;border-radius:.6rem;background:var(--accent);color:#fff;font:inherit;font-weight:700;cursor:pointer}
-button:disabled{opacity:.6;cursor:wait}
+:root{
+  --accent:#e8730c;--accent-2:#f59e0b;--accent-ink:#fff;--accent-soft:#fdf0e4;
+  --bg:#f7f6f3;--bg-2:#efede8;--card:#fff;--text:#18181b;--muted:#5f5f68;--faint:#8b8b94;--line:#e6e3dc;--line-2:#d9d5cc;
+  --err:#b42318;--errbg:#fdecea;--ok:#067647;--okbg:#e7f6ee;
+  --shadow:0 1px 2px rgba(24,24,27,.04),0 8px 24px -12px rgba(24,24,27,.12);
+  --r:16px;--mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root{
+  --accent:#f08a2c;--accent-soft:#3a2614;--bg:#111113;--bg-2:#18181b;--card:#1c1c1f;--text:#f4f4f5;--muted:#a8a8b0;--faint:#77777f;
+  --line:#2c2c31;--line-2:#3a3a40;--err:#ff9b8f;--errbg:#3b1714;--ok:#6ee7a8;--okbg:#10291c;--shadow:0 1px 2px rgba(0,0,0,.3),0 12px 32px -16px rgba(0,0,0,.6);
+}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:var(--accent);text-underline-offset:2px}
+.wrap{width:100%;max-width:1080px;margin:0 auto;padding:0 16px}
+@media (min-width:640px){.wrap{padding:0 28px}}
+
+/* nav */
+.nav{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:saturate(1.4) blur(12px);-webkit-backdrop-filter:saturate(1.4) blur(12px);border-bottom:1px solid transparent}
+.nav.scrolled{border-bottom-color:var(--line)}
+.nav .wrap{display:flex;align-items:center;justify-content:space-between;height:60px;gap:12px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:750;letter-spacing:-.01em;color:var(--text);text-decoration:none;white-space:nowrap}
+.mark{display:grid;place-items:center;width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;font-size:13px;font-weight:800;letter-spacing:-.02em;box-shadow:0 4px 12px -4px rgba(232,115,12,.55)}
+.logo small{font-weight:600;color:var(--faint);font-size:.82rem}
+.nav-links{display:flex;gap:4px}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:.9rem;font-weight:550;padding:7px 10px;border-radius:8px}
+.nav-links a:hover{background:var(--bg-2);color:var(--text)}
+@media (max-width:560px){.nav-links .hide-sm,.logo small{display:none}}
+
+/* hero */
+.hero{padding:40px 0 24px;position:relative;overflow-x:clip}
+.hero::before{content:"";position:absolute;inset:-60px 0 auto 0;height:420px;background:radial-gradient(60% 60% at 70% 20%,color-mix(in srgb,var(--accent) 16%,transparent),transparent 70%);pointer-events:none;z-index:-1}
+.hero-grid{display:grid;gap:36px;align-items:center}
+@media (min-width:900px){.hero{padding:72px 0 40px}.hero-grid{grid-template-columns:1.05fr .95fr;gap:56px}}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;padding:5px 12px 5px 6px;border-radius:999px;background:var(--card);border:1px solid var(--line);font-size:.82rem;font-weight:600;color:var(--muted);box-shadow:var(--shadow)}
+.eyebrow .dots{display:flex}.eyebrow .dots i{width:20px;height:20px;border-radius:50%;border:2px solid var(--card);display:grid;place-items:center;font-style:normal;font-size:10px;font-weight:800;color:#fff;margin-left:-6px}
+.eyebrow .dots i:first-child{margin-left:0}
+h1{font-size:clamp(2rem,6.4vw,3.3rem);line-height:1.06;letter-spacing:-.035em;margin:18px 0 14px;font-weight:800}
+h1 .hl{background:linear-gradient(120deg,var(--accent),var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.lead{font-size:clamp(1.02rem,2.4vw,1.15rem);color:var(--muted);max-width:34em;margin:0 0 24px}
+.copybox{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line-2);border-radius:14px;padding:6px 6px 6px 14px;box-shadow:var(--shadow);max-width:520px}
+.copybox code{flex:1;min-width:0;font:600 .92rem/1.3 var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:none;border:0;padding:0}
+.copybox .lbl{font-size:.72rem;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;margin-right:4px;white-space:nowrap}
+.hero-grid>*{min-width:0}
+@media (max-width:480px){.copybox{flex-wrap:wrap;padding:12px}.copybox .lbl{width:100%;margin:0}.copybox code{white-space:normal;overflow-wrap:anywhere;flex-basis:100%;font-size:.8rem;padding:2px 0 4px}.copybox .btn{width:100%;padding:12px}}
+.badges{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:18px;color:var(--muted);font-size:.88rem}
+.badges span{display:inline-flex;align-items:center;gap:6px}
+.badges svg{width:16px;height:16px;color:var(--ok);flex:none}
+
+/* chat preview */
+.chat{background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:16px;display:flex;flex-direction:column;gap:12px;max-width:520px;width:100%;justify-self:center}
+.chat-top{display:flex;align-items:center;gap:8px;padding-bottom:12px;border-bottom:1px solid var(--line);font-size:.82rem;color:var(--faint);font-weight:600}
+.chat-top b{color:var(--text)}.chat-top .pill{margin-left:auto;background:var(--okbg);color:var(--ok);padding:2px 9px;border-radius:999px;font-size:.74rem}
+.msg{max-width:88%;padding:10px 14px;border-radius:16px;font-size:.93rem;line-height:1.5}
+.msg.me{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:5px}
+.msg.ai{align-self:flex-start;background:var(--bg-2);border-bottom-left-radius:5px}
+.tool{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;font:600 .76rem var(--mono);color:var(--muted);background:var(--bg);border:1px dashed var(--line-2);border-radius:8px;padding:4px 9px}
+.tool svg{width:13px;height:13px;color:var(--accent)}
+.msg ul{margin:6px 0 0;padding-left:18px}.msg li{margin:2px 0}
+.tag{display:inline-block;font-size:.72rem;font-weight:700;padding:1px 7px;border-radius:6px;vertical-align:1px}
+.tag.red{background:var(--errbg);color:var(--err)}.tag.org{background:var(--accent-soft);color:var(--accent)}
+
+/* sections */
+section{padding:44px 0}
+@media (min-width:900px){section{padding:64px 0}}
+.sec-head{max-width:640px;margin-bottom:24px}
+.kicker{font-size:.78rem;font-weight:750;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+h2{font-size:clamp(1.5rem,4vw,2.1rem);letter-spacing:-.025em;line-height:1.15;margin:6px 0 8px}
+h3{font-size:1.05rem;margin:0 0 6px;letter-spacing:-.01em}
+.sub{color:var(--muted);margin:0}
+
+/* client tabs */
+.tabs{background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:absolute;opacity:0;pointer-events:none}
+.tab-bar{display:flex;gap:4px;padding:8px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none;background:var(--bg-2)}
+.tab-bar::-webkit-scrollbar{display:none}
+@media (max-width:560px){.tab-bar{display:grid;grid-template-columns:1fr 1fr;overflow:visible}.tab-bar label{flex:none;padding:10px 8px}}
+.tab-bar label{flex:1 0 auto;display:flex;align-items:center;justify-content:center;gap:8px;padding:9px 14px;border-radius:11px;font-weight:650;font-size:.92rem;color:var(--muted);cursor:pointer;white-space:nowrap;transition:background .15s,color .15s}
+.tab-bar label:hover{color:var(--text)}
+.tab-bar .ico{width:22px;height:22px;border-radius:6px;display:grid;place-items:center;color:#fff;font-size:11px;font-weight:800}
+.panel{display:none;padding:22px 18px 24px}
+@media (min-width:640px){.panel{padding:28px 32px 32px}}
+${['claude', 'chatgpt', 'gemini', 'andere'].map((k) => `#t-${k}:checked~.tab-bar [for=t-${k}]{background:var(--card);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.1)}#t-${k}:focus-visible~.tab-bar [for=t-${k}]{outline:2px solid var(--accent);outline-offset:-2px}#t-${k}:checked~.p-${k}{display:block}`).join('\n')}
+.steps{list-style:none;margin:0;padding:0;counter-reset:s;display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
+.steps li{counter-increment:s;position:relative;padding-left:44px;min-height:30px;min-width:0}
+.steps li::before{content:counter(s);position:absolute;left:0;top:-1px;width:30px;height:30px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-weight:800;font-size:.9rem;display:grid;place-items:center}
+.note{margin-top:18px;padding:12px 14px;border-radius:12px;background:var(--bg-2);color:var(--muted);font-size:.9rem}
+.note b{color:var(--text)}
+
+/* cards grid */
+.grid{display:grid;gap:14px;grid-template-columns:1fr}
+@media (min-width:640px){.grid{grid-template-columns:repeat(2,1fr)}}
+@media (min-width:960px){.grid.g3{grid-template-columns:repeat(3,1fr)}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px;box-shadow:var(--shadow)}
+.ask{display:flex;flex-direction:column;gap:10px}
+.ask q{font-weight:650;font-size:1.02rem;quotes:"„" "“"}
+.ask p{margin:0;color:var(--muted);font-size:.92rem}
+.ask code{align-self:flex-start}
+.feat-ico{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);margin-bottom:12px}
+.feat-ico svg{width:20px;height:20px}
+.card p{margin:0;color:var(--muted);font-size:.94rem}
+
+/* code */
+code,pre{font-family:var(--mono);font-size:.84em}
+code{background:var(--bg-2);border:1px solid var(--line);border-radius:6px;padding:1px 6px;word-break:break-word}
+pre{background:#16161a;color:#e7e7ea;border-radius:12px;padding:14px 16px;overflow-x:auto;margin:12px 0 0;line-height:1.55;font-size:.84rem}
+pre .k{color:#f8b26a}pre .s{color:#9fe0a8}
+kbd{font:600 .8em var(--mono);background:var(--card);border:1px solid var(--line-2);border-bottom-width:2px;border-radius:6px;padding:1px 6px}
+
+/* buttons */
+.btn{appearance:none;border:0;cursor:pointer;font:inherit;font-weight:700;border-radius:11px;padding:10px 16px;background:var(--accent);color:var(--accent-ink);display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;transition:transform .08s,filter .15s;white-space:nowrap}
+.btn:hover{filter:brightness(1.06)}.btn:active{transform:translateY(1px)}
+.btn:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid color-mix(in srgb,var(--accent) 45%,transparent);outline-offset:2px}
+.btn.block{width:100%;padding:14px 16px;font-size:1rem}
+.btn.ghost{background:var(--bg-2);color:var(--text)}
+.btn:disabled{opacity:.65;cursor:progress}
+.btn svg{width:16px;height:16px}
+
+/* footer */
+footer{border-top:1px solid var(--line);padding:28px 0 40px;color:var(--faint);font-size:.85rem}
+footer .wrap{display:flex;flex-wrap:wrap;gap:8px 20px;justify-content:space-between}
+
+/* auth pages */
+.auth-page{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}
+.auth-page .nav{position:static;background:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+.auth-main{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:20px 16px 40px}
+@media (min-width:640px){.auth-main{align-items:center;padding:40px 24px 64px}}
+.auth-card{width:100%;max-width:460px;background:var(--card);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);padding:24px 20px}
+@media (min-width:640px){.auth-card{padding:32px 32px 28px}}
+.auth-card.wide{max-width:720px}
+.connect{display:flex;align-items:center;justify-content:center;gap:10px;margin:0 0 18px}
+.connect .av{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;font-weight:800;font-size:1.1rem;color:#fff;background:#52525b;box-shadow:var(--shadow)}
+.connect .av.isgy{background:linear-gradient(135deg,var(--accent),var(--accent-2));font-size:.95rem}
+.connect .link{display:flex;gap:4px}.connect .link i{width:5px;height:5px;border-radius:50%;background:var(--line-2)}
+.auth-card h1{font-size:1.45rem;text-align:center;margin:0 0 6px;letter-spacing:-.02em}
+.auth-card .intro{text-align:center;color:var(--muted);margin:0 0 20px;font-size:.95rem}
+.auth-card .intro b{color:var(--text)}
+.scope{display:grid;grid-template-columns:repeat(2,1fr);gap:6px 12px;background:var(--bg-2);border-radius:14px;padding:12px 14px;margin:0 0 20px;font-size:.86rem;color:var(--muted)}
+.scope span{display:flex;align-items:center;gap:6px}.scope svg{width:15px;height:15px;color:var(--ok);flex:none}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:13px;background:var(--bg-2);border:1px solid var(--line);margin-bottom:6px}
 .auth>input{position:absolute;opacity:0;pointer-events:none}
-.tabs{display:grid;grid-template-columns:1fr 1fr;gap:.3rem;background:var(--bg);border:1px solid var(--line);border-radius:.7rem;padding:.25rem;margin:1rem 0 .25rem}
-.tabs label{margin:0;text-align:center;padding:.5rem;border-radius:.5rem;cursor:pointer;font-size:.9rem}
-#t-pw:checked~.tabs [for=t-pw],#t-code:checked~.tabs [for=t-code]{background:var(--card);box-shadow:0 1px 3px rgba(0,0,0,.12)}
-#t-pw:focus-visible~.tabs [for=t-pw],#t-code:focus-visible~.tabs [for=t-code]{outline:2px solid var(--accent)}
-.pane{display:none}#t-pw:checked~.p-pw,#t-code:checked~.p-code{display:block}
-.err{background:var(--errbg);color:var(--err);border-radius:.6rem;padding:.7rem .9rem;margin:1rem 0 0;font-size:.92rem}
-.who{display:flex;gap:.5rem;align-items:center;font-size:.92rem;color:var(--muted)}.who b{color:var(--text)}
-ol{padding-left:1.2rem;margin:.4rem 0}li{margin:.25rem 0}
-code,pre{font-family:ui-monospace,monospace;font-size:.85rem;background:var(--bg);border:1px solid var(--line);border-radius:.4rem}
-code{padding:.05rem .3rem}pre{padding:.8rem;overflow-x:auto;white-space:pre-wrap;word-break:break-all}
-.url{display:flex;gap:.5rem;align-items:center}.url code{flex:1;padding:.6rem .7rem;font-size:.95rem;overflow-x:auto;white-space:nowrap}
-.url button{width:auto;margin:0;padding:.6rem 1rem}
-a{color:var(--accent)}footer{margin-top:2rem;font-size:.8rem;color:var(--muted);text-align:center}
+.seg label{margin:0;text-align:center;padding:9px 6px;border-radius:10px;font-size:.88rem;font-weight:650;color:var(--muted);cursor:pointer;line-height:1.25}
+.seg label small{display:block;font-weight:500;font-size:.74rem;color:var(--faint)}
+#m-pw:checked~.seg [for=m-pw],#m-code:checked~.seg [for=m-code]{background:var(--card);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+#m-pw:focus-visible~.seg [for=m-pw],#m-code:focus-visible~.seg [for=m-code]{outline:2px solid var(--accent)}
+.pane{display:none;padding-top:8px}#m-pw:checked~.p-pw,#m-code:checked~.p-code{display:block}
+.field{margin-top:14px}
+.field label{display:block;font-weight:650;font-size:.88rem;margin-bottom:6px}
+.input{width:100%;padding:12px 14px;border:1px solid var(--line-2);border-radius:12px;background:var(--bg);color:var(--text);font:inherit;font-size:16px;transition:border-color .15s,box-shadow .15s}
+.input:focus{border-color:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 18%,transparent);outline:none}
+textarea.input{min-height:96px;resize:vertical;font:13px/1.45 var(--mono);word-break:break-all}
+.pw{position:relative}.pw .input{padding-right:84px}
+.pw button{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--muted);font:600 .82rem system-ui;padding:8px 10px;border-radius:8px;cursor:pointer}
+.pw button:hover{background:var(--bg-2);color:var(--text)}
+.hint{color:var(--muted);font-size:.86rem;margin:10px 0 0}
+.mini{list-style:none;padding:0;margin:12px 0 0;display:grid;gap:8px;font-size:.88rem;color:var(--muted)}
+.mini li{display:flex;gap:10px;align-items:flex-start}
+.mini li b.n{flex:none;width:22px;height:22px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-size:.75rem;display:grid;place-items:center;margin-top:1px}
+.alert{display:flex;gap:10px;align-items:flex-start;background:var(--errbg);color:var(--err);border-radius:12px;padding:12px 14px;margin:16px 0 0;font-size:.9rem;font-weight:550}
+.alert svg{width:18px;height:18px;flex:none;margin-top:2px}
+.fine{display:flex;gap:8px;align-items:flex-start;color:var(--faint);font-size:.8rem;margin:16px 0 0;line-height:1.45}
+.fine svg{width:14px;height:14px;flex:none;margin-top:2px}
+.auth-card .btn.block{margin-top:20px}
+.keybox{display:flex;flex-direction:column;gap:10px;margin:16px 0 4px}
+.keybox code{display:block;padding:12px 14px;border-radius:12px;font-size:.8rem;line-height:1.5;word-break:break-all;max-height:140px;overflow:auto}
+.center{text-align:center}
+.foot-mini{text-align:center;color:var(--faint);font-size:.8rem;padding:0 16px 28px}
+.foot-mini a{color:var(--faint)}
 `;
 
-const COPY_JS = `document.querySelectorAll('[data-copy]').forEach(b=>b.addEventListener('click',()=>{navigator.clipboard.writeText(document.getElementById(b.dataset.copy).textContent.trim());b.textContent='Kopiert ✓';setTimeout(()=>b.textContent='Kopieren',1500)}));
-document.querySelectorAll('form[data-busy]').forEach(f=>f.addEventListener('submit',()=>{const b=f.querySelector('button[type=submit]');if(b){b.disabled=true;b.textContent='Anmelden …'}}));`;
+const JS = `
+document.querySelectorAll('[data-copy]').forEach(function(b){b.addEventListener('click',function(){var t=document.getElementById(b.dataset.copy).textContent.trim();var done=function(){var o=b.innerHTML;b.textContent='Kopiert ✓';setTimeout(function(){b.innerHTML=o},1600)};if(navigator.clipboard)navigator.clipboard.writeText(t).then(done,function(){});else{var r=document.createRange();r.selectNodeContents(document.getElementById(b.dataset.copy));getSelection().removeAllRanges();getSelection().addRange(r)}})});
+document.querySelectorAll('form[data-busy]').forEach(function(f){f.addEventListener('submit',function(){var b=f.querySelector('button[type=submit]');if(b){b.disabled=true;b.dataset.l=b.textContent;b.textContent='Bitte warten …'}})});
+document.querySelectorAll('[data-reveal]').forEach(function(b){b.addEventListener('click',function(){var i=document.getElementById(b.dataset.reveal);var s=i.type==='password';i.type=s?'text':'password';b.textContent=s?'Verbergen':'Anzeigen'})});
+var nav=document.querySelector('.nav');if(nav){var f=function(){nav.classList.toggle('scrolled',scrollY>8)};addEventListener('scroll',f,{passive:true});f()}
+window.addEventListener('pageshow',function(){document.querySelectorAll('button[data-l]').forEach(function(b){b.disabled=false;b.textContent=b.dataset.l})});
+`;
 
+const I = {
+  check: '<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.86-9.86a.75.75 0 0 0-1.22-.88l-3.3 4.6-1.84-1.84a.75.75 0 1 0-1.06 1.06l2.47 2.47a.75.75 0 0 0 1.14-.09l3.81-5.32Z" clip-rule="evenodd"/></svg>',
+  lock: '<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 1a4.5 4.5 0 0 0-4.5 4.5V9H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-.5V5.5A4.5 4.5 0 0 0 10 1Zm3 8V5.5a3 3 0 1 0-6 0V9h6Z" clip-rule="evenodd"/></svg>',
+  eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>',
+  cal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
+  swap: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>',
+  book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>',
+  pen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+  shield: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>',
+  key: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/></svg>',
+  db: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="m4 4 16 16"/></svg>',
+  copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+  alert: '<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 10 5Zm0 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd"/></svg>',
+  bolt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z"/></svg>',
+};
+const FAVICON = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e8730c"/><stop offset="1" stop-color="#f59e0b"/></linearGradient></defs><rect width="64" height="64" rx="16" fill="url(#g)"/><text x="32" y="42" font-family="system-ui,sans-serif" font-size="26" font-weight="800" fill="#fff" text-anchor="middle">IS</text></svg>')}`;
+
+function head(title, description = 'ISGY Intern für KI-Assistenten: Stundenplan, Vertretungen, Hausaufgaben und Termine von isgy-intern.de in Claude, ChatGPT und Gemini.') {
+  return `<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex"><meta name="description" content="${esc(description)}">
+<meta name="theme-color" content="#f7f6f3" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#111113" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark"><link rel="icon" href="${FAVICON}">
+<title>${esc(title)}</title><style>${CSS}</style></head>`;
+}
+const tail = `<script>${JS}</script></body></html>`;
+const logo = (href = '/') => `<a class="logo" href="${href}"><span class="mark">IS</span>ISGY Intern <small>für KI-Assistenten</small></a>`;
+const REPO = 'https://github.com/Stefanos0710/plugin-isgy-intern';
+const DISCLAIMER = 'Inoffiziell – kein Angebot des Gymnasiums Ismaning. Nur Lesezugriff auf deine eigenen Portal-Daten.';
+
+// Simple centered page for login, keys and errors.
 export function layout(title, body, { wide = false } = {}) {
-  return `<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex"><title>${esc(title)}</title><style>${CSS}</style></head>
-<body><main${wide ? ' class="wide"' : ''}><div class="brand"><i>IS</i>ISGY Intern für KI-Assistenten</div>${body}
-<footer>Inoffiziell, kein Angebot des Gymnasiums Ismaning. Nur Lesezugriff auf deine eigenen Portal-Daten.</footer></main>
-<script>${COPY_JS}</script></body></html>`;
+  return `${head(title)}<body class="auth-page">
+<header class="nav"><div class="wrap">${logo()}<nav class="nav-links"><a href="/#einrichten">Einrichten</a></nav></div></header>
+<main class="auth-main"><div class="auth-card${wide ? ' wide' : ''}">${body}</div></main>
+<p class="foot-mini">${DISCLAIMER}</p>${tail}`;
 }
 
-// The login form, used for the OAuth flow and for creating a personal access key.
-export function loginForm({ action, hidden = {}, error = '', mode = 'pw', username = '', heading, intro, button = 'Verbinden' }) {
+// ---------- login form (OAuth authorize + personal key) ----------
+export function loginForm({ action, hidden = {}, error = '', mode = 'pw', username = '', button = 'Verbinden' }) {
   const fields = Object.entries(hidden).map(([k, v]) => `<input type="hidden" name="${esc(k)}" value="${esc(v)}">`).join('');
-  return `<div class="card"><h1>${esc(heading)}</h1>${intro}
-<form method="post" action="${esc(action)}" data-busy>${fields}
+  return `<form method="post" action="${esc(action)}" data-busy novalidate>${fields}
 <div class="auth">
-<input type="radio" name="mode" id="t-pw" value="pw"${mode === 'pw' ? ' checked' : ''}><input type="radio" name="mode" id="t-code" value="code"${mode === 'code' ? ' checked' : ''}>
-<div class="tabs"><label for="t-pw">Benutzername &amp; Passwort</label><label for="t-code">Office 365 (Schüler)</label></div>
+<input type="radio" name="mode" id="m-pw" value="pw"${mode !== 'code' ? ' checked' : ''}><input type="radio" name="mode" id="m-code" value="code"${mode === 'code' ? ' checked' : ''}>
+<div class="seg" role="radiogroup" aria-label="Anmeldeart">
+<label for="m-pw">Passwort<small>Eltern &amp; Portal-Konten</small></label>
+<label for="m-code">Office 365<small>Schülerinnen &amp; Schüler</small></label>
+</div>
 <div class="pane p-pw">
-<p class="muted" style="margin-top:.8rem">Für Konten mit eigenem Portal-Passwort (z.&nbsp;B. Eltern). Dieselben Daten wie auf isgy-intern.de.</p>
-<label for="u">Benutzername</label><input type="text" id="u" name="username" autocomplete="username" autocapitalize="none" value="${esc(username)}">
-<label for="p">Passwort</label><input type="password" id="p" name="password" autocomplete="current-password">
+<div class="field"><label for="u">Benutzername</label><input class="input" type="text" id="u" name="username" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" value="${esc(username)}" placeholder="wie auf isgy-intern.de"></div>
+<div class="field"><label for="p">Passwort</label><div class="pw"><input class="input" type="password" id="p" name="password" autocomplete="current-password"><button type="button" data-reveal="p">Anzeigen</button></div></div>
 </div>
 <div class="pane p-code">
-<p class="muted" style="margin-top:.8rem">Wer sich mit „Login mit Office 365“ anmeldet, hat kein Portal-Passwort. Dann so:</p>
-<ol class="muted"><li>Browser-Erweiterung <b>ISGY Intern Plus</b> (ab Version 1.2) installieren.</li>
-<li>Auf <a href="https://www.isgy-intern.de" target="_blank" rel="noopener">isgy-intern.de</a> normal anmelden und <b>„Angemeldet bleiben“</b> anhaken.</li>
-<li><kbd>Strg</kbd>+<kbd>K</kbd> drücken → <b>„🤖 KI-Verbindungscode kopieren“</b>.</li>
-<li>Code hier einfügen.</li></ol>
-<label for="c">Verbindungscode</label><textarea id="c" name="code" placeholder="isgy1.…" spellcheck="false"></textarea>
-</div></div>
-${error ? `<div class="err" role="alert">${esc(error)}</div>` : ''}
-<button type="submit">${esc(button)}</button>
+<p class="hint">Mit „Login mit Office 365“ gibt es kein Portal-Passwort. Hol dir stattdessen einen Verbindungscode:</p>
+<ol class="mini">
+<li><b class="n">1</b><span>Browser-Erweiterung <a href="${REPO}#installation" target="_blank" rel="noopener"><b>ISGY Intern Plus</b></a> (ab 1.2) installieren</span></li>
+<li><b class="n">2</b><span>Auf <a href="https://www.isgy-intern.de" target="_blank" rel="noopener">isgy-intern.de</a> anmelden, „Angemeldet bleiben“ anhaken</span></li>
+<li><b class="n">3</b><span><kbd>Strg</kbd> + <kbd>K</kbd> → <b>„🤖 KI-Verbindungscode kopieren“</b> und hier einfügen</span></li>
+</ol>
+<div class="field"><label for="c">Verbindungscode</label><textarea class="input" id="c" name="code" placeholder="isgy1.…" spellcheck="false" autocapitalize="none"></textarea></div>
+</div>
+</div>
+${error ? `<div class="alert" role="alert">${I.alert}<span>${esc(error)}</span></div>` : ''}
+<button class="btn block" type="submit">${I.lock}${esc(button)}</button>
 </form>
-<p class="muted" style="margin-top:1rem">Deine Zugangsdaten werden nirgends gespeichert, sondern nur verschlüsselt in dem Zugriffsschlüssel, den dein KI-Assistent bekommt. Der Server kann damit ausschließlich lesen.</p></div>`;
+<p class="fine">${I.shield}<span>Deine Zugangsdaten werden nirgends gespeichert – nur verschlüsselt im Zugriffsschlüssel deines KI-Assistenten. Der Server kann damit ausschließlich lesen.</span></p>`;
 }
 
+const SCOPE = `<div class="scope"><span>${I.check}Stundenplan</span><span>${I.check}Vertretungen</span><span>${I.check}Hausaufgaben</span><span>${I.check}Prüfungen &amp; Termine</span></div>`;
+
 export function authorizePage({ client, redirectHost, req, error, mode, username }) {
-  return layout('Mit ISGY Intern verbinden', loginForm({
-    action: '/authorize', hidden: { req }, error, mode, username,
-    heading: 'Mit ISGY Intern verbinden',
-    intro: `<p class="who"><span><b>${esc(client)}</b> möchte deinen Stundenplan, Vertretungsplan, Hausaufgaben und Termine lesen.</span></p>
-<p class="muted">Weiterleitung danach an <b>${esc(redirectHost)}</b>.</p>`,
-  }));
+  const initial = esc(String(client || '?').trim().charAt(0).toUpperCase() || '?');
+  return layout('Mit ISGY Intern verbinden', `
+<div class="connect" aria-hidden="true"><span class="av">${initial}</span><span class="link"><i></i><i></i><i></i></span><span class="av isgy">IS</span></div>
+<h1>Mit ISGY Intern verbinden</h1>
+<p class="intro"><b>${esc(client)}</b> möchte Lesezugriff auf deine Daten von isgy-intern.de.<br><span style="font-size:.85rem">Danach geht es zurück zu ${esc(redirectHost)}.</span></p>
+${SCOPE}${loginForm({ action: '/authorize', hidden: { req }, error, mode, username })}`);
 }
 
 export function errorPage(title, message) {
-  return layout(title, `<div class="card"><h1>${esc(title)}</h1><p>${esc(message)}</p></div>`);
-}
-
-function clientDocs(origin, key) {
-  const url = `${origin}/mcp`;
-  const header = key ? `"headers": { "Authorization": "Bearer ${esc(key)}" }` : '';
-  return `
-<h2>Claude (claude.ai, Desktop, Handy)</h2>
-<ol><li><b>Einstellungen → Connectors</b> (bzw. „Konnektoren“) → <b>Benutzerdefinierten Connector hinzufügen</b>.</li>
-<li>Name: <code>ISGY Intern</code>, URL: <code>${esc(url)}</code> → Hinzufügen → <b>Verbinden</b>.</li>
-<li>Im sich öffnenden Fenster anmelden. Fertig – im Chat einfach fragen, z.&nbsp;B. „Was habe ich morgen?“.</li></ol>
-<p class="muted">Claude Code: <code>claude mcp add --transport http isgy-intern ${esc(url)}</code>, dann <code>/mcp</code> → Anmelden.</p>
-
-<h2>ChatGPT</h2>
-<ol><li><b>Einstellungen → Apps &amp; Connectors → Erweitert</b> → <b>Entwicklermodus</b> einschalten (Plus/Pro/Business).</li>
-<li><b>Apps &amp; Connectors → Erstellen</b>: Name <code>ISGY Intern</code>, MCP-Server-URL <code>${esc(url)}</code>, Authentifizierung <b>OAuth</b>.</li>
-<li>„Ich vertraue dieser Anwendung“ anhaken → Erstellen → anmelden. Im Chat über <b>+ → Mehr → ISGY Intern</b> aktivieren.</li></ol>
-
-<h2>Gemini</h2>
-<p><b>Gemini CLI</b> – in <code>~/.gemini/settings.json</code>:</p>
-<pre>{
-  "mcpServers": {
-    "isgy-intern": {
-      "httpUrl": "${esc(url)}"${key ? `,\n      ${header}` : ''}
-    }
-  }
-}</pre>
-${key ? '' : `<p class="muted">Beim ersten Start öffnet sich die Anmeldung automatisch (sonst <code>/mcp auth isgy-intern</code>).</p>`}
-<p class="muted">Gemini in der App bzw. auf gemini.google.com: Falls deine Version das Hinzufügen eigener MCP-Server/Connectors anbietet, dort dieselbe URL eintragen. Sonst Gemini CLI verwenden.</p>
-
-<h2>Andere Clients (Cursor, VS Code, LM Studio …)</h2>
-<p class="muted">Server-URL <code>${esc(url)}</code>, Transport „Streamable HTTP“. Mit OAuth meldet sich der Client selbst an; Clients ohne OAuth bekommen einen <a href="/schluessel">persönlichen Zugriffsschlüssel</a> als Header <code>Authorization: Bearer …</code>.</p>`;
-}
-
-export function homePage(origin) {
-  return layout('ISGY Intern MCP', `<div class="card"><h1>ISGY Intern für Claude, ChatGPT &amp; Gemini</h1>
-<p>Dieser MCP-Server gibt deinem KI-Assistenten Lesezugriff auf <b>deinen</b> Stundenplan, den Vertretungsplan, das Klassentagebuch (Themen &amp; Hausaufgaben) und die Termine aus dem Klassenkalender von isgy-intern.de.</p>
-<p class="muted">Server-URL zum Einfügen:</p>
-<div class="url"><code id="u">${esc(origin)}/mcp</code><button type="button" data-copy="u">Kopieren</button></div>
-</div>
-<div class="card">${clientDocs(origin)}</div>`, { wide: true });
+  return layout(title, `<div class="connect" aria-hidden="true"><span class="av" style="background:var(--err)">!</span></div>
+<h1>${esc(title)}</h1><p class="intro">${esc(message)}</p><a class="btn ghost block" href="/">Zur Startseite</a>`);
 }
 
 export function keyPage({ origin, error, mode, username }) {
-  return layout('Persönlicher Zugriffsschlüssel', loginForm({
-    action: '/schluessel', error, mode, username, button: 'Schlüssel erstellen',
-    heading: 'Persönlicher Zugriffsschlüssel',
-    intro: `<p class="muted">Nur für Programme ohne OAuth-Anmeldung. Claude, ChatGPT und Gemini CLI brauchen das nicht – dort einfach <code>${esc(origin)}/mcp</code> eintragen.</p>`,
-  }));
+  return layout('Persönlicher Zugriffsschlüssel', `
+<div class="connect" aria-hidden="true"><span class="av isgy">${I.key.replace('<svg', '<svg width="24" height="24"')}</span></div>
+<h1>Persönlicher Zugriffsschlüssel</h1>
+<p class="intro">Nur für Programme <b>ohne</b> OAuth-Anmeldung. Claude, ChatGPT und Gemini CLI brauchen das nicht – dort einfach <code>${esc(origin)}/mcp</code> eintragen.</p>
+${loginForm({ action: '/schluessel', error, mode, username, button: 'Schlüssel erstellen' })}`);
 }
 
 export function keyResultPage({ origin, key, days }) {
-  return layout('Dein Zugriffsschlüssel', `<div class="card"><h1>Dein Zugriffsschlüssel</h1>
-<p>Gültig für ${days} Tage. Behandle ihn wie ein Passwort: Wer ihn hat, kann deine Portal-Daten lesen.</p>
-<div class="url"><code id="k">${esc(key)}</code><button type="button" data-copy="k">Kopieren</button></div>
-<p class="muted">Als HTTP-Header: <code>Authorization: Bearer &lt;Schlüssel&gt;</code></p></div>
-<div class="card">${clientDocs(origin, key)}</div>`, { wide: true });
+  return layout('Dein Zugriffsschlüssel', `
+<div class="connect" aria-hidden="true"><span class="av" style="background:var(--ok)">✓</span></div>
+<h1>Dein Zugriffsschlüssel</h1>
+<p class="intro">Gültig für ${days} Tage. Behandle ihn wie ein Passwort – wer ihn hat, kann deine Portal-Daten lesen.</p>
+<div class="keybox"><code id="k">${esc(key)}</code><button class="btn" type="button" data-copy="k">${I.copy}Schlüssel kopieren</button></div>
+<p class="hint">Im Client als HTTP-Header eintragen: <code>Authorization: Bearer &lt;Schlüssel&gt;</code>, Server-URL <code>${esc(origin)}/mcp</code>.</p>
+<pre><span class="k">"isgy-intern"</span>: {
+  <span class="k">"httpUrl"</span>: <span class="s">"${esc(origin)}/mcp"</span>,
+  <span class="k">"headers"</span>: { <span class="k">"Authorization"</span>: <span class="s">"Bearer ${esc(key.slice(0, 12))}…"</span> }
+}</pre>`, { wide: true });
+}
+
+// ---------- start page ----------
+const ASK = [
+  ['Was habe ich morgen – und fällt was aus?', 'Stunden mit Uhrzeit, Raum und Lehrkraft, Vertretungen und Entfälle direkt eingearbeitet.', 'tagesplan'],
+  ['Was muss ich bis Montag machen?', 'Hausaufgaben je Fach aus dem Klassentagebuch, mit der Stunde, zu der sie fällig sind.', 'hausaufgaben'],
+  ['Mach mir einen Lernplan für die Mathe-Schulaufgabe.', 'Prüfungstermine aus dem Klassenkalender plus die Unterrichtsthemen der letzten Wochen.', 'pruefungen'],
+  ['Was haben wir am Dienstag in Deutsch gemacht?', 'Themen, Hausaufgaben und Notizen aus dem Tagebuch – perfekt, wenn du gefehlt hast.', 'tagebuch'],
+  ['Wer ist eigentlich „Mm“?', 'Lehrerkürzel werden überall automatisch in Namen übersetzt.', 'lehrer'],
+  ['Was steht diese Woche an?', 'Alles auf einen Blick: laufende Stunde, nächster Schultag, Hausaufgaben, Prüfungen.', 'uebersicht'],
+];
+
+function setupTabs(url) {
+  const tab = (id, label, color, letter, checked) => [`<input type="radio" name="client" id="t-${id}"${checked ? ' checked' : ''}>`, `<label for="t-${id}"><span class="ico" style="background:${color}">${letter}</span>${label}</label>`];
+  const tabs = [tab('claude', 'Claude', '#d97757', 'C', true), tab('chatgpt', 'ChatGPT', '#10a37f', 'G'), tab('gemini', 'Gemini', 'linear-gradient(135deg,#4285f4,#9b72cb)', '✦'), tab('andere', 'Andere', '#52525b', '⋯')];
+  const u = esc(url);
+  return `<div class="tabs">${tabs.map((t) => t[0]).join('')}
+<div class="tab-bar" role="tablist" aria-label="KI-Assistent">${tabs.map((t) => t[1]).join('')}</div>
+<div class="panel p-claude"><ol class="steps">
+<li><b>Einstellungen → Connectors</b> öffnen (claude.ai, Desktop-App oder Handy-App).</li>
+<li><b>„Benutzerdefinierten Connector hinzufügen“</b>: Name <code>ISGY Intern</code>, URL <code>${u}</code>.</li>
+<li>Auf <b>Verbinden</b> tippen und im Fenster anmelden. Fertig – einfach losfragen.</li>
+</ol><div class="note"><b>Claude Code:</b> <code>claude mcp add --transport http isgy-intern ${u}</code>, dann <code>/mcp</code> → Anmelden.</div></div>
+<div class="panel p-chatgpt"><ol class="steps">
+<li><b>Einstellungen → Apps &amp; Connectors → Erweitert</b> → <b>Entwicklermodus</b> einschalten (Plus, Pro, Business).</li>
+<li><b>Erstellen</b>: Name <code>ISGY Intern</code>, MCP-Server-URL <code>${u}</code>, Authentifizierung <b>OAuth</b>.</li>
+<li>„Ich vertraue dieser Anwendung“ bestätigen, anmelden und im Chat über <b>+ → Mehr</b> einschalten.</li>
+</ol></div>
+<div class="panel p-gemini"><ol class="steps">
+<li><b>Gemini CLI</b> installieren und <code>~/.gemini/settings.json</code> öffnen.</li>
+<li>Den Server eintragen:<pre>{
+  <span class="k">"mcpServers"</span>: {
+    <span class="k">"isgy-intern"</span>: {
+      <span class="k">"httpUrl"</span>:
+        <span class="s">"${u}"</span>
+    }
+  }
+}</pre></li>
+<li>Gemini CLI starten – die Anmeldung öffnet sich automatisch (sonst <code>/mcp auth isgy-intern</code>).</li>
+</ol><div class="note">Falls deine Gemini-App eigene MCP-Server bzw. Connectors erlaubt, trägst du dort dieselbe URL ein.</div></div>
+<div class="panel p-andere"><ol class="steps">
+<li>Cursor, VS Code, LM Studio & Co.: neuen MCP-Server vom Typ <b>Streamable HTTP</b> mit der URL <code>${u}</code> anlegen.</li>
+<li>Kann der Client OAuth, öffnet sich die Anmeldung von selbst.</li>
+<li>Sonst einen <a href="/schluessel">persönlichen Zugriffsschlüssel</a> erstellen und als Header <code>Authorization: Bearer …</code> eintragen.</li>
+</ol></div>
+</div>`;
+}
+
+export function homePage(origin) {
+  const url = `${origin}/mcp`;
+  return `${head('ISGY Intern – Schulportal im KI-Chat')}<body>
+<header class="nav"><div class="wrap">${logo()}<nav class="nav-links"><a href="#fragen" class="hide-sm">Funktionen</a><a href="#datenschutz" class="hide-sm">Datenschutz</a><a href="#einrichten">Einrichten</a></nav></div></header>
+<main>
+<div class="hero"><div class="wrap hero-grid">
+<div>
+<span class="eyebrow"><span class="dots"><i style="background:#d97757">C</i><i style="background:#10a37f">G</i><i style="background:linear-gradient(135deg,#4285f4,#9b72cb)">✦</i></span>Für Claude, ChatGPT &amp; Gemini</span>
+<h1>Dein Schulportal,<br><span class="hl">direkt im KI-Chat.</span></h1>
+<p class="lead">Frag einfach „Was habe ich morgen?“ – dein KI-Assistent liest Stundenplan, Vertretungen, Hausaufgaben und Prüfungstermine von isgy-intern.de und antwortet in Sekunden.</p>
+<div class="copybox"><span class="lbl">Server-URL</span><code id="url">${esc(url)}</code><button class="btn" type="button" data-copy="url">${I.copy}Kopieren</button></div>
+<div class="badges"><span>${I.check}Nur Lesezugriff</span><span>${I.check}Keine Datenbank</span><span>${I.check}Verschlüsselt</span><span>${I.check}Kostenlos</span></div>
+</div>
+<div class="chat" aria-label="Beispiel-Unterhaltung">
+<div class="chat-top"><span class="mark" style="width:24px;height:24px;font-size:10px;border-radius:7px">IS</span><b>ISGY Intern</b> verbunden<span class="pill">● aktiv</span></div>
+<div class="msg me">Was habe ich morgen, und fällt was aus?</div>
+<div class="tool">${I.bolt}tagesplan(datum: "morgen")</div>
+<div class="msg ai">Morgen hast du <b>07:55–13:00</b>.
+<ul><li>3. Std Deutsch: <span class="tag org">Vertretung</span> bei Fr. Weber, Raum 204</li><li>5. Std Englisch: <span class="tag red">entfällt</span></li></ul>
+Fällig ist noch <b>Mathe S. 42 Nr. 3</b>, und am Freitag ist die <b>Mathe-Schulaufgabe</b> – soll ich dir einen Lernplan machen?</div>
+</div>
+</div></div>
+
+<section id="fragen"><div class="wrap">
+<div class="sec-head"><span class="kicker">Was du fragen kannst</span><h2>Einfach fragen wie im Chat.</h2><p class="sub">Der Assistent sucht sich selbst das passende Werkzeug – du brauchst keine Befehle.</p></div>
+<div class="grid g3">${ASK.map(([q, p, t]) => `<div class="card ask"><q>${esc(q)}</q><p>${esc(p)}</p><code>${t}</code></div>`).join('')}</div>
+</div></section>
+
+<section id="einrichten" style="background:var(--bg-2)"><div class="wrap">
+<div class="sec-head"><span class="kicker">In einer Minute eingerichtet</span><h2>Verbinden mit deinem KI-Assistenten</h2><p class="sub">Server-URL einfügen, einmal anmelden – fertig.</p></div>
+${setupTabs(url)}
+</div></section>
+
+<section id="anmeldung"><div class="wrap">
+<div class="sec-head"><span class="kicker">Anmeldung</span><h2>Zwei Wege, je nach Konto</h2></div>
+<div class="grid">
+<div class="card"><div class="feat-ico">${I.key}</div><h3>Benutzername &amp; Passwort</h3><p>Für Konten mit eigenem Portal-Passwort, z.&nbsp;B. Eltern. Der Server meldet sich selbst an – und automatisch neu, wenn die Sitzung abläuft.</p></div>
+<div class="card"><div class="feat-ico">${I.swap}</div><h3>Office 365 (Schüler)</h3><p>Mit Microsoft-Login gibt es kein Portal-Passwort. In der Erweiterung <a href="${REPO}#installation"><b>ISGY Intern Plus</b></a> mit <kbd>Strg</kbd>+<kbd>K</kbd> einen Verbindungscode kopieren und beim Anmelden einfügen.</p></div>
+</div>
+</div></section>
+
+<section id="datenschutz" style="padding-top:0"><div class="wrap">
+<div class="sec-head"><span class="kicker">Datenschutz</span><h2>Deine Daten bleiben deine.</h2></div>
+<div class="grid g3">
+<div class="card"><div class="feat-ico">${I.db}</div><h3>Keine Datenbank</h3><p>Der Server speichert nichts. Deine Anmeldung steckt nur verschlüsselt (AES-256) im Schlüssel, den dein Assistent bekommt.</p></div>
+<div class="card"><div class="feat-ico">${I.eye}</div><h3>Nur lesen</h3><p>Es werden ausschließlich lesende Schnittstellen von isgy-intern.de aufgerufen – nichts wird geändert oder abgeschickt.</p></div>
+<div class="card"><div class="feat-ico">${I.shield}</div><h3>Jederzeit trennen</h3><p>Connector im Assistenten entfernen, und der Zugriff ist weg. Die Kürzel-PDF wird nur im Arbeitsspeicher gelesen.</p></div>
+</div>
+</div></section>
+</main>
+<footer><div class="wrap"><span>${DISCLAIMER}</span><span><a href="/schluessel" style="color:inherit">Zugriffsschlüssel</a> · <a href="${REPO}" style="color:inherit">GitHub</a></span></div></footer>
+${tail}`;
 }

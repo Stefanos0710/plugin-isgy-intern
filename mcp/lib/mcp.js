@@ -1,19 +1,31 @@
 // Minimal MCP server over Streamable HTTP, stateless: every POST carries one JSON-RPC message (or a batch)
 // and gets a plain JSON response. No server-initiated messages, so no SSE stream is needed.
-import { TOOLS, InputError } from './tools.js';
+import { TOOLS, PROMPTS, InputError } from './tools.js';
+import { nowLabel, lessonTime, TIMES } from './dates.js';
 import { portalFor, AuthError, PortalError } from './portal.js';
 
-export const SERVER_INFO = { name: 'isgy-intern', title: 'ISGY Intern', version: '1.0.0' };
+export const SERVER_INFO = { name: 'isgy-intern', title: 'ISGY Intern', version: '1.1.0' };
 const VERSIONS = ['2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05'];
 
-const INSTRUCTIONS = `Zugriff auf das Schulportal isgy-intern.de (Gymnasium Ismaning) des angemeldeten Schülers bzw. Elternteils.
-Alle Daten sind nur lesbar. Datumsangaben beziehen sich auf deutsche Zeit (Europe/Berlin).
-- „Was habe ich heute/morgen?“, „Fällt etwas aus?“ → tagesplan
-- Vertretungen allgemein → vertretungen; Wochenplan → stundenplan
-- Hausaufgaben → hausaufgaben (Überblick) oder letzter_eintrag (ein Fach)
-- Schulaufgaben, Exen, Ausflüge → termine
-- Lehrerkürzel → lehrer
-Antworte dem Nutzer auf Deutsch, sofern er nicht eine andere Sprache verwendet.`;
+const INSTRUCTIONS = `ISGY Intern: Lesezugriff auf das Schulportal isgy-intern.de des Gymnasiums Ismaning (Bayern) für den angemeldeten Schüler bzw. das Elternteil – Stundenplan, Vertretungsplan, Klassentagebuch (Themen + Hausaufgaben), Klassenkalender (Prüfungen, Termine) und Lehrerkürzel.
+
+Welches Tool wofür:
+- Offene Fragen („Was steht an?“, Gesprächsbeginn) → uebersicht
+- Ein bestimmter Tag („Was habe ich morgen?“, „Was ist am Freitag fällig?“) → tagesplan
+- Hausaufgaben → hausaufgaben; ein Fach → letzter_eintrag oder fach
+- Schulaufgaben/Exen/Tests und Lernstoff dafür → pruefungen
+- Alles zu einem Fach → fach; verpasster Stoff → tagebuch
+- Vertretungen gezielt → vertretungen; Wochenplan → stundenplan; Termine → termine; Kürzel → lehrer
+
+Wissenswertes:
+- Jede Antwort beginnt mit „Stand: …“ (aktuelles Datum und Uhrzeit in Deutschland). Relative Angaben wie „morgen“ immer darauf beziehen.
+- Stundenzeiten: ${Object.keys(TIMES).map((n) => `${n}. ${lessonTime(n)}`).join(', ')}.
+- Fächer werden als Kürzel angegeben (M = Mathe, D = Deutsch, E = Englisch, Ph = Physik, …; „_1“ o. Ä. = Kurs/Gruppe). Die Tools verstehen auch ausgeschriebene Namen.
+- Bayerische Begriffe: Schulaufgabe = große angekündigte Klassenarbeit, Ex (Stegreifaufgabe) = unangekündigter Kurztest, Kurzarbeit = angekündigter kurzer Test.
+- Hausaufgaben stehen im Klassentagebuch beim Tag, an dem sie aufgegeben wurden; fällig sind sie meist zur nächsten Stunde des Fachs.
+- Der Vertretungsplan wird meist nur für die nächsten Tage veröffentlicht; fehlende Einträge für spätere Tage heißen nicht, dass nichts ausfällt.
+- Alle Daten sind privat und gehören dem Nutzer; nichts davon an Dritte weitergeben.
+Antworte auf Deutsch, außer der Nutzer schreibt in einer anderen Sprache. Fasse zusammen statt Rohdaten zu wiederholen.`;
 
 const ok = (id, result) => ({ jsonrpc: '2.0', id, result });
 const fail = (id, code, message) => ({ jsonrpc: '2.0', id: id ?? null, error: { code, message } });
@@ -23,7 +35,7 @@ async function callTool(cred, params) {
   if (!tool) return { error: [-32602, `Unbekanntes Tool: ${params?.name}`] };
   const args = params.arguments && typeof params.arguments === 'object' ? params.arguments : {};
   try {
-    const text = await tool.run(portalFor(cred), args);
+    const text = `Stand: ${nowLabel()}\n\n` + await tool.run(portalFor(cred), args);
     return { result: { content: [{ type: 'text', text }] } };
   } catch (e) {
     let text = e.message || String(e);
@@ -45,7 +57,7 @@ async function handleOne(msg, cred) {
       const wanted = params?.protocolVersion;
       return ok(id, {
         protocolVersion: VERSIONS.includes(wanted) ? wanted : VERSIONS[0],
-        capabilities: { tools: { listChanged: false } },
+        capabilities: { tools: { listChanged: false }, prompts: { listChanged: false } },
         serverInfo: SERVER_INFO,
         instructions: INSTRUCTIONS,
       });
@@ -63,7 +75,12 @@ async function handleOne(msg, cred) {
     case 'resources/templates/list':
       return ok(id, { resourceTemplates: [] });
     case 'prompts/list':
-      return ok(id, { prompts: [] });
+      return ok(id, { prompts: PROMPTS.map(({ name, title, description, arguments: a }) => ({ name, title, description, arguments: a })) });
+    case 'prompts/get': {
+      const p = PROMPTS.find((x) => x.name === params?.name);
+      if (!p) return fail(id, -32602, `Unbekannter Prompt: ${params?.name}`);
+      return ok(id, { description: p.description, messages: [{ role: 'user', content: { type: 'text', text: p.text(params.arguments || {}) } }] });
+    }
     case 'logging/setLevel':
       return ok(id, {});
     default:
