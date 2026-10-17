@@ -98,7 +98,11 @@ export default async function handler(req, res) {
     if (path === '/schluessel' && m === 'POST') return sendResult(res, await keyPost(o, await readBody(req)));
 
     if (path === '/' && m === 'GET') return send(res, 200, homePage(o), PAGE_HEADERS);
-    if (path === '/health') return send(res, 200, { ok: true });
+    if (path === '/health') {
+      // Also proves the pdf.js bundle (only loaded lazily for the Kürzel list) made it into the deployment.
+      const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs').then((m) => m.version, (e) => 'fehlt: ' + e.message);
+      return send(res, 200, { ok: true, pdfjs });
+    }
     if (path === '/favicon.ico') return send(res, 204, null);
     return send(res, 404, errorPage('Nicht gefunden', 'Diese Seite gibt es nicht.'), PAGE_HEADERS);
   } catch (e) {
