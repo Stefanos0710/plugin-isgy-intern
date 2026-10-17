@@ -4,7 +4,7 @@ import { protectedResource, authServer, register, authorizeGet, authorizePost, t
 import { kontoGet, kontoPost, extApi } from '../lib/konto.js';
 import { homePage, errorPage } from '../lib/pages.js';
 import { impressumPage, datenschutzPage } from '../lib/legal.js';
-import { SITE, LEGACY_HOSTS, asset, robotsTxt, sitemapXml, manifestJson, llmsTxt } from '../lib/site.js';
+import { SITE, LEGACY_HOSTS, verification, asset, robotsTxt, sitemapXml, manifestJson, llmsTxt } from '../lib/site.js';
 import { loadPdfjs } from '../lib/portal.js';
 
 const CORS = {
@@ -138,6 +138,9 @@ export default async function handler(req, res) {
     const text = { '/robots.txt': [robotsTxt, 'text/plain; charset=utf-8'], '/sitemap.xml': [sitemapXml, 'application/xml; charset=utf-8'],
       '/site.webmanifest': [manifestJson, 'application/manifest+json; charset=utf-8'], '/llms.txt': [llmsTxt, 'text/plain; charset=utf-8'] }[path];
     if (text && m === 'GET') return send(res, 200, text[0](), { 'Content-Type': text[1], 'Cache-Control': FILE_CACHE, 'X-Content-Type-Options': 'nosniff' });
+    // Google Search Console "HTML file" verification: the file name comes from the env var, the content is fixed by Google's format.
+    const vf = /^\/(google[0-9a-f]{8,40}\.html)$/.exec(path);
+    if (vf && m === 'GET' && vf[1] === verification().googleFile) return send(res, 200, `google-site-verification: ${vf[1]}`, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': FILE_CACHE, 'X-Robots-Tag': 'noindex' });
     const fileName = { '/favicon.ico': 'favicon.ico', '/apple-touch-icon.png': 'apple-touch-icon.png', '/apple-touch-icon-precomposed.png': 'apple-touch-icon.png' }[path]
       || (/^\/assets\/([a-z0-9-]+\.(?:png|svg|ico|webp))$/.exec(path) || [])[1];
     if (fileName && m === 'GET') {

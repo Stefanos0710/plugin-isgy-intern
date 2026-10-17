@@ -1,6 +1,6 @@
 // HTML pages: start page with setup instructions, login (OAuth authorize), personal access key, errors.
 // Self-contained (inline CSS/JS, inline SVG), so the strict CSP in api/index.js holds. Light + dark, mobile first.
-import { SITE, REPO, NAME, TITLE, DESCRIPTION, OG_ALT, AUTHOR, UPDATED, logoSprite, brandIcon, brandOf } from './site.js';
+import { SITE, REPO, NAME, verification, TITLE, DESCRIPTION, OG_ALT, AUTHOR, UPDATED, logoSprite, brandIcon, brandOf } from './site.js';
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 const CSS = `
@@ -274,6 +274,7 @@ ${index ? `<link rel="canonical" href="${url}"><link rel="alternate" hreflang="d
 <meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(description)}"><meta property="og:url" content="${url}">
 <meta property="og:image" content="${SITE}/assets/og.png"><meta property="og:image:type" content="image/png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="${esc(OG_ALT)}">
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(title)}"><meta name="twitter:description" content="${esc(description)}"><meta name="twitter:image" content="${SITE}/assets/og.png"><meta name="twitter:image:alt" content="${esc(OG_ALT)}">
+${verification().google ? `<meta name="google-site-verification" content="${esc(verification().google)}">` : ''}${verification().bing ? `<meta name="msvalidate.01" content="${esc(verification().bing)}">` : ''}
 <meta name="author" content="${AUTHOR.name}"><meta name="application-name" content="${NAME}"><meta name="apple-mobile-web-app-title" content="ISGY Plus">
 ` : ''}<meta name="theme-color" content="#f7f6f3" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#111113" media="(prefers-color-scheme: dark)">
 <meta name="color-scheme" content="light dark"><meta name="format-detection" content="telephone=no">

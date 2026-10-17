@@ -17,6 +17,13 @@ export const operator = () => ({
   city: process.env.OPERATOR_CITY || '',
   email: process.env.OPERATOR_EMAIL || '',
 });
+// Search-engine ownership checks (Google Search Console / Bing Webmaster): set the value shown there as an env var.
+// A vercel.app address can't be verified via DNS, so the HTML-tag or HTML-file method is used.
+export const verification = () => ({
+  google: process.env.GOOGLE_SITE_VERIFICATION || '',
+  bing: process.env.BING_SITE_VERIFICATION || '',
+  googleFile: process.env.GOOGLE_VERIFICATION_FILE || '', // e.g. google1234abcd5678ef90.html
+});
 export const LEGAL_UPDATED = '17. Oktober 2026';
 
 export const NAME = 'ISGY Intern Plus';

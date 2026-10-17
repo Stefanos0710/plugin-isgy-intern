@@ -5,6 +5,8 @@ import { startMock, USER, D1, clearSessions } from './mock-portal.mjs';
 import { startSupabase, state as dbState, API_SECRET, KEY } from './mock-supabase.mjs';
 
 process.env.ISGY_BASE_URL = 'http://127.0.0.1:4100';
+process.env.GOOGLE_SITE_VERIFICATION = 'tok_ABC-123';
+process.env.GOOGLE_VERIFICATION_FILE = 'google0123456789abcdef.html';
 process.env.OPERATOR_NAME = 'Erika Mustermann';
 process.env.OPERATOR_STREET = 'Musterweg 1';
 process.env.OPERATOR_CITY = '85737 Ismaning';
@@ -411,6 +413,15 @@ await step('legal pages: Impressum + Datenschutzerklärung', async () => {
   const saved = process.env.OPERATOR_NAME; process.env.OPERATOR_NAME = '';
   assert.match(await (await fetch(BASE + '/impressum')).text(), /noch nicht hinterlegt/);
   process.env.OPERATOR_NAME = saved;
+});
+
+await step('search console verification (meta tag + html file)', async () => {
+  assert.match(await (await fetch(BASE + '/')).text(), /<meta name="google-site-verification" content="tok_ABC-123">/);
+  const f = await fetch(BASE + '/google0123456789abcdef.html');
+  assert.equal(f.status, 200);
+  assert.equal(await f.text(), 'google-site-verification: google0123456789abcdef.html');
+  assert.equal((await fetch(BASE + '/google0123456789abcdee.html')).status, 404);
+  assert.ok(!(await (await fetch(BASE + '/impressum')).text()).includes('google-site-verification'), 'only on the start page');
 });
 
 await step('logos and icons are served with the right types', async () => {

@@ -75,7 +75,7 @@ Die Startseite (`/`) ist die einzige Seite für Suchmaschinen: eigener Titel und
 
 Logos: Claude, OpenAI und Gemini sind die echten Marken-Logos (MIT-lizenzierte SVGs aus `@lobehub/icons-static-svg`), das ISGY-Logo kommt aus `logo-plus.png`. Alles liegt in `assets/`; das Vorschaubild entsteht aus `scripts/og.html` (1200×630 rendern). Nach Änderungen an der Startseite `UPDATED` in `lib/site.js` hochsetzen.
 
-Nach dem ersten Deploy einmalig in der [Google Search Console](https://search.google.com/search-console) und den [Bing Webmaster Tools](https://www.bing.com/webmasters) die Domain hinzufügen und `https://isgy-intern-plus.vercel.app/sitemap.xml` einreichen.
+Nach dem ersten Deploy einmalig in der [Google Search Console](https://search.google.com/search-console) (Property-Typ **„URL-Präfix“** mit `https://isgy-intern-plus.vercel.app/`, Bestätigung per **HTML-Tag** → Wert in `GOOGLE_SITE_VERIFICATION`) und den [Bing Webmaster Tools](https://www.bing.com/webmasters) die Seite hinzufügen und `https://isgy-intern-plus.vercel.app/sitemap.xml` einreichen. Die Property-Art „Domain“ (DNS) funktioniert bei `vercel.app` nicht, weil die DNS-Einträge Vercel gehören.
 
 ## Selbst betreiben / entwickeln
 
@@ -88,6 +88,7 @@ Ordner `mcp/` als eigenes Vercel-Projekt (Root Directory `mcp`, Framework „Oth
 | `ISGY_KUERZEL_PDF` | optional: Pfad der Kürzel-PDF, falls die automatische Suche sie nicht findet |
 | `ISGY_BASE_URL`, `PUBLIC_URL` | optional, nur für Tests / eigene Domain |
 | `OPERATOR_NAME`, `OPERATOR_STREET`, `OPERATOR_CITY`, `OPERATOR_EMAIL` | Angaben für Impressum und Datenschutzerklärung (`/impressum`, `/datenschutz`). Stehen bewusst nur in der Vercel-Konfiguration, nicht im Repository. |
+| `GOOGLE_SITE_VERIFICATION`, `BING_SITE_VERIFICATION`, `GOOGLE_VERIFICATION_FILE` | optional: Bestätigung der Website in Google Search Console / Bing (Meta-Tag-Wert bzw. Dateiname `google….html`). Bei einer `vercel.app`-Adresse geht nur „URL-Präfix“ mit HTML-Tag oder HTML-Datei, nicht DNS. |
 | `SITE_URL`, `LEGACY_HOSTS` | optional: öffentliche Adresse für `canonical`/Sitemap (Standard `https://isgy-intern-plus.vercel.app`) und ältere Hostnamen, deren Startseite weiterleitet |
 
 ```bash
