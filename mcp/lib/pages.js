@@ -229,6 +229,13 @@ details summary::before{content:"▸";display:inline-block;margin-right:6px;tran
 .faq p a{color:var(--accent)}
 .connect .av.brand{background:var(--card);border:1px solid var(--line)}.connect .av.brand .bi{width:28px;height:28px}
 .connect img.av{padding:0;background:none;object-fit:cover}
+.legal{font-size:.97rem}.legal h1{text-align:left;font-size:1.6rem;margin-bottom:4px}.legal h2{font-size:1.1rem;margin:28px 0 8px;letter-spacing:-.01em}
+.legal p,.legal li{color:var(--muted)}.legal p{margin:8px 0}.legal ul{padding-left:20px;margin:8px 0}.legal li{margin:4px 0}.legal strong,.legal b{color:var(--text)}
+.legal address{font-style:normal;background:var(--bg-2);border-radius:12px;padding:14px 16px;margin:10px 0;color:var(--text);line-height:1.6}
+.legal .stand{font-size:.85rem;color:var(--faint)}.legal table{border-collapse:collapse;width:100%;margin:10px 0;font-size:.9rem}.legal th,.legal td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}.legal th{color:var(--text)}
+@media (max-width:640px){.legal table,.legal tbody,.legal tr,.legal td{display:block;width:100%}.legal thead,.legal tr:first-child{display:none}
+.legal tr{border:1px solid var(--line);border-radius:12px;padding:6px 12px;margin:10px 0}.legal td{border:0;padding:4px 0}.legal td:first-child{font-weight:700;color:var(--text)}}
+.legal .warn{background:var(--errbg);color:var(--err);padding:12px 14px;border-radius:12px;margin:12px 0}
 .foot-mini{text-align:center;color:var(--faint);font-size:.8rem;padding:0 16px 28px}
 .foot-mini a{color:var(--faint)}
 `;
@@ -256,9 +263,9 @@ const I = {
   alert: '<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 10 5Zm0 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd"/></svg>',
   bolt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z"/></svg>',
 };
-function head(title, { description = DESCRIPTION, path = '', index = false, jsonld = [] } = {}) {
+function head(title, { description = DESCRIPTION, path = '', index = false, jsonld = [], robots: robotsOverride } = {}) {
   const url = SITE + (path || '/');
-  const robots = index ? 'index,follow,max-image-preview:large,max-snippet:-1' : 'noindex,nofollow';
+  const robots = robotsOverride || (index ? 'index,follow,max-image-preview:large,max-snippet:-1' : 'noindex,nofollow');
   return `<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(description)}"><meta name="robots" content="${robots}">
@@ -281,11 +288,11 @@ const DISCLAIMER = 'Inoffiziell – kein Angebot des Gymnasiums Ismaning. Nur Le
 const TRADEMARKS = 'Claude ist eine Marke von Anthropic, ChatGPT und OpenAI sind Marken von OpenAI, Gemini ist eine Marke von Google. Die Logos dienen nur der Kennzeichnung der unterstützten Dienste; es besteht keine Verbindung zu den Unternehmen.';
 
 // Simple centered page for login, keys, account and errors.
-export function layout(title, body, { wide = false } = {}) {
-  return `${head(title)}<body class="auth-page">${logoSprite()}
+export function layout(title, body, { wide = false, robots } = {}) {
+  return `${head(title, { robots })}<body class="auth-page">${logoSprite()}
 <header class="nav"><div class="wrap">${logo()}<nav class="nav-links"><a href="/#einrichten" class="hide-sm">Einrichten</a><a href="/konto">Konto</a></nav></div></header>
 <main class="auth-main"><div class="auth-card${wide ? ' wide' : ''}">${body}</div></main>
-<p class="foot-mini">${DISCLAIMER}</p>${tail}`;
+<p class="foot-mini">${DISCLAIMER}<br><a href="/impressum">Impressum</a> · <a href="/datenschutz">Datenschutz</a></p>${tail}`;
 }
 
 // ---------- login form (OAuth authorize, personal key, saving the portal login in the account) ----------
@@ -616,6 +623,11 @@ ${setupTabs(url)}
 <div class="faq">${FAQ.map(([q, a]) => `<details><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join('')}</div>
 </div></section>
 </main>
-<footer><div class="wrap"><span>${DISCLAIMER}</span><nav aria-label="Weitere Links"><a href="${REPO}" rel="noopener" style="color:inherit">GitHub</a> · <a href="${REPO}/blob/HEAD/mcp/README.md" rel="noopener" style="color:inherit">Dokumentation</a> · <a href="/konto" style="color:inherit">Konto</a> · <a href="/schluessel" style="color:inherit">Zugriffsschlüssel</a></nav></div></footer>
+<footer><div class="wrap"><span>${DISCLAIMER}</span><nav aria-label="Weitere Links"><a href="${REPO}" rel="noopener" style="color:inherit">GitHub</a> · <a href="${REPO}/blob/HEAD/mcp/README.md" rel="noopener" style="color:inherit">Dokumentation</a> · <a href="/konto" style="color:inherit">Konto</a> · <a href="/impressum" style="color:inherit">Impressum</a> · <a href="/datenschutz" style="color:inherit">Datenschutz</a></nav></div></footer>
 ${tail}`;
+}
+
+// ---------- legal pages (text in lib/legal.js) ----------
+export function legalPage(title, html) {
+  return layout(title, `<div class="legal">${html}</div>`, { wide: true, robots: 'noindex,follow' });
 }

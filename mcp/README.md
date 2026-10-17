@@ -66,6 +66,7 @@ Dazu gibt es fertige **Prompts** (in Claude über das „+“-Menü): *Mein Schu
 - Die Tabellen liegen im Schema `private`, das die Supabase-API nicht ausliefert. Der Server erreicht sie nur über Funktionen, die zusätzlich `SUPABASE_API_SECRET` prüfen; der öffentliche Supabase-Schlüssel allein reicht für nichts.
 - Von isgy-intern.de wird nur gelesen. Schreiben kann der KI-Assistent nur die eigenen Notizen.
 - Auf der Kontoseite: Zugang entfernen, „Überall abmelden“ (macht alle Tokens von KI-Assistenten und Erweiterung ungültig) und Konto samt Notizen löschen.
+- Vollständige Angaben: [Datenschutzerklärung](https://isgy-intern-plus.vercel.app/datenschutz) und [Impressum](https://isgy-intern-plus.vercel.app/impressum).
 - Es gibt keine E-Mail-Bestätigung und kein Passwort-Zurücksetzen. Das Ganze ist inoffiziell und kein Angebot der Schule.
 
 ## Website & SEO
@@ -86,6 +87,7 @@ Ordner `mcp/` als eigenes Vercel-Projekt (Root Directory `mcp`, Framework „Oth
 | `SUPABASE_URL`, `SUPABASE_KEY`, `SUPABASE_API_SECRET` | für Konten: Projekt-URL, publishable/anon key und ein zufälliges Geheimnis. Datenbank einmalig mit [supabase/0001_accounts_notes.sql](supabase/0001_accounts_notes.sql) einrichten und den SHA-256 des Geheimnisses eintragen (`insert into private.config values ('api_secret_sha256', '<hex>')`). Ohne diese Variablen läuft der Server ohne Konten. |
 | `ISGY_KUERZEL_PDF` | optional: Pfad der Kürzel-PDF, falls die automatische Suche sie nicht findet |
 | `ISGY_BASE_URL`, `PUBLIC_URL` | optional, nur für Tests / eigene Domain |
+| `OPERATOR_NAME`, `OPERATOR_STREET`, `OPERATOR_CITY`, `OPERATOR_EMAIL` | Angaben für Impressum und Datenschutzerklärung (`/impressum`, `/datenschutz`). Stehen bewusst nur in der Vercel-Konfiguration, nicht im Repository. |
 | `SITE_URL`, `LEGACY_HOSTS` | optional: öffentliche Adresse für `canonical`/Sitemap (Standard `https://isgy-intern-plus.vercel.app`) und ältere Hostnamen, deren Startseite weiterleitet |
 
 ```bash

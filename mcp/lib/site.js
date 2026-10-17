@@ -10,6 +10,15 @@ export const AUTHOR = { name: 'Stefanos0710', url: 'https://github.com/Stefanos0
 // Bump when the start page content changes (sitemap <lastmod>).
 export const UPDATED = '2026-10-17';
 
+// Who runs the site (Impressum / Datenschutz). Kept in environment variables (not in the public repository).
+export const operator = () => ({
+  name: process.env.OPERATOR_NAME || '',
+  street: process.env.OPERATOR_STREET || '',
+  city: process.env.OPERATOR_CITY || '',
+  email: process.env.OPERATOR_EMAIL || '',
+});
+export const LEGAL_UPDATED = '17. Oktober 2026';
+
 export const NAME = 'ISGY Intern Plus';
 export const TITLE = 'ISGY Intern Plus – Stundenplan & Hausaufgaben per KI-Chat';
 export const DESCRIPTION = 'Frag Claude, ChatGPT oder Gemini nach Stundenplan, Vertretungen, Hausaufgaben & Prüfungen von isgy-intern.de. Kostenloser MCP-Server + Browser-Erweiterung.';

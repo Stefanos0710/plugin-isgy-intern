@@ -133,6 +133,7 @@ Ein Passwort-Zurücksetzen gibt es nicht; wer es vergisst, erstellt ein neues Ko
 - Aufgaben & Notizen liegen in `chrome.storage.local` und bleiben ohne KI-Konto nur in deinem Browser. Pins und Einstellungen werden über `chrome.storage.sync` mit deinem Browser-Profil synchronisiert.
 - **Ohne KI-Konto** sendet die Erweiterung nichts an fremde Server. Sie liest nur Daten von isgy-intern.de (Stundenplan, Vertretungsplan, Tagebuch, Klassenkalender) und schreibt dort nichts. Der KI-Verbindungscode wird nur in deine Zwischenablage kopiert.
 - **Nur wenn du dich in den Einstellungen mit einem KI-Konto anmeldest**, schickt die Erweiterung deine Aufgaben & Notizen und (bei Office-365-Login) die isgy-intern-Sitzung an den MCP-Server. Abmelden unter „KI-Konto“ beendet das sofort.
+- Die vollständige [Datenschutzerklärung](https://isgy-intern-plus.vercel.app/datenschutz) und das [Impressum](https://isgy-intern-plus.vercel.app/impressum) stehen auf der Website.
 - Im Konto (Supabase, Frankfurt) liegen: E-Mail, der Hash deines Konto-Passworts, dein isgy-intern-Zugang **verschlüsselt** (AES-256, nur der Server kann ihn entschlüsseln) und deine Aufgaben & Notizen. Details: [mcp/README.md](mcp/README.md#datenschutz--sicherheit).
 - Die Berechtigung „Cookies“ braucht die Erweiterung nur für Verbindungscode und KI-Konto (die Sitzungs-Cookies von isgy-intern.de).
 

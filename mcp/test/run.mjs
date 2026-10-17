@@ -5,6 +5,10 @@ import { startMock, USER, D1, clearSessions } from './mock-portal.mjs';
 import { startSupabase, state as dbState, API_SECRET, KEY } from './mock-supabase.mjs';
 
 process.env.ISGY_BASE_URL = 'http://127.0.0.1:4100';
+process.env.OPERATOR_NAME = 'Erika Mustermann';
+process.env.OPERATOR_STREET = 'Musterweg 1';
+process.env.OPERATOR_CITY = '85737 Ismaning';
+process.env.OPERATOR_EMAIL = 'erika@example.org';
 process.env.SUPABASE_URL = 'http://127.0.0.1:4200';
 process.env.SUPABASE_KEY = KEY;
 process.env.SUPABASE_API_SECRET = API_SECRET;
@@ -387,6 +391,26 @@ await step('SEO: robots, sitemap, manifest, llms.txt, HEAD, legacy redirect', as
   // the old address still serves the connection itself
   const oauth = await fetch(BASE + '/.well-known/oauth-authorization-server', { headers: { 'x-forwarded-host': 'isgy-intern-mcp.vercel.app' } });
   assert.equal(oauth.status, 200);
+});
+
+await step('legal pages: Impressum + Datenschutzerklärung', async () => {
+  for (const [path, must] of [['/impressum', [/Angaben gemäß § 5 Digitale-Dienste-Gesetz/, /Erika Mustermann/, /Musterweg 1/, /85737 Ismaning/, /mailto:erika@example\.org/]],
+    ['/datenschutz', [/Verantwortlicher/, /Erika Mustermann/, /Art\. 6 Abs\. 1 lit\. b DSGVO/, /Vercel/, /Supabase/, /BayLDA/, /Beschwerderecht/, /AES-256-GCM/, /Kinder und Jugendliche/]]]) {
+    const r = await fetch(BASE + path);
+    const t = await r.text();
+    assert.equal(r.status, 200, path);
+    assert.match(r.headers.get('x-robots-tag'), /noindex, follow/);
+    for (const re of must) assert.match(t, re, path + ' ' + re);
+    assert.ok(t.includes('href="/impressum"') && t.includes('href="/datenschutz"'), 'footer links on ' + path);
+  }
+  // the legal pages are linked from the start page and the login pages, but not listed in the sitemap
+  const home = await (await fetch(BASE + '/')).text();
+  assert.ok(home.includes('href="/impressum"') && home.includes('href="/datenschutz"'));
+  assert.ok(!(await (await fetch(BASE + '/sitemap.xml')).text()).includes('impressum'));
+  // missing operator data is shown as a visible warning, not as empty fields
+  const saved = process.env.OPERATOR_NAME; process.env.OPERATOR_NAME = '';
+  assert.match(await (await fetch(BASE + '/impressum')).text(), /noch nicht hinterlegt/);
+  process.env.OPERATOR_NAME = saved;
 });
 
 await step('logos and icons are served with the right types', async () => {

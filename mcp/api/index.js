@@ -3,6 +3,7 @@ import { handleRpc } from '../lib/mcp.js';
 import { protectedResource, authServer, register, authorizeGet, authorizePost, token, authFromBearer, keyGet, keyPost } from '../lib/oauth.js';
 import { kontoGet, kontoPost, extApi } from '../lib/konto.js';
 import { homePage, errorPage } from '../lib/pages.js';
+import { impressumPage, datenschutzPage } from '../lib/legal.js';
 import { SITE, LEGACY_HOSTS, asset, robotsTxt, sitemapXml, manifestJson, llmsTxt } from '../lib/site.js';
 import { loadPdfjs } from '../lib/portal.js';
 
@@ -126,6 +127,11 @@ export default async function handler(req, res) {
       // Older addresses keep working for the connection itself, but the start page lives in one place (duplicate-content / canonical).
       if (LEGACY_HOSTS.includes(new URL(o).host)) return send(res, 301, null, { Location: SITE + '/', 'Cache-Control': 'public, max-age=3600' });
       return send(res, 200, homePage(o), HOME_HEADERS);
+    }
+
+    // ----- legal pages (readable by anyone, kept out of search results) -----
+    if ((path === '/impressum' || path === '/datenschutz') && m === 'GET') {
+      return send(res, 200, path === '/impressum' ? impressumPage() : datenschutzPage(), { ...PAGE_HEADERS, 'X-Robots-Tag': 'noindex, follow', 'Cache-Control': 'public, max-age=0, s-maxage=3600' });
     }
 
     // ----- SEO + static files -----
