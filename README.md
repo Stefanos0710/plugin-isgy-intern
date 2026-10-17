@@ -97,11 +97,11 @@ Neue Version holen (`git pull`), erneut `node build.mjs` ausführen und die Erwe
 
 ## KI-Assistenten & KI-Konto
 
-Der [MCP-Server](mcp/README.md) (`https://isgy-intern-mcp.vercel.app/mcp`) verbindet Claude, ChatGPT und Gemini CLI mit isgy-intern.de. Fragen wie „Was habe ich morgen?“, „Fällt was aus?“, „Mach mir einen Lernplan für die Mathe-Schulaufgabe“ oder „Schreib mir auf: Bio-Referat bis Freitag“ beantwortet der Assistent dann mit deinen echten Daten. Von isgy-intern.de wird nur gelesen; schreiben kann der Assistent nur deine eigenen Aufgaben & Notizen.
+Der [MCP-Server](mcp/README.md) (`https://isgy-intern-plus.vercel.app/mcp`) verbindet Claude, ChatGPT und Gemini CLI mit isgy-intern.de. Fragen wie „Was habe ich morgen?“, „Fällt was aus?“, „Mach mir einen Lernplan für die Mathe-Schulaufgabe“ oder „Schreib mir auf: Bio-Referat bis Freitag“ beantwortet der Assistent dann mit deinen echten Daten. Von isgy-intern.de wird nur gelesen; schreiben kann der Assistent nur deine eigenen Aufgaben & Notizen.
 
 ### Einrichten (empfohlen: mit Konto)
 
-1. **Konto erstellen** auf <https://isgy-intern-mcp.vercel.app/konto> (Tab „Registrieren“).
+1. **Konto erstellen** auf <https://isgy-intern-plus.vercel.app/konto> (Tab „Registrieren“).
 2. **Erweiterung verbinden**: Einstellungen der Erweiterung (⚙ im Dashboard) → **KI-Konto** → mit E-Mail und Konto-Passwort anmelden. Danach isgy-intern.de öffnen: Aufgaben & Notizen werden synchronisiert, und bei Office-365-Login hinterlegt die Erweiterung deine Sitzung automatisch im Konto.
    *Alternative für Konten mit Portal-Passwort (z. B. Eltern):* auf der Kontoseite unter „Zugang hinterlegen“ Benutzername und Passwort von isgy-intern eintragen.
 3. **KI-Assistenten verbinden**: die Server-URL in Claude (Einstellungen → Connectors), ChatGPT (Apps & Connectors, Entwicklermodus) oder Gemini CLI eintragen und bei der Anmeldung den Tab **„Konto“** wählen. Die Schritte für jeden Assistenten stehen auf der Startseite des Servers.

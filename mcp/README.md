@@ -2,19 +2,19 @@
 
 Ein [MCP](https://modelcontextprotocol.io)-Server, mit dem **Claude, ChatGPT, Gemini CLI** und andere KI-Assistenten deine Daten aus isgy-intern.de lesen können: Stundenplan, Vertretungsplan, Klassentagebuch (Themen & Hausaufgaben), Termine aus dem Klassenkalender und die Lehrerkürzel. Nur Lesezugriff.
 
-**Server-URL:** `https://isgy-intern-mcp.vercel.app/mcp`
-Auf der Startseite <https://isgy-intern-mcp.vercel.app> stehen die Anleitungen für jeden Client noch einmal mit Kopier-Knopf.
+**Server-URL:** `https://isgy-intern-plus.vercel.app/mcp`
+Auf der Startseite <https://isgy-intern-plus.vercel.app> stehen die Anleitungen für jeden Client noch einmal mit Kopier-Knopf.
 
 ## Hinzufügen
 
-**Claude** (claude.ai, Desktop-App, Handy): Einstellungen → Connectors → *Benutzerdefinierten Connector hinzufügen* → Name `ISGY Intern`, URL `https://isgy-intern-mcp.vercel.app/mcp` → *Verbinden* → im Fenster anmelden.
-Claude Code: `claude mcp add --transport http isgy-intern https://isgy-intern-mcp.vercel.app/mcp`, dann `/mcp` → Anmelden.
+**Claude** (claude.ai, Desktop-App, Handy): Einstellungen → Connectors → *Benutzerdefinierten Connector hinzufügen* → Name `ISGY Intern`, URL `https://isgy-intern-plus.vercel.app/mcp` → *Verbinden* → im Fenster anmelden.
+Claude Code: `claude mcp add --transport http isgy-intern https://isgy-intern-plus.vercel.app/mcp`, dann `/mcp` → Anmelden.
 
-**ChatGPT** (Plus/Pro/Business): Einstellungen → Apps & Connectors → Erweitert → *Entwicklermodus* an. Dann *Erstellen*: Name `ISGY Intern`, URL `https://isgy-intern-mcp.vercel.app/mcp`, Authentifizierung *OAuth* → anmelden. Im Chat über *+ → Mehr* einschalten.
+**ChatGPT** (Plus/Pro/Business): Einstellungen → Apps & Connectors → Erweitert → *Entwicklermodus* an. Dann *Erstellen*: Name `ISGY Intern`, URL `https://isgy-intern-plus.vercel.app/mcp`, Authentifizierung *OAuth* → anmelden. Im Chat über *+ → Mehr* einschalten.
 
 **Gemini CLI**: in `~/.gemini/settings.json`
 ```json
-{ "mcpServers": { "isgy-intern": { "httpUrl": "https://isgy-intern-mcp.vercel.app/mcp" } } }
+{ "mcpServers": { "isgy-intern": { "httpUrl": "https://isgy-intern-plus.vercel.app/mcp" } } }
 ```
 Beim ersten Start öffnet sich die Anmeldung (sonst `/mcp auth isgy-intern`).
 
@@ -24,7 +24,7 @@ Beim ersten Start öffnet sich die Anmeldung (sonst `/mcp auth isgy-intern`).
 
 Beim Verbinden öffnet sich eine Anmeldeseite mit drei Wegen:
 
-- **Konto (empfohlen)** – auf <https://isgy-intern-mcp.vercel.app/konto> mit E-Mail und Passwort registrieren und einmal den isgy-intern-Zugang hinterlegen (Portal-Passwort oder automatisch über die Erweiterung). Danach melden sich KI-Assistenten nur noch mit dem Konto an. Ist man auf der Seite schon angemeldet, reicht ein Klick auf „Verbinden“.
+- **Konto (empfohlen)** – auf <https://isgy-intern-plus.vercel.app/konto> mit E-Mail und Passwort registrieren und einmal den isgy-intern-Zugang hinterlegen (Portal-Passwort oder automatisch über die Erweiterung). Danach melden sich KI-Assistenten nur noch mit dem Konto an. Ist man auf der Seite schon angemeldet, reicht ein Klick auf „Verbinden“.
 - **Benutzername & Passwort** (ohne Konto) – für Konten mit Portal-Passwort (z. B. Eltern). Der Server meldet sich selbst an und, wenn die Sitzung abläuft, automatisch neu.
 - **Office 365 / Verbindungscode** (ohne Konto) – in der Erweiterung `Strg+K` → *🤖 KI-Verbindungscode kopieren* und einfügen.
 
