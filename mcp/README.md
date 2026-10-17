@@ -28,6 +28,8 @@ Beim Verbinden öffnet sich eine Anmeldeseite mit drei Wegen:
 - **Benutzername & Passwort** (ohne Konto) – für Konten mit Portal-Passwort (z. B. Eltern). Der Server meldet sich selbst an und, wenn die Sitzung abläuft, automatisch neu.
 - **Office 365 / Verbindungscode** (ohne Konto) – in der Erweiterung `Strg+K` → *🤖 KI-Verbindungscode kopieren* und einfügen.
 
+**Welche Daten wohin?** Bei „Konto“ (und beim Registrieren) gehören **E-Mail** und ein eigenes **Konto-Passwort** hin – nicht das isgy-intern-Passwort. Beim Tab „Passwort“ (und beim Hinterlegen auf der Kontoseite) gehören der **isgy-intern-Benutzername** und das **Portal-Passwort** hin. Wer sich auf isgy-intern.de über Office 365 anmeldet, trägt nichts davon ein, sondern nutzt die Erweiterung (mit Konto) oder den Verbindungscode.
+
 ### Konto + Erweiterung
 
 In den Einstellungen der Erweiterung **ISGY Intern Plus** (ab 1.3) unter *KI-Konto* mit E-Mail und Konto-Passwort anmelden. Ab dann, bei jedem Besuch von isgy-intern.de (höchstens alle 2 Minuten und nach jeder Änderung):
