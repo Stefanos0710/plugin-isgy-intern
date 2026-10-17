@@ -64,7 +64,10 @@ export function startMock(port) {
         if (url.searchParams.get('id') !== '80') { res.writeHead(404); return res.end(); }
         res.writeHead(200, { 'content-type': 'application/pdf' }); return res.end(kuerzelPdf());
       }
-      return html(res, '<html>dashboard</html>');
+      // Enough of the real page for the extension: sidebar (= logged in), main, session in localStorage.
+      return html(res, `<!doctype html><html><head><meta charset="utf-8"></head><body><nav class="su-sidebar-nav"><a href="index.php?page=ext_dashboard">Dashboard</a></nav>
+<div class="su-sidebar-user__info"><p>Max Muster</p></div><main class="dashboard-front-main"><h1>Dashboard</h1></main>
+<script>window.globals={apiKey: "${APP_KEY}"};localStorage.setItem('session', '__q_strn|${sid(req)}');</script></body></html>`);
     }
     if (url.pathname.startsWith('/rest.php/')) {
       const ep = url.pathname.slice('/rest.php/'.length);

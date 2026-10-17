@@ -2,8 +2,12 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { startMock, USER, D1, clearSessions } from './mock-portal.mjs';
+import { startSupabase, state as dbState, API_SECRET, KEY } from './mock-supabase.mjs';
 
 process.env.ISGY_BASE_URL = 'http://127.0.0.1:4100';
+process.env.SUPABASE_URL = 'http://127.0.0.1:4200';
+process.env.SUPABASE_KEY = KEY;
+process.env.SUPABASE_API_SECRET = API_SECRET;
 process.env.MCP_SECRET = 'test-secret-0123456789-0123456789-abcdef';
 const { default: handler } = await import('../api/index.js');
 const { Client } = await import('@modelcontextprotocol/sdk/client/index.js');
@@ -11,6 +15,7 @@ const { StreamableHTTPClientTransport } = await import('@modelcontextprotocol/sd
 const { UnauthorizedError } = await import('@modelcontextprotocol/sdk/client/auth.js');
 
 const mock = await startMock(4100);
+const supa = await startSupabase(4200);
 const server = createServer(handler).listen(3100);
 const BASE = 'http://localhost:3100';
 const MCP = new URL(BASE + '/mcp');
@@ -82,8 +87,10 @@ await step('OAuth flow with password + initialize', async () => {
 
 await step('tools/list', async () => {
   const { tools } = await client.listTools();
-  assert.deepEqual(tools.map((t) => t.name).sort(), ['fach', 'hausaufgaben', 'lehrer', 'letzter_eintrag', 'pruefungen', 'stundenplan', 'tagebuch', 'tagesplan', 'termine', 'uebersicht', 'vertretungen']);
-  assert.ok(tools.every((t) => t.annotations.readOnlyHint));
+  assert.deepEqual(tools.map((t) => t.name).sort(), ['aufgabe_erledigt', 'fach', 'hausaufgaben', 'lehrer', 'letzter_eintrag', 'notiz_anlegen', 'notiz_loeschen', 'notizen', 'pruefungen', 'stundenplan', 'tagebuch', 'tagesplan', 'termine', 'uebersicht', 'vertretungen']);
+  assert.equal(tools.find((t) => t.name === 'notiz_loeschen').annotations.destructiveHint, true);
+  assert.ok(tools.filter((t) => !/^(notiz_|aufgabe_)/.test(t.name)).every((t) => t.annotations.readOnlyHint));
+  assert.ok(!tools.find((t) => t.name === 'notiz_anlegen').annotations.readOnlyHint);
 });
 
 const calls = [
@@ -170,11 +177,167 @@ await step('personal key page', async () => {
   assert.match(j.result.content[0].text, /Max Mustermann/);
 });
 
+
+// ---------- accounts ----------
+const jar = { c: '' };
+const web = async (path, form) => {
+  const r = await fetch(BASE + path, { method: form ? 'POST' : 'GET', redirect: 'manual', headers: { cookie: jar.c, origin: BASE }, body: form ? new URLSearchParams(form) : undefined });
+  const sc = r.headers.get('set-cookie');
+  if (sc) jar.c = sc.split(';')[0].replace(/^isgy_s=$/, '');
+  return r;
+};
+const EMAIL = 'Max@Example.org', PW = 'kontopasswort1';
+let acctClient, acctProv, extToken;
+
+await step('register account + cookie session', async () => {
+  let r = await web('/konto/registrieren', { email: EMAIL, password: PW, password2: 'anders123' });
+  assert.match(await r.text(), /stimmen nicht überein/);
+  r = await web('/konto/registrieren', { email: EMAIL, password: PW, password2: PW });
+  assert.equal(r.status, 303);
+  assert.ok(jar.c.startsWith('isgy_s='));
+  const page = await (await web('/konto')).text();
+  assert.match(page, /max@example\.org/);
+  assert.match(page, /Noch kein isgy-intern-Login hinterlegt/);
+  r = await web('/konto/registrieren', { email: 'max@example.org', password: PW, password2: PW });
+  assert.match(await r.text(), /gibt es schon ein Konto/);
+  // pw hash, not the password, is stored
+  const acc = [...dbState.accounts.values()][0];
+  assert.ok(acc.pw_hash.startsWith('scrypt$') && !acc.pw_hash.includes(PW));
+});
+
+await step('store isgy-intern login in the account (encrypted)', async () => {
+  let r = await web('/konto/zugang', { mode: 'pw', username: USER.username, password: 'falsch' });
+  assert.match(await r.text(), /Unbekannter Benutzer/);
+  r = await web('/konto/zugang', { mode: 'pw', username: USER.username, password: USER.password });
+  assert.equal(r.status, 303);
+  const page = await (await web('/konto?ok=zugang')).text();
+  assert.match(page, /Passwort für <b>max\.muster<\/b> gespeichert/);
+  const acc = [...dbState.accounts.values()][0];
+  assert.equal(acc.cred_kind, 'pw');
+  assert.ok(!acc.cred.includes(USER.password) && !acc.cred.includes(USER.username));
+});
+
+await step('cross-site form post is rejected', async () => {
+  const r = await fetch(BASE + '/konto/loeschen', { method: 'POST', redirect: 'manual', headers: { cookie: jar.c, origin: 'https://evil.example' }, body: new URLSearchParams({ confirm: '1' }) });
+  assert.equal(r.status, 403);
+});
+
+await step('OAuth with account → tools use the stored login', async () => {
+  acctProv = provider({ mode: 'acct', email: EMAIL, account_password: PW });
+  acctClient = await connect(acctProv);
+  const r = await acctClient.callTool({ name: 'tagesplan', arguments: { datum: D1 } });
+  assert.match(text(r), /ENTFÄLLT/);
+  assert.ok(!acctProv.s.tokens.access_token.includes(USER.username));
+  const bad = provider({ mode: 'acct', email: EMAIL, account_password: 'falsch!!' });
+  await assert.rejects(connect(bad));
+});
+
+await step('one-click connect when signed in on the site', async () => {
+  const reg = await (await fetch(BASE + '/register', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ redirect_uris: ['https://claude.ai/api/mcp/auth_callback'], client_name: 'Claude' }) })).json();
+  const url = `/authorize?response_type=code&client_id=${reg.client_id}&redirect_uri=${encodeURIComponent('https://claude.ai/api/mcp/auth_callback')}&code_challenge=abc&code_challenge_method=S256&state=s9`;
+  const page = await (await web(url)).text();
+  assert.match(page, /Angemeldet als<b>max@example\.org<\/b>/);
+  const req = page.match(/name="req" value="([^"]+)"/)[1];
+  const r = await web('/authorize', { req, mode: 'web' });
+  assert.equal(r.status, 302);
+  assert.match(r.headers.get('location'), /^https:\/\/claude\.ai\/api\/mcp\/auth_callback\?code=.+&state=s9$/);
+});
+
+await step('notes tools via MCP', async () => {
+  let r = await acctClient.callTool({ name: 'notiz_anlegen', arguments: { text: 'Bio-Referat fertig machen', faellig: D1 } });
+  assert.match(text(r), /Aufgabe gespeichert/);
+  r = await acctClient.callTool({ name: 'notiz_anlegen', arguments: { text: 'Pinsel kaufen', art: 'notiz' } });
+  r = await acctClient.callTool({ name: 'notizen', arguments: {} });
+  const t = text(r);
+  assert.match(t, /\[ \] Bio-Referat fertig machen – fällig/);
+  assert.match(t, /Pinsel kaufen/);
+  const id = t.match(/Bio-Referat.*\(id (\d+)\)/)[1];
+  r = await acctClient.callTool({ name: 'tagesplan', arguments: { datum: D1 } });
+  assert.match(text(r), /Eigene offene Aufgaben bis zu diesem Tag/);
+  r = await acctClient.callTool({ name: 'aufgabe_erledigt', arguments: { id } });
+  assert.match(text(r), /als erledigt abgehakt/);
+  r = await acctClient.callTool({ name: 'notizen', arguments: { art: 'alle' } });
+  assert.match(text(r), /\[x\] Bio-Referat/);
+  r = await client.callTool({ name: 'notizen', arguments: {} });
+  assert.ok(r.isError && /nur mit einem ISGY-KI-Konto/.test(text(r)));
+});
+
+await step('extension: login + two-way note sync + session refresh', async () => {
+  const api = (path, body, token) => fetch(BASE + '/api/ext/' + path, { method: 'POST', headers: { 'content-type': 'application/json', ...(token ? { authorization: 'Bearer ' + token } : {}) }, body: JSON.stringify(body) });
+  let r = await api('login', { email: EMAIL, password: 'falsch!!' });
+  assert.equal(r.status, 401);
+  r = await api('login', { email: EMAIL, password: PW });
+  const j = await r.json();
+  assert.equal(j.email, 'max@example.org');
+  extToken = j.token;
+  // local notes: one new to-do, plus an edit of the AI's note, plus deleting the done task
+  const server = (await (await api('sync', {}, extToken)).json()).notes;
+  const memo = server.find((n) => n.type === 'note'), task = server.find((n) => n.type === 'todo');
+  r = await api('sync', { notes: [
+    { id: 1700000000000, type: 'todo', text: 'Mathe S. 42', date: '', done: false, updated: Date.now() },
+    { ...memo, text: 'Pinsel + Farben kaufen', updated: Date.now() },
+    { id: task.id, deleted: true, updated: Date.now() },
+    { ...memo, text: 'veraltet', updated: 1 },
+  ] }, extToken);
+  const out = await r.json();
+  assert.deepEqual(out.notes.map((n) => n.text).sort(), ['Mathe S. 42', 'Pinsel + Farben kaufen']);
+  const t = text(await acctClient.callTool({ name: 'notizen', arguments: { art: 'alle' } }));
+  assert.match(t, /Mathe S\. 42/);
+  assert.ok(!/Bio-Referat/.test(t));
+  // account uses a portal password → the extension's session is not stored over it
+  r = await api('sync', { session: { c: { PHPSESSID: 'x'.repeat(20) }, s: 'y', k: 'AppKey123' } }, extToken);
+  assert.equal((await r.json()).credKind, 'pw');
+  assert.equal(dbState.accounts.values().next().value.cred_kind, 'pw');
+  const page = await (await web('/konto')).text();
+  assert.match(page, /Verbunden · zuletzt synchronisiert/);
+  assert.match(page, /Mathe S\. 42/);
+});
+
+await step('extension session refresh for Office-365 accounts', async () => {
+  const api = (path, body, token) => fetch(BASE + '/api/ext/' + path, { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + token }, body: JSON.stringify(body) });
+  await web('/konto/zugang-entfernen', {});
+  assert.equal(dbState.accounts.values().next().value.cred, null);
+  let r = await acctClient.callTool({ name: 'stundenplan', arguments: {} });
+  assert.ok(r.isError && /noch kein isgy-intern-Zugang hinterlegt/.test(text(r)));
+  r = await api('sync', { session: { c: { PHPSESSID: 'invalidsession123456' }, s: 'x', k: 'AppKey123' } }, extToken);
+  assert.equal((await r.json()).session, 'ungültig');
+  const login = await fetch('http://127.0.0.1:4100/index.php?page=login&authorize=1', { method: 'POST', body: (() => { const f = new FormData(); f.set('username', USER.username); f.set('password', USER.password); return f; })() });
+  const sid = login.headers.getSetCookie()[0].match(/PHPSESSID=(\w+)/)[1];
+  r = await api('sync', { session: { c: { PHPSESSID: sid }, s: sid, k: 'AppKey123' } }, extToken);
+  assert.equal((await r.json()).session, 'gespeichert');
+  r = await api('sync', { session: { c: { PHPSESSID: sid }, s: sid, k: 'AppKey123' } }, extToken);
+  assert.equal((await r.json()).session, 'unverändert');
+  r = await acctClient.callTool({ name: 'vertretungen', arguments: { datum: D1 } });
+  assert.match(text(r), /ENTFÄLLT/);
+});
+
+await step('sign out everywhere → all account tokens stop working', async () => {
+  await web('/konto/ueberall-abmelden', {});
+  assert.equal(jar.c, ''); // cookie cleared
+  const r = await fetch(MCP, { method: 'POST', headers: { authorization: 'Bearer ' + acctProv.s.tokens.access_token, 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'ping' }) });
+  assert.equal(r.status, 401);
+  const e = await fetch(BASE + '/api/ext/sync', { method: 'POST', headers: { authorization: 'Bearer ' + extToken, 'content-type': 'application/json' }, body: '{}' });
+  assert.equal(e.status, 401);
+  const rt = await fetch(BASE + '/token', { method: 'POST', body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: acctProv.s.tokens.refresh_token, client_id: acctProv.s.client.client_id }) });
+  assert.equal(rt.status, 400);
+});
+
+await step('delete account', async () => {
+  let r = await web('/konto/anmelden', { email: EMAIL, password: PW });
+  assert.equal(r.status, 303);
+  r = await web('/konto/loeschen', {});
+  assert.match(await r.text(), /Häkchen/);
+  r = await web('/konto/loeschen', { confirm: '1' });
+  assert.equal(r.status, 303);
+  assert.equal(dbState.accounts.size, 0);
+  assert.equal(dbState.notes.size, 0);
+});
+
 await step('home page', async () => {
   const r = await fetch(BASE + '/');
   assert.match(await r.text(), /http:\/\/localhost:3100\/mcp/);
 });
 
-server.close(); mock.close();
+server.close(); mock.close(); supa.close();
 console.log(failures ? `\n${failures} Fehler` : '\nAlle Tests bestanden.');
 process.exit(failures ? 1 : 0);

@@ -1,6 +1,7 @@
 // Single Vercel function; vercel.json rewrites every path here. Also used by dev-server.mjs.
 import { handleRpc } from '../lib/mcp.js';
-import { protectedResource, authServer, register, authorizeGet, authorizePost, token, credFromBearer, keyGet, keyPost } from '../lib/oauth.js';
+import { protectedResource, authServer, register, authorizeGet, authorizePost, token, authFromBearer, keyGet, keyPost } from '../lib/oauth.js';
+import { kontoGet, kontoPost, extApi } from '../lib/konto.js';
 import { homePage, errorPage } from '../lib/pages.js';
 import { loadPdfjs } from '../lib/portal.js';
 
@@ -15,7 +16,7 @@ const PAGE_HEADERS = {
   'Content-Type': 'text/html; charset=utf-8',
   'Cache-Control': 'no-store',
   'X-Frame-Options': 'DENY',
-  'Referrer-Policy': 'no-referrer',
+  'Referrer-Policy': 'same-origin',
   'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; frame-ancestors 'none'; base-uri 'none'",
 };
 
@@ -53,6 +54,7 @@ function send(res, status, body, headers = {}) {
   res.end(JSON.stringify(body));
 }
 const sendResult = (res, r) => {
+  if (r.cookie) res.setHeader('Set-Cookie', r.cookie);
   if (r.location) return send(res, r.status, null, { Location: r.location, 'Cache-Control': 'no-store' });
   if (r.html) return send(res, r.status, r.html, PAGE_HEADERS);
   return send(res, r.status, r.json, { 'Cache-Control': 'no-store', Pragma: 'no-cache' });
@@ -69,8 +71,8 @@ export default async function handler(req, res) {
 
     // ----- MCP endpoint -----
     if (path === '/mcp' || path === '/sse') {
-      const cred = credFromBearer(req.headers.authorization);
-      if (!cred) {
+      const auth = await authFromBearer(req.headers.authorization);
+      if (!auth) {
         return send(res, 401, { jsonrpc: '2.0', id: null, error: { code: -32001, message: 'Anmeldung erforderlich' } }, {
           'WWW-Authenticate': `Bearer realm="isgy-intern", resource_metadata="${o}/.well-known/oauth-protected-resource", scope="isgy"`,
         });
@@ -79,7 +81,7 @@ export default async function handler(req, res) {
       if (m !== 'POST') return send(res, 405, null, { Allow: 'POST' });
       const body = await readBody(req);
       if (typeof body === 'symbol') return send(res, 400, { jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } });
-      const [status, out] = await handleRpc(body, cred);
+      const [status, out] = await handleRpc(body, { ...auth, origin: o });
       return send(res, status, out);
     }
 
@@ -87,16 +89,31 @@ export default async function handler(req, res) {
     if (path.startsWith('/.well-known/oauth-protected-resource')) return send(res, 200, protectedResource(o), { 'Cache-Control': 'public, max-age=3600' });
     if (path.startsWith('/.well-known/oauth-authorization-server') || path.startsWith('/.well-known/openid-configuration')) return send(res, 200, authServer(o), { 'Cache-Control': 'public, max-age=3600' });
 
+    // Form posts only from our own pages (the session cookie is SameSite=Lax as well).
+    const from = req.headers.origin;
+    if (m === 'POST' && from && from !== 'null' && from !== o && /^\/(authorize|schluessel|konto)/.test(path)) return send(res, 403, errorPage('Nicht erlaubt', 'Anfrage von einer fremden Seite.'), PAGE_HEADERS);
+    const cookies = req.headers.cookie;
+
     if (path === '/register' && m === 'POST') return sendResult(res, register(await readBody(req)));
-    if (path === '/authorize' && m === 'GET') return sendResult(res, authorizeGet(q));
-    if (path === '/authorize' && m === 'POST') return sendResult(res, await authorizePost(await readBody(req)));
+    if (path === '/authorize' && m === 'GET') return sendResult(res, await authorizeGet(q, cookies));
+    if (path === '/authorize' && m === 'POST') return sendResult(res, await authorizePost(await readBody(req), cookies));
     if (path === '/token' && m === 'POST') {
       const body = await readBody(req);
-      return sendResult(res, token(typeof body === 'object' ? body : {}, req.headers.authorization));
+      return sendResult(res, await token(typeof body === 'object' ? body : {}, req.headers.authorization));
     }
 
-    if (path === '/schluessel' && m === 'GET') return sendResult(res, keyGet(o));
-    if (path === '/schluessel' && m === 'POST') return sendResult(res, await keyPost(o, await readBody(req)));
+    if (path === '/schluessel' && m === 'GET') return sendResult(res, await keyGet(o, cookies));
+    if (path === '/schluessel' && m === 'POST') return sendResult(res, await keyPost(o, await readBody(req), cookies));
+
+    // ----- account -----
+    if (path === '/konto' && m === 'GET') return sendResult(res, await kontoGet(o, q, cookies));
+    const k = /^\/konto\/([a-z-]+)$/.exec(path);
+    if (k && m === 'POST') return sendResult(res, await kontoPost(o, k[1], await readBody(req), cookies));
+    const x = /^\/api\/ext\/([a-z]+)$/.exec(path);
+    if (x && m === 'POST') {
+      const body = await readBody(req);
+      return sendResult(res, await extApi(x[1], typeof body === 'object' ? body : {}, req.headers.authorization));
+    }
 
     if (path === '/' && m === 'GET') return send(res, 200, homePage(o), PAGE_HEADERS);
     if (path === '/health') {

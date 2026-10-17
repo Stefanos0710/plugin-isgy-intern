@@ -3,6 +3,8 @@
 // Fully stateless: clients, codes and tokens are signed/encrypted strings (see crypto.js).
 import { seal, unseal, sign, verify, clientSecretFor, safeEqual, sha256 } from './crypto.js';
 import { Portal, AuthError, PortalError } from './portal.js';
+import { AccountError, login as accountLogin, accountFor, webPayload } from './accounts.js';
+import { DbError, dbEnabled } from './db.js';
 import { authorizePage, errorPage, keyPage, keyResultPage } from './pages.js';
 
 const ACCESS_TTL = 24 * 3600;
@@ -95,23 +97,32 @@ function withParams(uri, params) {
 
 const html = (status, body) => ({ status, html: body });
 
-export function authorizeGet(q) {
+// What a token stands for: either the portal login itself ({cred}) or an account ({acc, tv}),
+// whose stored login is looked up on every request (so an updated session from the extension is used right away).
+const sessOf = (x) => (x?.acc ? { acc: x.acc, tv: x.tv } : x?.cred ? { cred: x.cred } : null);
+
+async function webAccount(cookieHeader) {
+  if (!dbEnabled()) return null;
+  try { return await accountFor(webPayload(cookieHeader)); } catch { return null; }
+}
+
+export async function authorizeGet(q, cookieHeader) {
   const c = checkAuthorizeParams(q);
   if (c.fatal) return html(400, errorPage('Verbindung nicht möglich', c.fatal));
   if (c.redirect) return { status: 302, location: c.redirect };
   const req = seal('req', { client_id: q.client_id, redirect_uri: q.redirect_uri, state: q.state || '', code_challenge: q.code_challenge, scope: q.scope || 'isgy' }, 3600);
-  return html(200, authorizePage({ client: c.client.n, redirectHost: new URL(q.redirect_uri).host, req }));
+  const me = await webAccount(cookieHeader);
+  return html(200, authorizePage({ client: c.client.n, redirectHost: new URL(q.redirect_uri).host, req, accounts: dbEnabled(), me: me?.email, mode: dbEnabled() ? 'acct' : 'pw' }));
 }
 
-// Turns the login form into credentials and checks them against the portal.
-async function credentialsFromForm(form) {
+// Turns the portal part of a login form into credentials and checks them against the portal.
+export async function credentialsFromForm(form) {
   if (form.mode === 'code') {
     const raw = String(form.code || '').trim().replace(/\s+/g, '');
     let data = null;
     try { data = JSON.parse(Buffer.from(raw.replace(/^isgy1\./, ''), 'base64url').toString('utf8')); } catch {}
     if (!raw.startsWith('isgy1.') || !data || typeof data.c !== 'object') throw new AuthError('Das ist kein gültiger Verbindungscode. Bitte in der Erweiterung neu kopieren (Strg+K → „KI-Verbindungscode kopieren“).');
-    const cookies = Object.fromEntries(Object.entries(data.c).filter(([k, v]) => /^[\w.\-]+$/.test(k) && typeof v === 'string').slice(0, 30));
-    const cred = { m: 's', c: cookies, s: String(data.s || ''), k: String(data.k || '') };
+    const cred = sessionCred(data);
     const portal = new Portal(cred);
     try { await portal.stundenplan(); } catch (e) {
       if (e instanceof AuthError) throw new AuthError('Mit diesem Verbindungscode klappt die Anmeldung nicht (abgelaufen?). Bitte auf isgy-intern.de neu anmelden und den Code neu kopieren.');
@@ -126,31 +137,53 @@ async function credentialsFromForm(form) {
   return cred;
 }
 
-const loginErrorText = (e) => (e instanceof AuthError || e instanceof PortalError ? e.message : 'Unerwarteter Fehler bei der Anmeldung. Bitte später erneut versuchen.');
+// A browser session as the extension sends it: {c: cookies, s: localStorage session, k: app key}.
+export function sessionCred(data) {
+  const cookies = Object.fromEntries(Object.entries(data?.c || {}).filter(([k, v]) => /^[\w.\-]+$/.test(k) && typeof v === 'string' && v.length < 4096).slice(0, 30));
+  return { m: 's', c: cookies, s: String(data?.s || '').slice(0, 512), k: String(data?.k || '').slice(0, 128) };
+}
 
-export async function authorizePost(form) {
+export const loginErrorText = (e) => (e instanceof AuthError || e instanceof PortalError || e instanceof AccountError || e instanceof DbError ? e.message : 'Unerwarteter Fehler bei der Anmeldung. Bitte später erneut versuchen.');
+
+// Login form → token session. mode: acct (account e-mail/password), web (already signed in on this site), pw, code.
+async function sessionFromForm(form, cookieHeader) {
+  if (form.mode === 'web') {
+    const acc = await webAccount(cookieHeader);
+    if (!acc) throw new AccountError('Du bist nicht mehr angemeldet. Bitte erneut anmelden.');
+    return { acc: acc.id, tv: acc.token_version };
+  }
+  if (form.mode === 'acct') {
+    const a = await accountLogin(form.email, form.account_password);
+    return { acc: a.id, tv: a.tv };
+  }
+  return { cred: await credentialsFromForm(form) };
+}
+
+export async function authorizePost(form, cookieHeader) {
   const r = unseal('req', form.req);
   if (!r) return html(400, errorPage('Sitzung abgelaufen', 'Die Anmeldeseite war zu lange offen. Bitte die Verbindung im KI-Assistenten erneut starten.'));
   const client = verify(r.client_id);
   if (!client) return html(400, errorPage('Verbindung nicht möglich', 'Unbekannte Anwendung.'));
-  let cred;
+  let sess;
   try {
-    cred = await credentialsFromForm(form);
+    sess = await sessionFromForm(form, cookieHeader);
   } catch (e) {
-    if (!(e instanceof AuthError || e instanceof PortalError)) console.error('[authorize]', e);
-    return html(200, authorizePage({ client: client.n, redirectHost: new URL(r.redirect_uri).host, req: form.req, error: loginErrorText(e), mode: form.mode === 'code' ? 'code' : 'pw', username: form.username }));
+    if (!(e instanceof AuthError || e instanceof PortalError || e instanceof AccountError || e instanceof DbError)) console.error('[authorize]', e);
+    const me = form.mode === 'web' ? null : await webAccount(cookieHeader);
+    return html(200, authorizePage({ client: client.n, redirectHost: new URL(r.redirect_uri).host, req: form.req, error: loginErrorText(e), accounts: dbEnabled(), me: me?.email,
+      mode: ['code', 'pw', 'acct'].includes(form.mode) ? form.mode : 'acct', username: form.username, email: form.email }));
   }
-  const code = seal('code', { cred, cid: r.client_id, ru: r.redirect_uri, cc: r.code_challenge, sc: r.scope }, CODE_TTL);
+  const code = seal('code', { ...sess, cid: r.client_id, ru: r.redirect_uri, cc: r.code_challenge, sc: r.scope }, CODE_TTL);
   return { status: 302, location: withParams(r.redirect_uri, { code, state: r.state }) };
 }
 
 // ---------- token ----------
-function issue(cred, cid, scope = 'isgy') {
+function issue(sess, cid, scope = 'isgy') {
   return {
-    access_token: seal('at', { cred, cid }, ACCESS_TTL),
+    access_token: seal('at', { ...sess, cid }, ACCESS_TTL),
     token_type: 'Bearer',
     expires_in: ACCESS_TTL,
-    refresh_token: seal('rt', { cred, cid }, REFRESH_TTL),
+    refresh_token: seal('rt', { ...sess, cid }, REFRESH_TTL),
     scope,
   };
 }
@@ -168,7 +201,7 @@ function clientAuth(form, authHeader) {
   return { id, client };
 }
 
-export function token(form, authHeader) {
+export async function token(form, authHeader) {
   const ca = clientAuth(form, authHeader);
   if (ca.error) return ca.error;
   if (form.grant_type === 'authorization_code') {
@@ -177,33 +210,41 @@ export function token(form, authHeader) {
     if (c.cid !== ca.id) return oauthError('invalid_grant', 'Code gehört zu einer anderen Anwendung.');
     if (form.redirect_uri && form.redirect_uri !== c.ru) return oauthError('invalid_grant', 'redirect_uri passt nicht.');
     if (!form.code_verifier || sha256(form.code_verifier).toString('base64url') !== c.cc) return oauthError('invalid_grant', 'PKCE-Prüfung fehlgeschlagen.');
-    return { status: 200, json: issue(c.cred, c.cid, c.sc) };
+    return { status: 200, json: issue(sessOf(c), c.cid, c.sc) };
   }
   if (form.grant_type === 'refresh_token') {
     const r = unseal('rt', form.refresh_token);
     if (!r) return oauthError('invalid_grant', 'Refresh-Token ungültig oder abgelaufen.');
     if (r.cid !== ca.id) return oauthError('invalid_grant', 'Refresh-Token gehört zu einer anderen Anwendung.');
-    return { status: 200, json: issue(r.cred, r.cid) };
+    // Account tokens die with the account or after "überall abmelden".
+    if (r.acc && !(await accountFor(r))) return oauthError('invalid_grant', 'Konto gelöscht oder abgemeldet.');
+    return { status: 200, json: issue(sessOf(r), r.cid) };
   }
   return oauthError('unsupported_grant_type', 'Nur authorization_code und refresh_token.');
 }
 
 // ---------- bearer check for /mcp ----------
-export function credFromBearer(authHeader) {
+// Returns {cred, acc} for a valid token, null otherwise. `acc` is the account row for account tokens.
+export async function authFromBearer(authHeader) {
   const m = /^Bearer\s+(\S+)$/i.exec(authHeader || '');
   if (!m) return null;
   const t = unseal('at', m[1]) || unseal('key', m[1]);
-  return t?.cred || null;
+  if (!t) return null;
+  if (t.acc) {
+    const acc = await accountFor(t);
+    return acc ? { acc, cred: null } : null;
+  }
+  return t.cred ? { cred: t.cred, acc: null } : null;
 }
 
 // ---------- personal access key (for clients without OAuth) ----------
-export const keyGet = (origin) => html(200, keyPage({ origin }));
-export async function keyPost(origin, form) {
+export const keyGet = async (origin, cookieHeader) => html(200, keyPage({ origin, accounts: dbEnabled(), me: (await webAccount(cookieHeader))?.email, mode: dbEnabled() ? 'acct' : 'pw' }));
+export async function keyPost(origin, form, cookieHeader) {
   try {
-    const cred = await credentialsFromForm(form);
-    return html(200, keyResultPage({ origin, key: seal('key', { cred }, KEY_DAYS * 86400), days: KEY_DAYS }));
+    const sess = await sessionFromForm(form, cookieHeader);
+    return html(200, keyResultPage({ origin, key: seal('key', sess, KEY_DAYS * 86400), days: KEY_DAYS }));
   } catch (e) {
-    if (!(e instanceof AuthError || e instanceof PortalError)) console.error('[key]', e);
-    return html(200, keyPage({ origin, error: loginErrorText(e), mode: form.mode === 'code' ? 'code' : 'pw', username: form.username }));
+    if (!(e instanceof AuthError || e instanceof PortalError || e instanceof AccountError || e instanceof DbError)) console.error('[key]', e);
+    return html(200, keyPage({ origin, error: loginErrorText(e), accounts: dbEnabled(), mode: ['code', 'pw', 'acct'].includes(form.mode) ? form.mode : 'acct', username: form.username, email: form.email }));
   }
 }

@@ -1,5 +1,6 @@
 // The MCP tools. Each returns plain German text that reads well for both the model and the user,
 // with enough context (date, times, teachers, what's due) that the model rarely needs a second call.
+import { db } from './db.js';
 import { TIMES, DAYS, today, nowMinutes, addDays, isWeekend, weekday, diffDays, deDate, label, fromDe, parseDay, nextSchoolDay, rel, short, lessonTime, lessonStart } from './dates.js';
 
 // Bad arguments from the model: reported back as tool error, not logged.
@@ -50,6 +51,7 @@ function subInfo(v, teacher) {
 }
 
 async function context(portal) {
+  if (!portal) throw new InputError('In deinem ISGY-KI-Konto ist noch kein isgy-intern-Zugang hinterlegt. Entweder auf der Kontoseite (/konto) Benutzername und Passwort bzw. einen Verbindungscode speichern, oder die Erweiterung „ISGY Intern Plus“ mit dem Konto verbinden und isgy-intern.de einmal öffnen. Notizen und Aufgaben (Tool notizen) gehen auch ohne.');
   const [sp, kz] = await Promise.all([portal.stundenplan(), portal.kuerzelSafe()]);
   if (!sp || !Array.isArray(sp.plan)) throw new Error('Der Stundenplan konnte nicht gelesen werden.');
   return { sp, cls: clean(sp.active), teacher: teacherFn(kz), kz };
@@ -227,12 +229,13 @@ function defaultDay(sp) {
 }
 
 // ---------- tagesplan ----------
-async function tagesplan(portal, args) {
+async function tagesplan(portal, args, ctx) {
   const { sp, cls, teacher } = await context(portal);
   const ds = args.datum ? dateArg(args.datum) : defaultDay(sp);
-  const [vp, kal, diary] = await Promise.all([
+  const [vp, kal, diary, todos] = await Promise.all([
     safe(portal.vplan(), []), safe(portal.kalender(cls), { events: [] }),
     ds >= today() && !isWeekend(ds) ? safe(diaryDays(portal, addDays(ds, -1), 15), []) : { v: [] },
+    openTodos(ctx),
   ]);
   const day = buildDay(ds, sp, vp.v, cls, teacher);
   const out = [`${label(ds)} (${rel(ds)}) – Klasse ${cls}`];
@@ -251,14 +254,16 @@ async function tagesplan(portal, args) {
   if (hw.length) out.push('', 'Hausaufgaben für diesen Tag (jeweils aus dem letzten Tagebucheintrag des Fachs):', ...hw);
   const soon = kal.v.events.filter((e) => isExam(e) && inRange(e, addDays(ds, 1), addDays(ds, 7))).sort(byStart);
   if (soon.length) out.push('', 'Prüfungen in den Tagen danach:', ...soon.map((e) => '- ' + formatEvent(e, cls)));
+  const mine = (todos || []).filter((n) => n.date && n.date <= ds);
+  if (mine.length) out.push('', 'Eigene offene Aufgaben bis zu diesem Tag (aus der Erweiterung):', ...mine.map(todoLine));
   return out.join('\n');
 }
 
 // ---------- uebersicht ----------
-async function uebersicht(portal) {
+async function uebersicht(portal, args, ctx) {
   const { sp, cls, teacher } = await context(portal);
   const t = today();
-  const [vp, kal, diary] = await Promise.all([safe(portal.vplan(), []), safe(portal.kalender(cls), { events: [] }), safe(diaryDays(portal, t, 10), [])]);
+  const [vp, kal, diary, todos] = await Promise.all([safe(portal.vplan(), []), safe(portal.kalender(cls), { events: [] }), safe(diaryDays(portal, t, 10), []), openTodos(ctx)]);
   const out = [`Überblick für Klasse ${cls}`];
   const now = nowMinutes();
 
@@ -296,6 +301,10 @@ async function uebersicht(portal) {
   if (exams.length) out.push('', 'PRÜFUNGEN (nächste 3 Wochen):', ...exams.map((e) => '- ' + formatEvent(e, cls)));
   if (other.length) out.push('', 'WEITERE TERMINE (nächste 10 Tage):', ...other.map((e) => '- ' + formatEvent(e, cls)));
   if (kal.err) out.push('', `(Klassenkalender nicht verfügbar: ${kal.err})`);
+  if (todos?.length) {
+    const sorted = [...todos].sort((a, b) => (a.date || '9').localeCompare(b.date || '9'));
+    out.push('', `EIGENE OFFENE AUFGABEN (${todos.length}, aus der Erweiterung):`, ...sorted.slice(0, 15).map(todoLine));
+  }
   return out.join('\n');
 }
 
@@ -505,6 +514,79 @@ async function lehrer(portal, args) {
   return hits.slice(0, 300).map(([k, n]) => `${k}: ${n}`).join('\n');
 }
 
+
+// ---------- notes & to-dos (account only; synced with the extension's "Mein Tag" dashboard) ----------
+function needAccount(ctx) {
+  if (!ctx?.acc) throw new InputError('Aufgaben und Notizen gibt es nur mit einem ISGY-KI-Konto: auf der Startseite des Servers ein Konto erstellen, die Erweiterung damit verbinden und die Verbindung zu „ISGY Intern“ mit dem Konto neu herstellen.');
+  return ctx.acc;
+}
+const created = (n) => { const d = new Date(Number(n.id)); return isNaN(d) ? '' : d.toLocaleDateString('de-DE', { timeZone: 'Europe/Berlin', day: '2-digit', month: '2-digit', year: 'numeric' }); };
+const due = (n) => (n.date ? ` – fällig ${label(n.date)} (${rel(n.date)})${n.date < today() && !n.done ? ' ⚠ überfällig' : ''}` : '');
+const todoLine = (n) => `- [${n.done ? 'x' : ' '}] ${clean(n.text)}${due(n)}  (id ${n.id})`;
+
+async function openTodos(ctx) {
+  if (!ctx?.acc) return null;
+  try { return (await db.notes(ctx.acc.id)).filter((n) => n.type === 'todo' && !n.done); } catch { return null; }
+}
+
+async function notizen(portal, args, ctx) {
+  const acc = needAccount(ctx);
+  const all = await db.notes(acc.id);
+  const art = args.art || 'offen';
+  const todos = all.filter((n) => n.type === 'todo').sort((a, b) => a.done - b.done || (a.date || '9').localeCompare(b.date || '9') || a.id - b.id);
+  const memos = all.filter((n) => n.type === 'note').sort((a, b) => b.id - a.id);
+  const q = clean(args.suche).toLowerCase();
+  const match = (n) => !q || n.text.toLowerCase().includes(q);
+  const out = [];
+  if (art !== 'notizen') {
+    const open = todos.filter((n) => !n.done && match(n)), done = todos.filter((n) => n.done && match(n));
+    out.push(`Aufgaben – offen (${open.length}):`, ...(open.length ? open.map(todoLine) : ['  keine']));
+    if (art === 'alle' && done.length) out.push('', `Erledigt (${done.length}):`, ...done.map(todoLine));
+  }
+  if (art !== 'offen' || memos.length) {
+    const m = memos.filter(match);
+    out.push('', `Notizen (${m.length}):`, ...(m.length ? m.map((n) => `- ${indent(n.text, '  ')}  (vom ${created(n)}, id ${n.id})`) : ['  keine']));
+  }
+  out.push('', 'Quelle: „Mein Tag“-Dashboard der Erweiterung ISGY Intern Plus (über das Konto synchronisiert).');
+  return out.join('\n').trim();
+}
+
+async function notizAnlegen(portal, args, ctx) {
+  const acc = needAccount(ctx);
+  const text = String(args.text || '').trim();
+  if (!text) throw new InputError('Text fehlt.');
+  if (text.length > 5000) throw new InputError('Höchstens 5000 Zeichen.');
+  const type = args.art === 'notiz' ? 'note' : 'todo';
+  const date = type === 'todo' && args.faellig ? dateArg(args.faellig, 'faellig') : null;
+  const now = Date.now();
+  const note = { id: now, type, text, date, done: false, updated: now, source: 'ki' };
+  await db.upsertNotes(acc.id, [note]);
+  return `${type === 'todo' ? 'Aufgabe' : 'Notiz'} gespeichert (id ${now}): „${text}“${date ? ` – fällig ${label(date)}` : ''}. Sie erscheint beim nächsten Öffnen von isgy-intern.de im „Mein Tag“-Dashboard der Erweiterung.`;
+}
+
+async function findNote(acc, id) {
+  const all = await db.notes(acc.id);
+  const n = all.find((x) => String(x.id) === String(id).replace(/\D/g, ''));
+  if (!n) throw new InputError(`Keine Aufgabe/Notiz mit id ${id}. Mit dem Tool notizen die aktuellen ids abrufen.`);
+  return n;
+}
+
+async function aufgabeErledigt(portal, args, ctx) {
+  const acc = needAccount(ctx);
+  const n = await findNote(acc, args.id);
+  if (n.type !== 'todo') throw new InputError('Das ist eine Notiz, keine Aufgabe.');
+  const done = args.erledigt !== false;
+  await db.upsertNotes(acc.id, [{ ...n, done, updated: Date.now(), source: 'ki' }]);
+  return `Aufgabe „${clean(n.text)}“ ${done ? 'als erledigt abgehakt' : 'wieder als offen markiert'}.`;
+}
+
+async function notizLoeschen(portal, args, ctx) {
+  const acc = needAccount(ctx);
+  const n = await findNote(acc, args.id);
+  await db.upsertNotes(acc.id, [{ ...n, deleted: true, updated: Date.now(), source: 'ki' }]);
+  return `${n.type === 'todo' ? 'Aufgabe' : 'Notiz'} „${clean(n.text).slice(0, 80)}“ gelöscht.`;
+}
+
 // ---------- registry ----------
 const ro = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true };
 const DATUM = { type: 'string', description: 'Datum: YYYY-MM-DD, TT.MM.JJJJ, „heute“, „morgen“, „übermorgen“ oder ein Wochentag (z. B. „Montag“ = nächster Montag).' };
@@ -615,13 +697,45 @@ export const TOOLS = [
     run: termine,
   },
   {
+    name: 'notizen',
+    title: 'Meine Aufgaben & Notizen',
+    description: 'Die eigenen Aufgaben (To-dos mit optionalem Fälligkeitsdatum) und Notizen des Nutzers aus dem „Mein Tag“-Dashboard der Browser-Erweiterung, mit ids. Nur mit ISGY-KI-Konto.',
+    inputSchema: { type: 'object', properties: { art: { type: 'string', enum: ['offen', 'alle', 'notizen'], description: 'offen = offene Aufgaben + Notizen (Standard), alle = auch erledigte, notizen = nur Notizen.' }, suche: { type: 'string', description: 'Optional: nur Einträge, die diesen Text enthalten.' } }, additionalProperties: false },
+    run: notizen,
+  },
+  {
+    name: 'notiz_anlegen',
+    title: 'Aufgabe/Notiz anlegen',
+    description: 'Legt eine neue Aufgabe (optional mit Fälligkeitsdatum) oder Notiz im „Mein Tag“-Dashboard der Erweiterung an. Für „Schreib mir auf …“, „Erinnere mich an …“. Nur mit ISGY-KI-Konto.',
+    inputSchema: { type: 'object', properties: { text: { type: 'string', description: 'Inhalt, kurz und klar (z. B. „Bio-Referat fertig machen“).' }, art: { type: 'string', enum: ['aufgabe', 'notiz'], description: 'aufgabe (Standard, mit Häkchen) oder notiz (freier Text).' }, faellig: { ...DATUM, description: 'Optional, nur für Aufgaben: fällig am.' } }, required: ['text'], additionalProperties: false },
+    run: notizAnlegen,
+    write: true,
+  },
+  {
+    name: 'aufgabe_erledigt',
+    title: 'Aufgabe abhaken',
+    description: 'Hakt eine Aufgabe als erledigt ab (oder mit erledigt=false wieder als offen). id aus dem Tool notizen.',
+    inputSchema: { type: 'object', properties: { id: { type: 'string', description: 'id der Aufgabe' }, erledigt: { type: 'boolean', description: 'Standard true' } }, required: ['id'], additionalProperties: false },
+    run: aufgabeErledigt,
+    write: true,
+  },
+  {
+    name: 'notiz_loeschen',
+    title: 'Aufgabe/Notiz löschen',
+    description: 'Löscht eine Aufgabe oder Notiz endgültig (auch in der Erweiterung). Nur auf ausdrücklichen Wunsch des Nutzers. id aus dem Tool notizen.',
+    inputSchema: { type: 'object', properties: { id: { type: 'string', description: 'id der Aufgabe/Notiz' } }, required: ['id'], additionalProperties: false },
+    run: notizLoeschen,
+    write: true,
+    destructive: true,
+  },
+  {
     name: 'lehrer',
     title: 'Lehrkräfte',
     description: 'Löst Lehrerkürzel in Namen auf bzw. sucht Lehrkräfte nach Namen (Kürzel-Liste der Schule). Ohne Suchbegriff: alle. In den anderen Tools sind Namen schon aufgelöst.',
     inputSchema: { type: 'object', properties: { suche: { type: 'string', description: 'Kürzel (z. B. „Mm“) oder Teil des Namens.' } }, additionalProperties: false },
     run: lehrer,
   },
-].map((t) => ({ ...t, annotations: { title: t.title, ...ro } }));
+].map((t) => ({ ...t, annotations: { title: t.title, ...ro, ...(t.write ? { readOnlyHint: false, idempotentHint: false, openWorldHint: false, destructiveHint: !!t.destructive } : {}) } }));
 
 // ---------- prompts (shown as ready-made actions in clients that support them) ----------
 export const PROMPTS = [

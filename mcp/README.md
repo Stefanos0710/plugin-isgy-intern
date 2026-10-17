@@ -22,10 +22,18 @@ Beim ersten Start öffnet sich die Anmeldung (sonst `/mcp auth isgy-intern`).
 
 ## Anmeldung
 
-Beim Verbinden öffnet sich eine Anmeldeseite mit zwei Wegen:
+Beim Verbinden öffnet sich eine Anmeldeseite mit drei Wegen:
 
-- **Benutzername & Passwort** – für Konten mit Portal-Passwort (z. B. Eltern). Der Server meldet sich selbst an und, wenn die Sitzung abläuft, automatisch neu.
-- **Office 365 (Schüler)** – Schüler melden sich über Microsoft an und haben kein Portal-Passwort. Dann in der Erweiterung **ISGY Intern Plus** (ab 1.2) auf isgy-intern.de `Strg+K` → *🤖 KI-Verbindungscode kopieren* und den Code einfügen. Er enthält deine Browser-Sitzung; beim Einloggen auf isgy-intern.de „Angemeldet bleiben“ anhaken, damit sie lange hält. Wenn du dich im Browser abmeldest, endet auch die Sitzung des Servers – dann neuen Code holen und neu verbinden.
+- **Konto (empfohlen)** – auf <https://isgy-intern-mcp.vercel.app/konto> mit E-Mail und Passwort registrieren und einmal den isgy-intern-Zugang hinterlegen (Portal-Passwort oder automatisch über die Erweiterung). Danach melden sich KI-Assistenten nur noch mit dem Konto an. Ist man auf der Seite schon angemeldet, reicht ein Klick auf „Verbinden“.
+- **Benutzername & Passwort** (ohne Konto) – für Konten mit Portal-Passwort (z. B. Eltern). Der Server meldet sich selbst an und, wenn die Sitzung abläuft, automatisch neu.
+- **Office 365 / Verbindungscode** (ohne Konto) – in der Erweiterung `Strg+K` → *🤖 KI-Verbindungscode kopieren* und einfügen.
+
+### Konto + Erweiterung
+
+In den Einstellungen der Erweiterung **ISGY Intern Plus** (ab 1.3) unter *KI-Konto* mit E-Mail und Konto-Passwort anmelden. Ab dann, bei jedem Besuch von isgy-intern.de (höchstens alle 2 Minuten und nach jeder Änderung):
+
+- **Aufgaben & Notizen** aus „Mein Tag“ werden in beide Richtungen synchronisiert (neuere Änderung gewinnt, Löschungen werden mitgenommen). Der KI-Assistent kann sie lesen, neue anlegen, abhaken und löschen.
+- Bei Konten ohne gespeichertes Portal-Passwort (Office 365) übergibt die Erweiterung die **aktuelle Browser-Sitzung** ans Konto – der KI-Assistent hat also immer eine gültige Sitzung, solange du isgy-intern.de ab und zu im Browser öffnest.
 
 ## Tools
 
@@ -44,15 +52,19 @@ Jede Antwort beginnt mit „Stand: <Datum, Uhrzeit>“, damit der Assistent „h
 | `letzter_eintrag` | neueste Einträge eines Fachs und wann die nächste Stunde ist |
 | `termine` | Klassenkalender, Prüfungen markiert |
 | `lehrer` | Kürzel ↔ Name |
+| `notizen` | eigene Aufgaben & Notizen aus der Erweiterung (nur mit Konto) |
+| `notiz_anlegen` / `aufgabe_erledigt` / `notiz_loeschen` | Aufgaben/Notizen anlegen, abhaken, löschen – landen direkt in „Mein Tag“ (nur mit Konto) |
 
 Dazu gibt es fertige **Prompts** (in Claude über das „+“-Menü): *Mein Schultag*, *Wochenvorschau*, *Hausaufgaben-Check* und *Lernplan für eine Prüfung*.
 
 ## Datenschutz & Sicherheit
 
-- Es gibt **keine Datenbank**. Deine Zugangsdaten (Passwort bzw. Browser-Sitzung) stecken nur **verschlüsselt** (AES-256-GCM) im Zugriffstoken, das dein KI-Assistent bekommt. Entschlüsseln kann sie nur dieser Server mit seinem geheimen Schlüssel `MCP_SECRET`.
-- Der Server ruft nur lesende Schnittstellen auf (`rest.php/stundenplan`, `vplan`, `tagebuch`, `klassenkalender` und die Kürzel-PDF). Die Kürzel-PDF wird nur im Arbeitsspeicher gelesen; behalten wird nur die Zuordnung Kürzel → Name.
-- Verbindung trennen: im KI-Assistenten den Connector entfernen. Alle Verbindungen auf einmal ungültig machen: `MCP_SECRET` in Vercel ändern und neu deployen.
-- Das Ganze ist inoffiziell und kein Angebot der Schule.
+- **Ohne Konto** gibt es keine Speicherung: Die Zugangsdaten stecken nur verschlüsselt (AES-256-GCM) im Zugriffstoken, das der KI-Assistent bekommt.
+- **Mit Konto** liegen in Supabase (Frankfurt): E-Mail, scrypt-Hash des Konto-Passworts, der isgy-intern-Zugang – vom Server mit `MCP_SECRET` AES-256-GCM-verschlüsselt, also auch in der Datenbank nicht lesbar – und die Aufgaben & Notizen.
+- Die Tabellen liegen im Schema `private`, das die Supabase-API nicht ausliefert. Der Server erreicht sie nur über Funktionen, die zusätzlich `SUPABASE_API_SECRET` prüfen; der öffentliche Supabase-Schlüssel allein reicht für nichts.
+- Von isgy-intern.de wird nur gelesen. Schreiben kann der KI-Assistent nur die eigenen Notizen.
+- Auf der Kontoseite: Zugang entfernen, „Überall abmelden“ (macht alle Tokens von KI-Assistenten und Erweiterung ungültig) und Konto samt Notizen löschen.
+- Es gibt keine E-Mail-Bestätigung und kein Passwort-Zurücksetzen. Das Ganze ist inoffiziell und kein Angebot der Schule.
 
 ## Selbst betreiben / entwickeln
 
@@ -61,14 +73,15 @@ Ordner `mcp/` als eigenes Vercel-Projekt (Root Directory `mcp`, Framework „Oth
 | Variable | |
 | --- | --- |
 | `MCP_SECRET` | **Pflicht**, zufällig, ≥ 32 Zeichen (`node -e "console.log(crypto.randomBytes(48).toString('base64url'))"`) |
+| `SUPABASE_URL`, `SUPABASE_KEY`, `SUPABASE_API_SECRET` | für Konten: Projekt-URL, publishable/anon key und ein zufälliges Geheimnis. Datenbank einmalig mit [supabase/0001_accounts_notes.sql](supabase/0001_accounts_notes.sql) einrichten und den SHA-256 des Geheimnisses eintragen (`insert into private.config values ('api_secret_sha256', '<hex>')`). Ohne diese Variablen läuft der Server ohne Konten. |
 | `ISGY_KUERZEL_PDF` | optional: Pfad der Kürzel-PDF, falls die automatische Suche sie nicht findet |
 | `ISGY_BASE_URL`, `PUBLIC_URL` | optional, nur für Tests / eigene Domain |
 
 ```bash
 cd mcp
 npm install
-npm test          # Ende-zu-Ende-Test mit dem offiziellen MCP-SDK gegen ein nachgebautes Portal
+npm test          # Ende-zu-Ende-Test mit dem offiziellen MCP-SDK gegen ein nachgebautes Portal und Supabase
 npm run dev       # http://localhost:3000/mcp  (gegen das echte isgy-intern.de)
 ```
 
-Aufbau: `api/index.js` (einzige Vercel-Funktion, Routing), `lib/mcp.js` (JSON-RPC/MCP), `lib/oauth.js` (OAuth 2.1 mit dynamischer Client-Registrierung und PKCE, zustandslos), `lib/portal.js` (Zugriff auf isgy-intern.de), `lib/tools.js` (die Tools), `lib/pages.js` (Anmeldeseiten).
+Aufbau: `api/index.js` (einzige Vercel-Funktion, Routing), `lib/mcp.js` (JSON-RPC/MCP), `lib/oauth.js` (OAuth 2.1 mit dynamischer Client-Registrierung und PKCE, zustandslos), `lib/portal.js` (Zugriff auf isgy-intern.de), `lib/tools.js` (die Tools), `lib/pages.js` (Seiten), `lib/accounts.js` + `lib/konto.js` (Konten, Kontoseite, Erweiterungs-API `/api/ext/login|sync`), `lib/db.js` (Supabase-RPC).

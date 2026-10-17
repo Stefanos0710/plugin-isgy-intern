@@ -49,6 +49,7 @@ h1 .hl{background:linear-gradient(120deg,var(--accent),var(--accent-2));-webkit-
 .copybox .lbl{font-size:.72rem;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;margin-right:4px;white-space:nowrap}
 .hero-grid>*{min-width:0}
 @media (max-width:480px){.copybox{flex-wrap:wrap;padding:12px}.copybox .lbl{width:100%;margin:0}.copybox code{white-space:normal;overflow-wrap:anywhere;flex-basis:100%;font-size:.8rem;padding:2px 0 4px}.copybox .btn{width:100%;padding:12px}}
+.hero-cta{margin:14px 0 0;font-size:.92rem;font-weight:600;color:var(--faint)}.hero-cta a{text-decoration:none}
 .badges{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:18px;color:var(--muted);font-size:.88rem}
 .badges span{display:inline-flex;align-items:center;gap:6px}
 .badges svg{width:16px;height:16px;color:var(--ok);flex:none}
@@ -105,6 +106,8 @@ ${['claude', 'chatgpt', 'gemini', 'andere'].map((k) => `#t-${k}:checked~.tab-bar
 .feat-ico{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);margin-bottom:12px}
 .feat-ico svg{width:20px;height:20px}
 .card p{margin:0;color:var(--muted);font-size:.94rem}
+.feature-wide{display:flex;gap:16px;align-items:flex-start}.feature-wide .feat-ico{flex:none;margin:0}
+@media (max-width:560px){.feature-wide{flex-direction:column}}
 
 /* code */
 code,pre{font-family:var(--mono);font-size:.84em}
@@ -170,6 +173,35 @@ textarea.input{min-height:96px;resize:vertical;font:13px/1.45 var(--mono);word-b
 .keybox{display:flex;flex-direction:column;gap:10px;margin:16px 0 4px}
 .keybox code{display:block;padding:12px 14px;border-radius:12px;font-size:.8rem;line-height:1.5;word-break:break-all;max-height:140px;overflow:auto}
 .center{text-align:center}
+.auth>input,.auth .p-login,.auth .p-reg,.auth .p-acct{}
+#m-acct:checked~.seg [for=m-acct],#m-login:checked~.seg [for=m-login],#m-reg:checked~.seg [for=m-reg]{background:var(--card);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+#m-acct:focus-visible~.seg [for=m-acct],#m-login:focus-visible~.seg [for=m-login],#m-reg:focus-visible~.seg [for=m-reg]{outline:2px solid var(--accent)}
+#m-acct:checked~.p-acct,#m-login:checked~.p-login,#m-reg:checked~.p-reg{display:block}
+.me-box{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--line-2);border-radius:14px;background:var(--bg)}
+.me-av{flex:none;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;font-weight:800}
+.me-av.big{width:48px;height:48px;font-size:1.2rem}
+.me-txt{flex:1;min-width:0;font-size:.82rem;color:var(--muted);line-height:1.3}.me-txt b{display:block;color:var(--text);font-size:.95rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.or{display:flex;align-items:center;gap:10px;color:var(--faint);font-size:.8rem;margin:16px 0 4px}.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
+.muted-i{color:var(--muted);font-weight:400;font-size:.85em}
+.acct-head{display:flex;align-items:center;gap:14px;margin-bottom:8px;flex-wrap:wrap}
+.block{border-top:1px solid var(--line);padding:20px 0 4px;margin-top:16px}
+.bh{display:flex;align-items:center;gap:8px;font-size:1.05rem;margin:0 0 10px;letter-spacing:-.01em}.bh svg{width:18px;height:18px;color:var(--accent)}
+.bh .count{margin-left:auto;font-size:.8rem;font-weight:600;color:var(--faint)}
+.st{display:inline-flex;align-items:flex-start;gap:8px;font-size:.93rem}.st svg{width:18px;height:18px;flex:none;margin-top:2px}
+.st.ok svg{color:var(--ok)}.st.warn svg{color:var(--accent)}
+details summary{cursor:pointer;font-weight:650;color:var(--accent);margin:8px 0;list-style:none}details summary::-webkit-details-marker{display:none}
+details summary::before{content:"▸";display:inline-block;margin-right:6px;transition:transform .15s}details[open] summary::before{transform:rotate(90deg)}
+.linkbtn{background:none;border:0;padding:0;margin-top:10px;color:var(--muted);font:inherit;font-size:.86rem;text-decoration:underline;cursor:pointer}
+.nlist{list-style:none;padding:0;margin:0;display:grid;gap:6px}
+.nlist li{display:flex;gap:10px;align-items:flex-start;padding:9px 12px;border-radius:10px;background:var(--bg);font-size:.92rem}
+.nlist .box{flex:none;width:16px;height:16px;border:2px solid var(--line-2);border-radius:5px;margin-top:3px}
+.nlist em{font-style:normal;font-size:.78rem;font-weight:700;color:var(--accent);background:var(--accent-soft);border-radius:6px;padding:1px 6px;margin-left:4px}
+.danger{margin-top:24px;border-top:1px solid var(--line);padding-top:12px}.danger summary{color:var(--muted)}
+.chk{display:flex;gap:8px;align-items:center;font-size:.9rem;margin:10px 0}
+.danger-btn{background:var(--err);color:#fff}
+.alert.ok{background:var(--okbg);color:var(--ok)}
+.auth-card .copybox{max-width:none}
+@media (max-width:480px){.auth-card .copybox{flex-wrap:wrap;padding:12px}.auth-card .copybox code{white-space:normal;overflow-wrap:anywhere;flex-basis:100%;font-size:.8rem}.auth-card .copybox .btn{width:100%}}
 .foot-mini{text-align:center;color:var(--faint);font-size:.8rem;padding:0 16px 28px}
 .foot-mini a{color:var(--faint)}
 `;
@@ -211,29 +243,34 @@ const logo = (href = '/') => `<a class="logo" href="${href}"><span class="mark">
 const REPO = 'https://github.com/Stefanos0710/plugin-isgy-intern';
 const DISCLAIMER = 'Inoffiziell – kein Angebot des Gymnasiums Ismaning. Nur Lesezugriff auf deine eigenen Portal-Daten.';
 
-// Simple centered page for login, keys and errors.
+// Simple centered page for login, keys, account and errors.
 export function layout(title, body, { wide = false } = {}) {
   return `${head(title)}<body class="auth-page">
-<header class="nav"><div class="wrap">${logo()}<nav class="nav-links"><a href="/#einrichten">Einrichten</a></nav></div></header>
+<header class="nav"><div class="wrap">${logo()}<nav class="nav-links"><a href="/#einrichten" class="hide-sm">Einrichten</a><a href="/konto">Konto</a></nav></div></header>
 <main class="auth-main"><div class="auth-card${wide ? ' wide' : ''}">${body}</div></main>
 <p class="foot-mini">${DISCLAIMER}</p>${tail}`;
 }
 
-// ---------- login form (OAuth authorize + personal key) ----------
-export function loginForm({ action, hidden = {}, error = '', mode = 'pw', username = '', button = 'Verbinden' }) {
+// ---------- login form (OAuth authorize, personal key, saving the portal login in the account) ----------
+const MODES = {
+  acct: ['Konto', 'empfohlen'],
+  pw: ['Passwort', 'isgy-intern'],
+  code: ['Office 365', 'Code'],
+};
+export function loginForm({ action, hidden = {}, error = '', mode, username = '', email = '', button = 'Verbinden', modes = ['pw', 'code'], fine = true }) {
   const fields = Object.entries(hidden).map(([k, v]) => `<input type="hidden" name="${esc(k)}" value="${esc(v)}">`).join('');
-  return `<form method="post" action="${esc(action)}" data-busy novalidate>${fields}
-<div class="auth">
-<input type="radio" name="mode" id="m-pw" value="pw"${mode !== 'code' ? ' checked' : ''}><input type="radio" name="mode" id="m-code" value="code"${mode === 'code' ? ' checked' : ''}>
-<div class="seg" role="radiogroup" aria-label="Anmeldeart">
-<label for="m-pw">Passwort<small>Eltern &amp; Portal-Konten</small></label>
-<label for="m-code">Office 365<small>Schülerinnen &amp; Schüler</small></label>
-</div>
-<div class="pane p-pw">
+  const active = modes.includes(mode) ? mode : modes[0];
+  const panes = {
+    acct: `<div class="pane p-acct">
+<div class="field"><label for="e">E-Mail</label><input class="input" type="email" id="e" name="email" autocomplete="email" autocapitalize="none" spellcheck="false" value="${esc(email)}"></div>
+<div class="field"><label for="ap">Passwort deines ISGY-KI-Kontos</label><div class="pw"><input class="input" type="password" id="ap" name="account_password" autocomplete="current-password"><button type="button" data-reveal="ap">Anzeigen</button></div></div>
+<p class="hint">Noch kein Konto? <a href="/konto?neu=1">Jetzt kostenlos erstellen</a> – dann musst du dein isgy-intern-Passwort nur einmal hinterlegen und deine Notizen aus der Erweiterung sind auch dabei.</p>
+</div>`,
+    pw: `<div class="pane p-pw">
 <div class="field"><label for="u">Benutzername</label><input class="input" type="text" id="u" name="username" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" value="${esc(username)}" placeholder="wie auf isgy-intern.de"></div>
 <div class="field"><label for="p">Passwort</label><div class="pw"><input class="input" type="password" id="p" name="password" autocomplete="current-password"><button type="button" data-reveal="p">Anzeigen</button></div></div>
-</div>
-<div class="pane p-code">
+</div>`,
+    code: `<div class="pane p-code">
 <p class="hint">Mit „Login mit Office 365“ gibt es kein Portal-Passwort. Hol dir stattdessen einen Verbindungscode:</p>
 <ol class="mini">
 <li><b class="n">1</b><span>Browser-Erweiterung <a href="${REPO}#installation" target="_blank" rel="noopener"><b>ISGY Intern Plus</b></a> (ab 1.2) installieren</span></li>
@@ -241,23 +278,35 @@ export function loginForm({ action, hidden = {}, error = '', mode = 'pw', userna
 <li><b class="n">3</b><span><kbd>Strg</kbd> + <kbd>K</kbd> → <b>„🤖 KI-Verbindungscode kopieren“</b> und hier einfügen</span></li>
 </ol>
 <div class="field"><label for="c">Verbindungscode</label><textarea class="input" id="c" name="code" placeholder="isgy1.…" spellcheck="false" autocapitalize="none"></textarea></div>
-</div>
-</div>
+</div>`,
+  };
+  const seg = modes.length > 1
+    ? `${modes.map((m) => `<input type="radio" name="mode" id="m-${m}" value="${m}"${m === active ? ' checked' : ''}>`).join('')}
+<div class="seg" style="grid-template-columns:repeat(${modes.length},1fr)" role="radiogroup" aria-label="Anmeldeart">${modes.map((m) => `<label for="m-${m}">${MODES[m][0]}<small>${MODES[m][1]}</small></label>`).join('')}</div>`
+    : `<input type="radio" name="mode" id="m-${active}" value="${active}" checked>`;
+  return `<form method="post" action="${esc(action)}" data-busy novalidate>${fields}
+<div class="auth">${seg}${modes.map((m) => panes[m]).join('')}</div>
 ${error ? `<div class="alert" role="alert">${I.alert}<span>${esc(error)}</span></div>` : ''}
 <button class="btn block" type="submit">${I.lock}${esc(button)}</button>
-</form>
-<p class="fine">${I.shield}<span>Deine Zugangsdaten werden nirgends gespeichert – nur verschlüsselt im Zugriffsschlüssel deines KI-Assistenten. Der Server kann damit ausschließlich lesen.</span></p>`;
+</form>${fine ? `
+<p class="fine">${I.shield}<span>Zugangsdaten werden nur verschlüsselt gespeichert (AES-256). Der Server kann damit ausschließlich lesen.</span></p>` : ''}`;
 }
 
-const SCOPE = `<div class="scope"><span>${I.check}Stundenplan</span><span>${I.check}Vertretungen</span><span>${I.check}Hausaufgaben</span><span>${I.check}Prüfungen &amp; Termine</span></div>`;
+// One-click "continue as …" when already signed in on this site.
+const continueAs = (action, hidden, me, button) => `<form method="post" action="${esc(action)}" class="me-box" data-busy>${Object.entries(hidden).map(([k, v]) => `<input type="hidden" name="${esc(k)}" value="${esc(v)}">`).join('')}
+<input type="hidden" name="mode" value="web"><span class="me-av">${esc(me.charAt(0).toUpperCase())}</span><span class="me-txt">Angemeldet als<b>${esc(me)}</b></span><button class="btn" type="submit">${esc(button)}</button></form>
+<p class="or"><span>oder anders anmelden</span></p>`;
 
-export function authorizePage({ client, redirectHost, req, error, mode, username }) {
+const SCOPE = `<div class="scope"><span>${I.check}Stundenplan</span><span>${I.check}Vertretungen</span><span>${I.check}Hausaufgaben</span><span>${I.check}Prüfungen &amp; Notizen</span></div>`;
+const loginModes = (accounts) => (accounts ? ['acct', 'pw', 'code'] : ['pw', 'code']);
+
+export function authorizePage({ client, redirectHost, req, error, mode, username, email, accounts, me }) {
   const initial = esc(String(client || '?').trim().charAt(0).toUpperCase() || '?');
   return layout('Mit ISGY Intern verbinden', `
 <div class="connect" aria-hidden="true"><span class="av">${initial}</span><span class="link"><i></i><i></i><i></i></span><span class="av isgy">IS</span></div>
 <h1>Mit ISGY Intern verbinden</h1>
-<p class="intro"><b>${esc(client)}</b> möchte Lesezugriff auf deine Daten von isgy-intern.de.<br><span style="font-size:.85rem">Danach geht es zurück zu ${esc(redirectHost)}.</span></p>
-${SCOPE}${loginForm({ action: '/authorize', hidden: { req }, error, mode, username })}`);
+<p class="intro"><b>${esc(client)}</b> möchte Zugriff auf deine Daten von isgy-intern.de.<br><span style="font-size:.85rem">Danach geht es zurück zu ${esc(redirectHost)}.</span></p>
+${SCOPE}${me ? continueAs('/authorize', { req }, me, 'Verbinden') : ''}${loginForm({ action: '/authorize', hidden: { req }, error, mode, username, email, modes: loginModes(accounts) })}`);
 }
 
 export function errorPage(title, message) {
@@ -265,12 +314,12 @@ export function errorPage(title, message) {
 <h1>${esc(title)}</h1><p class="intro">${esc(message)}</p><a class="btn ghost block" href="/">Zur Startseite</a>`);
 }
 
-export function keyPage({ origin, error, mode, username }) {
+export function keyPage({ origin, error, mode, username, email, accounts, me }) {
   return layout('Persönlicher Zugriffsschlüssel', `
 <div class="connect" aria-hidden="true"><span class="av isgy">${I.key.replace('<svg', '<svg width="24" height="24"')}</span></div>
 <h1>Persönlicher Zugriffsschlüssel</h1>
 <p class="intro">Nur für Programme <b>ohne</b> OAuth-Anmeldung. Claude, ChatGPT und Gemini CLI brauchen das nicht – dort einfach <code>${esc(origin)}/mcp</code> eintragen.</p>
-${loginForm({ action: '/schluessel', error, mode, username, button: 'Schlüssel erstellen' })}`);
+${me ? continueAs('/schluessel', {}, me, 'Schlüssel erstellen') : ''}${loginForm({ action: '/schluessel', error, mode, username, email, button: 'Schlüssel erstellen', modes: loginModes(accounts) })}`);
 }
 
 export function keyResultPage({ origin, key, days }) {
@@ -286,6 +335,95 @@ export function keyResultPage({ origin, key, days }) {
 }</pre>`, { wide: true });
 }
 
+// ---------- account ----------
+export function accountAuthPage({ error, email = '', register = false, next = '' }) {
+  const hidden = next ? `<input type="hidden" name="next" value="${esc(next)}">` : '';
+  const err = error ? `<div class="alert" role="alert">${I.alert}<span>${esc(error)}</span></div>` : '';
+  return layout(register ? 'Konto erstellen' : 'Anmelden', `
+<div class="connect" aria-hidden="true"><span class="av isgy">IS</span></div>
+<h1>${register ? 'Konto erstellen' : 'Bei deinem Konto anmelden'}</h1>
+<p class="intro">${register ? 'Einmal dein isgy-intern-Login hinterlegen – danach verbinden sich KI-Assistenten und die Erweiterung nur noch mit diesem Konto.' : 'Dein ISGY-KI-Konto: gespeichertes isgy-intern-Login, Notizen aus der Erweiterung, Verbindungen.'}</p>
+<div class="auth">
+<input type="radio" name="tab" id="m-login"${register ? '' : ' checked'}><input type="radio" name="tab" id="m-reg"${register ? ' checked' : ''}>
+<div class="seg" role="tablist"><label for="m-login">Anmelden</label><label for="m-reg">Registrieren</label></div>
+<div class="pane p-login"><form method="post" action="/konto/anmelden" data-busy novalidate>${hidden}
+<div class="field"><label for="le">E-Mail</label><input class="input" type="email" id="le" name="email" autocomplete="email" autocapitalize="none" value="${esc(email)}"></div>
+<div class="field"><label for="lp">Passwort</label><div class="pw"><input class="input" type="password" id="lp" name="password" autocomplete="current-password"><button type="button" data-reveal="lp">Anzeigen</button></div></div>
+${register ? '' : err}<button class="btn block" type="submit">${I.lock}Anmelden</button></form></div>
+<div class="pane p-reg"><form method="post" action="/konto/registrieren" data-busy novalidate>${hidden}
+<div class="field"><label for="re">E-Mail</label><input class="input" type="email" id="re" name="email" autocomplete="email" autocapitalize="none" value="${esc(email)}"></div>
+<div class="field"><label for="rp">Passwort <span class="muted-i">(mind. 8 Zeichen, nicht dein isgy-intern-Passwort)</span></label><div class="pw"><input class="input" type="password" id="rp" name="password" autocomplete="new-password" minlength="8"><button type="button" data-reveal="rp">Anzeigen</button></div></div>
+<div class="field"><label for="rp2">Passwort wiederholen</label><input class="input" type="password" id="rp2" name="password2" autocomplete="new-password"></div>
+${register ? err : ''}<button class="btn block" type="submit">${I.key}Konto erstellen</button>
+<p class="hint">Es gibt keine Passwort-Zurücksetzung per E-Mail. Wenn du dein Passwort vergisst, erstelle einfach ein neues Konto.</p></form></div>
+</div>
+<p class="fine">${I.shield}<span>Gespeichert wird nur: E-Mail, Passwort-Hash, dein isgy-intern-Login (verschlüsselt) und deine Notizen. Konto jederzeit löschbar.</span></p>`);
+}
+
+const ago = (d) => {
+  if (!d) return '';
+  const s = Math.round((Date.now() - new Date(d).getTime()) / 1000);
+  if (s < 90) return 'gerade eben';
+  if (s < 5400) return `vor ${Math.round(s / 60)} Minuten`;
+  if (s < 129600) return `vor ${Math.round(s / 3600)} Stunden`;
+  return `vor ${Math.round(s / 86400)} Tagen`;
+};
+const status = (ok, text) => `<span class="st ${ok ? 'ok' : 'warn'}">${ok ? I.check : I.alert}${text}</span>`;
+
+export function accountPage({ origin, acc, cred, notes = [], error, message, mode }) {
+  const credText = !cred
+    ? status(false, 'Noch kein isgy-intern-Login hinterlegt')
+    : cred.m === 'pw'
+      ? status(true, `Passwort für <b>${esc(cred.u)}</b> gespeichert`)
+      : status(true, `Browser-Sitzung aus der Erweiterung · aktualisiert ${ago(acc.cred_updated)}`);
+  const open = notes.filter((n) => n.type === 'todo' && !n.done);
+  const memos = notes.filter((n) => n.type === 'note');
+  const fmt = (ds) => (ds ? `${ds.slice(8, 10)}.${ds.slice(5, 7)}.` : '');
+  return layout('Dein Konto', `
+<div class="acct-head"><span class="me-av big">${esc(acc.email.charAt(0).toUpperCase())}</span><div><h1 style="text-align:left;margin:0">Dein Konto</h1><p class="muted-i" style="margin:0">${esc(acc.email)}</p></div>
+<form method="post" action="/konto/abmelden" style="margin-left:auto"><button class="btn ghost" type="submit">Abmelden</button></form></div>
+${message ? `<div class="alert ok" role="status">${I.check}<span>${esc(message)}</span></div>` : ''}
+${error ? `<div class="alert" role="alert">${I.alert}<span>${esc(error)}</span></div>` : ''}
+
+<div class="block">
+<h2 class="bh">${I.key}isgy-intern-Zugang</h2>
+<p>${credText}</p>
+${cred?.m === 's' ? '<p class="hint">Die Erweiterung erneuert die Sitzung automatisch, sobald du isgy-intern.de im Browser öffnest.</p>' : ''}
+<details${cred ? '' : ' open'}><summary>${cred ? 'Zugang ändern' : 'Zugang hinterlegen'}</summary>
+${loginForm({ action: '/konto/zugang', mode, button: 'Zugang speichern', fine: false })}
+<p class="hint">Schüler mit Office-365-Login: am einfachsten die Erweiterung mit diesem Konto verbinden (siehe unten) – sie hinterlegt die Sitzung dann von selbst.</p>
+</details>
+${cred ? `<form method="post" action="/konto/zugang-entfernen"><button class="linkbtn" type="submit">Gespeicherten Zugang entfernen</button></form>` : ''}
+</div>
+
+<div class="block">
+<h2 class="bh">${I.swap}Browser-Erweiterung</h2>
+<p>${acc.ext_seen ? status(true, `Verbunden · zuletzt synchronisiert ${ago(acc.ext_seen)}`) : status(false, 'Noch nicht verbunden')}</p>
+<ol class="mini"><li><b class="n">1</b><span><a href="${REPO}#installation" target="_blank" rel="noopener"><b>ISGY Intern Plus</b></a> ab Version 1.3 installieren</span></li>
+<li><b class="n">2</b><span>Einstellungen der Erweiterung → <b>KI-Konto</b> → mit dieser E-Mail und deinem Konto-Passwort anmelden</span></li>
+<li><b class="n">3</b><span>Fertig: Notizen und Aufgaben werden synchronisiert und die isgy-intern-Sitzung bleibt aktuell</span></li></ol>
+</div>
+
+<div class="block">
+<h2 class="bh">${I.pen}Aufgaben &amp; Notizen <span class="count">${open.length} offen · ${memos.length} Notizen</span></h2>
+${notes.length ? `<ul class="nlist">${open.slice(0, 12).map((n) => `<li><span class="box"></span><span>${esc(n.text)}${n.date ? ` <em>${fmt(n.date)}</em>` : ''}</span></li>`).join('')}${memos.slice(0, 6).map((n) => `<li class="memo"><span>📝</span><span>${esc(n.text.length > 160 ? n.text.slice(0, 160) + '…' : n.text)}</span></li>`).join('')}</ul>`
+    : '<p class="hint">Noch keine. Sie kommen aus dem „Mein Tag“-Dashboard der Erweiterung – oder du sagst deinem KI-Assistenten „Schreib mir auf: …“.</p>'}
+</div>
+
+<div class="block">
+<h2 class="bh">${I.bolt}KI-Assistenten verbinden</h2>
+<div class="copybox"><code id="url">${esc(origin)}/mcp</code><button class="btn" type="button" data-copy="url">${I.copy}Kopieren</button></div>
+<p class="hint">URL in Claude, ChatGPT oder Gemini CLI eintragen und bei der Anmeldung <b>„Konto“</b> wählen. <a href="/#einrichten">Anleitung</a></p>
+</div>
+
+<details class="danger"><summary>Sicherheit &amp; Konto löschen</summary>
+<form method="post" action="/konto/ueberall-abmelden"><p class="hint">Meldet alle KI-Assistenten und die Erweiterung ab (z. B. wenn ein Gerät verloren ging).</p><button class="btn ghost" type="submit">Überall abmelden</button></form>
+<form method="post" action="/konto/loeschen" style="margin-top:16px"><p class="hint">Löscht das Konto, den gespeicherten Zugang und alle Notizen endgültig.</p>
+<label class="chk"><input type="checkbox" name="confirm" value="1" required> Ja, alles endgültig löschen</label>
+<button class="btn danger-btn" type="submit">Konto löschen</button></form>
+</details>`, { wide: true });
+}
+
 // ---------- start page ----------
 const ASK = [
   ['Was habe ich morgen – und fällt was aus?', 'Stunden mit Uhrzeit, Raum und Lehrkraft, Vertretungen und Entfälle direkt eingearbeitet.', 'tagesplan'],
@@ -294,6 +432,9 @@ const ASK = [
   ['Was haben wir am Dienstag in Deutsch gemacht?', 'Themen, Hausaufgaben und Notizen aus dem Tagebuch – perfekt, wenn du gefehlt hast.', 'tagebuch'],
   ['Wer ist eigentlich „Mm“?', 'Lehrerkürzel werden überall automatisch in Namen übersetzt.', 'lehrer'],
   ['Was steht diese Woche an?', 'Alles auf einen Blick: laufende Stunde, nächster Schultag, Hausaufgaben, Prüfungen.', 'uebersicht'],
+  ['Schreib mir auf: Bio-Referat bis Freitag.', 'Mit Konto: Aufgaben und Notizen landen direkt im „Mein Tag“-Dashboard der Erweiterung.', 'notiz_anlegen'],
+  ['Was steht noch auf meiner To-do-Liste?', 'Liest deine Aufgaben und Notizen aus der Erweiterung – inklusive Fälligkeit.', 'notizen'],
+  ['Hab ich alles für morgen erledigt?', 'Vergleicht fällige Hausaufgaben mit deinen erledigten Aufgaben.', 'tagesplan'],
 ];
 
 function setupTabs(url) {
@@ -335,7 +476,7 @@ function setupTabs(url) {
 export function homePage(origin) {
   const url = `${origin}/mcp`;
   return `${head('ISGY Intern – Schulportal im KI-Chat')}<body>
-<header class="nav"><div class="wrap">${logo()}<nav class="nav-links"><a href="#fragen" class="hide-sm">Funktionen</a><a href="#datenschutz" class="hide-sm">Datenschutz</a><a href="#einrichten">Einrichten</a></nav></div></header>
+<header class="nav"><div class="wrap">${logo()}<nav class="nav-links"><a href="#fragen" class="hide-sm">Funktionen</a><a href="#datenschutz" class="hide-sm">Datenschutz</a><a href="#einrichten" class="hide-sm">Einrichten</a><a href="/konto">Konto</a></nav></div></header>
 <main>
 <div class="hero"><div class="wrap hero-grid">
 <div>
@@ -343,7 +484,8 @@ export function homePage(origin) {
 <h1>Dein Schulportal,<br><span class="hl">direkt im KI-Chat.</span></h1>
 <p class="lead">Frag einfach „Was habe ich morgen?“ – dein KI-Assistent liest Stundenplan, Vertretungen, Hausaufgaben und Prüfungstermine von isgy-intern.de und antwortet in Sekunden.</p>
 <div class="copybox"><span class="lbl">Server-URL</span><code id="url">${esc(url)}</code><button class="btn" type="button" data-copy="url">${I.copy}Kopieren</button></div>
-<div class="badges"><span>${I.check}Nur Lesezugriff</span><span>${I.check}Keine Datenbank</span><span>${I.check}Verschlüsselt</span><span>${I.check}Kostenlos</span></div>
+<p class="hero-cta"><a href="/konto?neu=1">Konto erstellen</a> · <a href="#einrichten">Ohne Konto einrichten</a></p>
+<div class="badges"><span>${I.check}Portal nur lesen</span><span>${I.check}Notizen-Sync</span><span>${I.check}Verschlüsselt</span><span>${I.check}Kostenlos</span></div>
 </div>
 <div class="chat" aria-label="Beispiel-Unterhaltung">
 <div class="chat-top"><span class="mark" style="width:24px;height:24px;font-size:10px;border-radius:7px">IS</span><b>ISGY Intern</b> verbunden<span class="pill">● aktiv</span></div>
@@ -366,19 +508,21 @@ ${setupTabs(url)}
 </div></section>
 
 <section id="anmeldung"><div class="wrap">
-<div class="sec-head"><span class="kicker">Anmeldung</span><h2>Zwei Wege, je nach Konto</h2></div>
-<div class="grid">
-<div class="card"><div class="feat-ico">${I.key}</div><h3>Benutzername &amp; Passwort</h3><p>Für Konten mit eigenem Portal-Passwort, z.&nbsp;B. Eltern. Der Server meldet sich selbst an – und automatisch neu, wenn die Sitzung abläuft.</p></div>
-<div class="card"><div class="feat-ico">${I.swap}</div><h3>Office 365 (Schüler)</h3><p>Mit Microsoft-Login gibt es kein Portal-Passwort. In der Erweiterung <a href="${REPO}#installation"><b>ISGY Intern Plus</b></a> mit <kbd>Strg</kbd>+<kbd>K</kbd> einen Verbindungscode kopieren und beim Anmelden einfügen.</p></div>
+<div class="sec-head"><span class="kicker">Anmeldung</span><h2>Am besten mit Konto</h2><p class="sub">Ein Konto merkt sich dein isgy-intern-Login und deine Notizen – alles andere geht auch ohne.</p></div>
+<div class="card feature-wide"><div class="feat-ico">${I.shield}</div><div><h3>ISGY-KI-Konto <span class="tag org">empfohlen</span></h3><p>Einmal registrieren, isgy-intern-Login hinterlegen, fertig. Claude, ChatGPT &amp; Co. melden sich dann nur noch mit E-Mail und Passwort an. Mit der Erweiterung verbunden, bleibt die Office-365-Sitzung automatisch aktuell und deine Aufgaben &amp; Notizen aus „Mein Tag“ werden synchronisiert – der KI-Assistent kann sie lesen und neue anlegen.</p>
+<a class="btn" href="/konto?neu=1" style="margin-top:14px">${I.key}Konto erstellen</a></div></div>
+<div class="grid" style="margin-top:14px">
+<div class="card"><div class="feat-ico">${I.key}</div><h3>Ohne Konto: Portal-Passwort</h3><p>Für Konten mit eigenem Portal-Passwort, z.&nbsp;B. Eltern. Der Server meldet sich selbst an – und automatisch neu, wenn die Sitzung abläuft.</p></div>
+<div class="card"><div class="feat-ico">${I.swap}</div><h3>Ohne Konto: Verbindungscode</h3><p>Für Office-365-Logins (Schüler). Mit Microsoft-Login gibt es kein Portal-Passwort. In der Erweiterung <a href="${REPO}#installation"><b>ISGY Intern Plus</b></a> mit <kbd>Strg</kbd>+<kbd>K</kbd> einen Verbindungscode kopieren und beim Anmelden einfügen.</p></div>
 </div>
 </div></section>
 
 <section id="datenschutz" style="padding-top:0"><div class="wrap">
 <div class="sec-head"><span class="kicker">Datenschutz</span><h2>Deine Daten bleiben deine.</h2></div>
 <div class="grid g3">
-<div class="card"><div class="feat-ico">${I.db}</div><h3>Keine Datenbank</h3><p>Der Server speichert nichts. Deine Anmeldung steckt nur verschlüsselt (AES-256) im Schlüssel, den dein Assistent bekommt.</p></div>
-<div class="card"><div class="feat-ico">${I.eye}</div><h3>Nur lesen</h3><p>Es werden ausschließlich lesende Schnittstellen von isgy-intern.de aufgerufen – nichts wird geändert oder abgeschickt.</p></div>
-<div class="card"><div class="feat-ico">${I.shield}</div><h3>Jederzeit trennen</h3><p>Connector im Assistenten entfernen, und der Zugriff ist weg. Die Kürzel-PDF wird nur im Arbeitsspeicher gelesen.</p></div>
+<div class="card"><div class="feat-ico">${I.db}</div><h3>Verschlüsselt</h3><p>Ohne Konto wird nichts gespeichert. Mit Konto liegt dein isgy-intern-Login nur AES-256-verschlüsselt in der Datenbank (Supabase, Frankfurt), dazu deine Notizen.</p></div>
+<div class="card"><div class="feat-ico">${I.eye}</div><h3>Portal nur lesen</h3><p>Von isgy-intern.de werden ausschließlich Daten gelesen – dort wird nichts geändert oder abgeschickt. Schreiben kann der Assistent nur deine eigenen Notizen.</p></div>
+<div class="card"><div class="feat-ico">${I.shield}</div><h3>Jederzeit löschbar</h3><p>Connector entfernen, „Überall abmelden“ oder das Konto samt Notizen mit einem Klick löschen.</p></div>
 </div>
 </div></section>
 </main>
