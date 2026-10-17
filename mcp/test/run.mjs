@@ -358,10 +358,25 @@ await step('SEO: home page meta, canonical, Open Graph, JSON-LD', async () => {
   assert.ok(h.includes('id="ai-claude"') && h.includes('id="ai-openai"') && h.includes('id="ai-gemini"'), 'logo sprite');
   assert.ok(h.includes('<use href="#ai-claude"/>'));
   const ld = [...h.matchAll(/<script type="application\/ld\+json">([^<]+)<\/script>/g)].map((m) => JSON.parse(m[1]));
-  assert.deepEqual(ld.map((x) => x['@type']), ['WebSite', 'SoftwareApplication', 'SoftwareApplication', 'FAQPage']);
+  assert.deepEqual(ld.map((x) => x['@type']), ['WebSite', 'SoftwareApplication', 'FAQPage']);
   const faq = ld.find((x) => x['@type'] === 'FAQPage').mainEntity;
   assert.ok(faq.length >= 5);
   for (const q of faq) assert.ok(h.includes(q.name.replace(/&/g, '&amp;')), 'FAQ question is visible on the page: ' + q.name);
+  // the AI page at /mcp is indexable too, with its own title, canonical and structured data
+  const mp = await fetch(BASE + '/mcp', { headers: { accept: 'text/html,application/xhtml+xml' } });
+  const mh = await mp.text();
+  assert.equal(mp.status, 200);
+  assert.match(mp.headers.get('x-robots-tag'), /index, follow/);
+  assert.doesNotMatch(mp.headers.get('cache-control'), /s-maxage/, 'the MCP endpoint page is not CDN-cached');
+  const mtitle = mh.match(/<title>([^<]+)<\/title>/)[1];
+  assert.ok(mtitle.length >= 30 && mtitle.length <= 65 && mtitle !== title, `/mcp title: ${mtitle}`);
+  const mdesc = mh.match(/<meta name="description" content="([^"]+)"/)[1];
+  assert.ok(mdesc.length >= 100 && mdesc.length <= 165 && mdesc !== desc, `/mcp description length ${mdesc.length}`);
+  assert.match(mh, /<link rel="canonical" href="https:\/\/isgy-intern-plus\.vercel\.app\/mcp">/);
+  assert.equal((mh.match(/<h1[ >]/g) || []).length, 1, 'exactly one h1 on /mcp');
+  const mld = [...mh.matchAll(/<script type="application\/ld\+json">([^<]+)<\/script>/g)].map((m) => JSON.parse(m[1]));
+  assert.deepEqual(mld.map((x) => x['@type']), ['SoftwareApplication', 'BreadcrumbList', 'FAQPage']);
+  for (const q of mld[2].mainEntity) assert.ok(mh.includes(q.name.replace(/&/g, '&amp;')), 'FAQ question on /mcp: ' + q.name);
   // pages that must not be indexed
   for (const path of ['/konto', '/schluessel', '/nirgends']) {
     const x = await fetch(BASE + path);
@@ -380,6 +395,8 @@ await step('SEO: robots, sitemap, manifest, llms.txt, HEAD, legacy redirect', as
   const smt = await sm.text();
   assert.match(smt, /<loc>https:\/\/isgy-intern-plus\.vercel\.app\/<\/loc>/);
   assert.match(smt, /image:loc/);
+  assert.match(smt, /<loc>https:\/\/isgy-intern-plus\.vercel\.app\/mcp<\/loc>/);
+  assert.doesNotMatch(robots, /Disallow: \/mcp/);
   const man = await (await fetch(BASE + '/site.webmanifest')).json();
   assert.equal(man.lang, 'de');
   for (const i of man.icons) assert.equal((await fetch(BASE + i.src)).status, 200, i.src);
@@ -390,6 +407,9 @@ await step('SEO: robots, sitemap, manifest, llms.txt, HEAD, legacy redirect', as
   const legacy = await fetch(BASE + '/', { redirect: 'manual', headers: { 'x-forwarded-host': 'isgy-intern-mcp.vercel.app' } });
   assert.equal(legacy.status, 301);
   assert.equal(legacy.headers.get('location'), 'https://isgy-intern-plus.vercel.app/');
+  const legacyMcp = await fetch(BASE + '/mcp', { redirect: 'manual', headers: { accept: 'text/html', 'x-forwarded-host': 'isgy-intern-mcp.vercel.app' } });
+  assert.equal(legacyMcp.status, 301);
+  assert.equal(legacyMcp.headers.get('location'), 'https://isgy-intern-plus.vercel.app/mcp');
   // the old address still serves the connection itself
   const oauth = await fetch(BASE + '/.well-known/oauth-authorization-server', { headers: { 'x-forwarded-host': 'isgy-intern-mcp.vercel.app' } });
   assert.equal(oauth.status, 200);
@@ -450,9 +470,23 @@ await step('login page shows the real logo of the connecting assistant', async (
   }
 });
 
-await step('home page', async () => {
-  const r = await fetch(BASE + '/');
-  assert.match(await r.text(), /http:\/\/localhost:3100\/mcp/);
+await step('start page (/) and AI page (/mcp); MCP clients still get the endpoint', async () => {
+  const home = await (await fetch(BASE + '/')).text();
+  for (const id of ['funktionen', 'installieren', 'ki', 'datenschutz', 'faq']) assert.ok(home.includes(`id="${id}"`), 'section ' + id);
+  assert.ok(home.includes('href="/mcp"') && home.includes('id="br-chrome"') && home.includes('<use href="#br-firefox"/>'), 'links to /mcp, browser logos');
+  assert.ok(!(await (await fetch(BASE + '/konto')).text()).includes('id="br-chrome"'), 'browser logos only where used');
+  const page = await (await fetch(BASE + '/mcp', { headers: { accept: 'text/html' } })).text();
+  assert.match(page, /<code id="url">http:\/\/localhost:3100\/mcp<\/code>/);
+  assert.ok(page.includes('aria-current="page"'));
+  // MCP clients: no HTML, same behaviour as before
+  for (const headers of [{ accept: 'application/json, text/event-stream' }, { accept: 'text/html', authorization: 'Bearer nope' }]) {
+    const r = await fetch(BASE + '/mcp', { headers });
+    assert.equal(r.status, 401, JSON.stringify(headers));
+    assert.match(r.headers.get('www-authenticate'), /resource_metadata=/);
+  }
+  const post = await fetch(BASE + '/mcp', { method: 'POST', headers: { accept: 'text/html, application/json', 'content-type': 'application/json' }, body: '{}' });
+  assert.equal(post.status, 401);
+  assert.equal((await (await fetch(BASE + '/.well-known/oauth-protected-resource')).json()).resource_documentation, BASE + '/mcp');
 });
 
 server.close(); mock.close(); supa.close();

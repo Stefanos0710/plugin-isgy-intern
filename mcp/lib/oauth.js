@@ -18,7 +18,7 @@ export const protectedResource = (origin) => ({
   bearer_methods_supported: ['header'],
   scopes_supported: ['isgy'],
   resource_name: 'ISGY Intern',
-  resource_documentation: origin,
+  resource_documentation: `${origin}/mcp`,
 });
 
 export const authServer = (origin) => ({

@@ -2,7 +2,8 @@
 import { handleRpc } from '../lib/mcp.js';
 import { protectedResource, authServer, register, authorizeGet, authorizePost, token, authFromBearer, keyGet, keyPost } from '../lib/oauth.js';
 import { kontoGet, kontoPost, extApi } from '../lib/konto.js';
-import { homePage, errorPage } from '../lib/pages.js';
+import { mcpPage, errorPage } from '../lib/pages.js';
+import { homePage } from '../lib/home.js';
 import { impressumPage, datenschutzPage } from '../lib/legal.js';
 import { SITE, LEGACY_HOSTS, verification, asset, robotsTxt, sitemapXml, manifestJson, llmsTxt } from '../lib/site.js';
 import { loadPdfjs } from '../lib/portal.js';
@@ -20,11 +21,13 @@ const PAGE_HEADERS = {
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'same-origin',
   'X-Content-Type-Options': 'nosniff',
-  'X-Robots-Tag': 'noindex, nofollow', // only the start page is meant for search engines
+  'X-Robots-Tag': 'noindex, nofollow', // only / and /mcp (in a browser) are meant for search engines
   'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'",
 };
 // The start page is public and identical for everyone: let the CDN cache it.
 const HOME_HEADERS = { ...PAGE_HEADERS, 'X-Robots-Tag': 'index, follow', 'Cache-Control': 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400' };
+// /mcp is also the MCP endpoint, so its page is never cached by the CDN (an MCP client must not get HTML).
+const MCP_PAGE_HEADERS = { ...HOME_HEADERS, 'Cache-Control': 'public, max-age=0, must-revalidate', Vary: 'Accept, Authorization' };
 const FILE_CACHE = 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400';
 
 function origin(req) {
@@ -77,7 +80,11 @@ export default async function handler(req, res) {
   try {
     if (m === 'OPTIONS') return send(res, 204, null);
 
-    // ----- MCP endpoint -----
+    // ----- MCP endpoint (a browser opening /mcp gets the page about it instead) -----
+    if (path === '/mcp' && m === 'GET' && !req.headers.authorization && /text\/html/.test(req.headers.accept || '')) {
+      if (LEGACY_HOSTS.includes(new URL(o).host)) return send(res, 301, null, { Location: SITE + '/mcp', 'Cache-Control': 'no-store' });
+      return send(res, 200, mcpPage(o), MCP_PAGE_HEADERS);
+    }
     if (path === '/mcp' || path === '/sse') {
       const auth = await authFromBearer(req.headers.authorization);
       if (!auth) {
@@ -126,7 +133,7 @@ export default async function handler(req, res) {
     if (path === '/' && m === 'GET') {
       // Older addresses keep working for the connection itself, but the start page lives in one place (duplicate-content / canonical).
       if (LEGACY_HOSTS.includes(new URL(o).host)) return send(res, 301, null, { Location: SITE + '/', 'Cache-Control': 'public, max-age=3600' });
-      return send(res, 200, homePage(o), HOME_HEADERS);
+      return send(res, 200, homePage(), HOME_HEADERS);
     }
 
     // ----- legal pages (readable by anyone, kept out of search results) -----

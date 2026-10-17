@@ -3,7 +3,7 @@
 Ein [MCP](https://modelcontextprotocol.io)-Server, mit dem **Claude, ChatGPT, Gemini CLI** und andere KI-Assistenten deine Daten aus isgy-intern.de lesen können: Stundenplan, Vertretungsplan, Klassentagebuch (Themen & Hausaufgaben), Termine aus dem Klassenkalender und die Lehrerkürzel. Nur Lesezugriff.
 
 **Server-URL:** `https://isgy-intern-plus.vercel.app/mcp`
-Auf der Startseite <https://isgy-intern-plus.vercel.app> stehen die Anleitungen für jeden Client noch einmal mit Kopier-Knopf.
+Im Browser zeigt <https://isgy-intern-plus.vercel.app/mcp> die Anleitungen für jeden Client noch einmal mit Kopier-Knopf (dieselbe Adresse ist die Server-URL; MCP-Clients bekommen dort den Endpunkt). Die Startseite <https://isgy-intern-plus.vercel.app> stellt das ganze Projekt vor, vor allem die Browser-Erweiterung.
 
 ## Hinzufügen
 
@@ -71,9 +71,9 @@ Dazu gibt es fertige **Prompts** (in Claude über das „+“-Menü): *Mein Schu
 
 ## Website & SEO
 
-Die Startseite (`/`) ist die einzige Seite für Suchmaschinen: eigener Titel und Beschreibung, `canonical`, Open Graph / Twitter Cards (Vorschaubild `assets/og.png`), strukturierte Daten (JSON-LD: `WebSite`, `SoftwareApplication`, `FAQPage`), sichtbare FAQ, `robots.txt`, `sitemap.xml` (mit Bildern), `site.webmanifest`, Favicons und eine `llms.txt` für KI-Crawler. Alle anderen Seiten (Anmeldung, Konto, Schlüssel) sind `noindex`. Die alte Adresse `isgy-intern-mcp.vercel.app` leitet nur die Startseite weiter; bestehende Verbindungen laufen weiter.
+Für Suchmaschinen gibt es zwei Seiten: die Startseite `/` (das Projekt, vor allem die Erweiterung; `lib/home.js`) und `/mcp` im Browser (KI-Anbindung; `mcpPage()` in `lib/pages.js`). Beide haben eigenen Titel und Beschreibung, `canonical`, Open Graph / Twitter Cards (Vorschaubild `assets/og.png`), strukturierte Daten (JSON-LD: `WebSite`/`SoftwareApplication`/`BreadcrumbList`/`FAQPage`) und eine sichtbare FAQ; dazu `robots.txt`, `sitemap.xml` (mit Bildern), `site.webmanifest`, Favicons und eine `llms.txt` für KI-Crawler. Alle anderen Seiten (Anmeldung, Konto, Schlüssel) sind `noindex`. Die alte Adresse `isgy-intern-mcp.vercel.app` leitet nur diese beiden Seiten weiter; bestehende Verbindungen laufen weiter.
 
-Logos: Claude, OpenAI und Gemini sind die echten Marken-Logos (MIT-lizenzierte SVGs aus `@lobehub/icons-static-svg`), das ISGY-Logo kommt aus `logo-plus.png`. Alles liegt in `assets/`; das Vorschaubild entsteht aus `scripts/og.html` (1200×630 rendern). Nach Änderungen an der Startseite `UPDATED` in `lib/site.js` hochsetzen.
+Logos: Claude, OpenAI und Gemini sind die echten Marken-Logos (MIT-lizenzierte SVGs aus `@lobehub/icons-static-svg`), die Browser-Logos kommen aus Simple Icons (CC0), das ISGY-Logo aus `logo-plus.png`. Alles liegt in `assets/`; das Vorschaubild entsteht aus `scripts/og.html` (1200×630 rendern). Nach Änderungen an den Seiten `UPDATED` (und bei neuer Erweiterungs-Version `VERSION`) in `lib/site.js` hochsetzen.
 
 Nach dem ersten Deploy einmalig in der [Google Search Console](https://search.google.com/search-console) (Property-Typ **„URL-Präfix“** mit `https://isgy-intern-plus.vercel.app/`, Bestätigung per **HTML-Tag** → Wert in `GOOGLE_SITE_VERIFICATION`) und den [Bing Webmaster Tools](https://www.bing.com/webmasters) die Seite hinzufügen und `https://isgy-intern-plus.vercel.app/sitemap.xml` einreichen. Die Property-Art „Domain“ (DNS) funktioniert bei `vercel.app` nicht, weil die DNS-Einträge Vercel gehören.
 
@@ -89,7 +89,7 @@ Ordner `mcp/` als eigenes Vercel-Projekt (Root Directory `mcp`, Framework „Oth
 | `ISGY_BASE_URL`, `PUBLIC_URL` | optional, nur für Tests / eigene Domain |
 | `OPERATOR_NAME`, `OPERATOR_STREET`, `OPERATOR_CITY`, `OPERATOR_EMAIL` | Angaben für Impressum und Datenschutzerklärung (`/impressum`, `/datenschutz`). Stehen bewusst nur in der Vercel-Konfiguration, nicht im Repository. |
 | `GOOGLE_SITE_VERIFICATION`, `BING_SITE_VERIFICATION`, `GOOGLE_VERIFICATION_FILE` | optional: Bestätigung der Website in Google Search Console / Bing (Meta-Tag-Wert bzw. Dateiname `google….html`). Bei einer `vercel.app`-Adresse geht nur „URL-Präfix“ mit HTML-Tag oder HTML-Datei, nicht DNS. |
-| `SITE_URL`, `LEGACY_HOSTS` | optional: öffentliche Adresse für `canonical`/Sitemap (Standard `https://isgy-intern-plus.vercel.app`) und ältere Hostnamen, deren Startseite weiterleitet |
+| `SITE_URL`, `LEGACY_HOSTS` | optional: öffentliche Adresse für `canonical`/Sitemap (Standard `https://isgy-intern-plus.vercel.app`) und ältere Hostnamen, deren Seiten `/` und `/mcp` weiterleiten |
 
 ```bash
 cd mcp
@@ -98,4 +98,4 @@ npm test          # Ende-zu-Ende-Test mit dem offiziellen MCP-SDK gegen ein nach
 npm run dev       # http://localhost:3000/mcp  (gegen das echte isgy-intern.de)
 ```
 
-Aufbau: `api/index.js` (einzige Vercel-Funktion, Routing), `lib/mcp.js` (JSON-RPC/MCP), `lib/oauth.js` (OAuth 2.1 mit dynamischer Client-Registrierung und PKCE, zustandslos), `lib/portal.js` (Zugriff auf isgy-intern.de), `lib/tools.js` (die Tools), `lib/pages.js` (Seiten), `lib/site.js` (Adresse, Logos, robots/sitemap/Manifest), `lib/accounts.js` + `lib/konto.js` (Konten, Kontoseite, Erweiterungs-API `/api/ext/login|sync`), `lib/db.js` (Supabase-RPC).
+Aufbau: `api/index.js` (einzige Vercel-Funktion, Routing), `lib/mcp.js` (JSON-RPC/MCP), `lib/oauth.js` (OAuth 2.1 mit dynamischer Client-Registrierung und PKCE, zustandslos), `lib/portal.js` (Zugriff auf isgy-intern.de), `lib/tools.js` (die Tools), `lib/home.js` (Startseite), `lib/pages.js` (KI-Seite `/mcp`, Anmeldung, Konto, gemeinsames Layout), `lib/site.js` (Adresse, Logos, robots/sitemap/Manifest), `lib/accounts.js` + `lib/konto.js` (Konten, Kontoseite, Erweiterungs-API `/api/ext/login|sync`), `lib/db.js` (Supabase-RPC).
