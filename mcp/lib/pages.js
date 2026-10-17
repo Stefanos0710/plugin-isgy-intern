@@ -1,5 +1,7 @@
-// HTML pages: start page with setup instructions, login (OAuth authorize), personal access key, errors.
+// HTML pages: AI page (/mcp) with setup instructions, login (OAuth authorize), personal access key, account, errors.
+// The start page (/) is in home.js and shares head/nav/footer from here.
 // Self-contained (inline CSS/JS, inline SVG), so the strict CSP in api/index.js holds. Light + dark, mobile first.
+import { SITE, REPO, NAME, verification, DESCRIPTION, MCP_TITLE, MCP_DESCRIPTION, OG_ALT, AUTHOR, VERSION, logoSprite, brandIcon, brandOf } from './site.js';
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 const CSS = `
@@ -32,6 +34,10 @@ a{color:var(--accent);text-underline-offset:2px}
 .nav-links a{color:var(--muted);text-decoration:none;font-size:.9rem;font-weight:550;padding:7px 10px;border-radius:8px}
 .nav-links a:hover{background:var(--bg-2);color:var(--text)}
 @media (max-width:560px){.nav-links .hide-sm,.logo small{display:none}}
+.nav-links a[aria-current=page]{color:var(--text);background:var(--bg-2)}
+.nav-links .gh{display:grid;place-items:center;padding:7px}.nav-links .gh svg{width:19px;height:19px}
+@media (max-width:560px){.nav-links .gh{display:none}}
+@media (max-width:360px){.nav .logo .lt{display:none}}
 
 /* hero */
 .hero{padding:40px 0 24px;position:relative;overflow-x:clip}
@@ -126,8 +132,15 @@ kbd{font:600 .8em var(--mono);background:var(--card);border:1px solid var(--line
 .btn svg{width:16px;height:16px}
 
 /* footer */
-footer{border-top:1px solid var(--line);padding:28px 0 40px;color:var(--faint);font-size:.85rem}
-footer .wrap{display:flex;flex-wrap:wrap;gap:8px 20px;justify-content:space-between}
+.foot{border-top:1px solid var(--line);padding:44px 0 36px;color:var(--muted);font-size:.9rem;background:var(--bg)}
+.foot-grid{display:grid;gap:28px;grid-template-columns:1fr 1fr}
+@media (min-width:800px){.foot-grid{grid-template-columns:1.6fr 1fr 1fr 1fr;gap:40px}}
+.foot-brand{grid-column:1/-1}@media (min-width:800px){.foot-brand{grid-column:auto}}
+.foot-brand p{margin:12px 0 0;max-width:30em;color:var(--muted);font-size:.88rem}
+.foot h2{font-size:.78rem;font-weight:750;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin:4px 0 12px}
+.foot ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.foot a{color:var(--muted);text-decoration:none}.foot a:hover{color:var(--accent)}
+.foot-bottom{margin-top:32px;padding-top:20px;border-top:1px solid var(--line);color:var(--faint);font-size:.78rem;line-height:1.55;display:grid;gap:6px}
 
 /* auth pages */
 .auth-page{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}
@@ -202,6 +215,39 @@ details summary::before{content:"▸";display:inline-block;margin-right:6px;tran
 .alert.ok{background:var(--okbg);color:var(--ok)}
 .auth-card .copybox{max-width:none}
 @media (max-width:480px){.auth-card .copybox{flex-wrap:wrap;padding:12px}.auth-card .copybox code{white-space:normal;overflow-wrap:anywhere;flex-basis:100%;font-size:.8rem}.auth-card .copybox .btn{width:100%}}
+.skip{position:absolute;left:-9999px;top:8px;background:var(--card);color:var(--text);padding:8px 14px;border-radius:8px;z-index:50;font-weight:700}.skip:focus{left:8px}
+.mark-img{width:32px;height:32px;border-radius:9px;box-shadow:0 4px 12px -4px rgba(232,115,12,.55);display:block}
+.bi{flex:none;display:inline-block;vertical-align:middle}.bi-openai{color:var(--text)}
+.eyebrow .dots i{background:var(--card);border:2px solid var(--card);box-shadow:0 0 0 1px var(--line)}
+.eyebrow .dots i .bi{width:14px;height:14px}
+.tab-bar .ico{background:none!important;width:22px;height:22px}.tab-bar .ico .bi{width:20px;height:20px}
+.tab-bar .ico.other{background:var(--faint)!important;border-radius:6px;font-size:11px}
+.works{display:flex;flex-wrap:wrap;gap:12px 14px;margin-top:6px}
+.works .w{display:flex;align-items:center;gap:12px;padding:14px 20px;border:1px solid var(--line);border-radius:14px;background:var(--card);box-shadow:var(--shadow);font-weight:700;font-size:1.05rem}
+.works .w .bi{width:28px;height:28px}
+.works .w small{display:block;font-weight:500;font-size:.8rem;color:var(--muted)}
+.tm{color:var(--faint);font-size:.78rem;margin-top:14px;line-height:1.5}
+.split{display:grid;gap:28px;align-items:center}
+@media (min-width:860px){.split{grid-template-columns:1fr 1fr;gap:48px}}
+.split img{width:100%;max-width:320px;height:auto;filter:drop-shadow(0 22px 30px rgba(232,115,12,.35));justify-self:center}
+.checks{list-style:none;padding:0;margin:14px 0 0;display:grid;gap:8px}
+.checks li{display:flex;gap:10px;align-items:flex-start;font-size:.97rem}.checks svg{width:18px;height:18px;color:var(--ok);flex:none;margin-top:3px}
+.faq{display:grid;gap:12px;margin:0;padding:0}
+.faq details{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:4px 18px;box-shadow:var(--shadow)}
+.faq summary{padding:14px 0;margin:0;color:var(--text);font-size:1.02rem;font-weight:650;cursor:pointer}
+.faq summary::before{content:"+";margin-right:10px;color:var(--accent);font-weight:800}
+.faq details[open] summary::before{content:"–";transform:none}
+.faq p{margin:0 0 16px;color:var(--muted);font-size:.96rem}
+.faq p a{color:var(--accent)}
+.connect .av.brand{background:var(--card);border:1px solid var(--line)}.connect .av.brand .bi{width:28px;height:28px}
+.connect img.av{padding:0;background:none;object-fit:cover}
+.legal{font-size:.97rem}.legal h1{text-align:left;font-size:1.6rem;margin-bottom:4px}.legal h2{font-size:1.1rem;margin:28px 0 8px;letter-spacing:-.01em}
+.legal p,.legal li{color:var(--muted)}.legal p{margin:8px 0}.legal ul{padding-left:20px;margin:8px 0}.legal li{margin:4px 0}.legal strong,.legal b{color:var(--text)}
+.legal address{font-style:normal;background:var(--bg-2);border-radius:12px;padding:14px 16px;margin:10px 0;color:var(--text);line-height:1.6}
+.legal .stand{font-size:.85rem;color:var(--faint)}.legal table{border-collapse:collapse;width:100%;margin:10px 0;font-size:.9rem}.legal th,.legal td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}.legal th{color:var(--text)}
+@media (max-width:640px){.legal table,.legal tbody,.legal tr,.legal td{display:block;width:100%}.legal thead,.legal tr:first-child{display:none}
+.legal tr{border:1px solid var(--line);border-radius:12px;padding:6px 12px;margin:10px 0}.legal td{border:0;padding:4px 0}.legal td:first-child{font-weight:700;color:var(--text)}}
+.legal .warn{background:var(--errbg);color:var(--err);padding:12px 14px;border-radius:12px;margin:12px 0}
 .foot-mini{text-align:center;color:var(--faint);font-size:.8rem;padding:0 16px 28px}
 .foot-mini a{color:var(--faint)}
 `;
@@ -214,7 +260,7 @@ var nav=document.querySelector('.nav');if(nav){var f=function(){nav.classList.to
 window.addEventListener('pageshow',function(){document.querySelectorAll('button[data-l]').forEach(function(b){b.disabled=false;b.textContent=b.dataset.l})});
 `;
 
-const I = {
+export const I = {
   check: '<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.86-9.86a.75.75 0 0 0-1.22-.88l-3.3 4.6-1.84-1.84a.75.75 0 1 0-1.06 1.06l2.47 2.47a.75.75 0 0 0 1.14-.09l3.81-5.32Z" clip-rule="evenodd"/></svg>',
   lock: '<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 1a4.5 4.5 0 0 0-4.5 4.5V9H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-.5V5.5A4.5 4.5 0 0 0 10 1Zm3 8V5.5a3 3 0 1 0-6 0V9h6Z" clip-rule="evenodd"/></svg>',
   eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>',
@@ -229,26 +275,54 @@ const I = {
   alert: '<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 10 5Zm0 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd"/></svg>',
   bolt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z"/></svg>',
 };
-const FAVICON = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e8730c"/><stop offset="1" stop-color="#f59e0b"/></linearGradient></defs><rect width="64" height="64" rx="16" fill="url(#g)"/><text x="32" y="42" font-family="system-ui,sans-serif" font-size="26" font-weight="800" fill="#fff" text-anchor="middle">IS</text></svg>')}`;
-
-function head(title, description = 'ISGY Intern für KI-Assistenten: Stundenplan, Vertretungen, Hausaufgaben und Termine von isgy-intern.de in Claude, ChatGPT und Gemini.') {
+export function head(title, { description = DESCRIPTION, path = '', index = false, jsonld = [], robots: robotsOverride, css = '' } = {}) {
+  const url = SITE + (path || '/');
+  const robots = robotsOverride || (index ? 'index,follow,max-image-preview:large,max-snippet:-1' : 'noindex,nofollow');
   return `<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="robots" content="noindex"><meta name="description" content="${esc(description)}">
-<meta name="theme-color" content="#f7f6f3" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#111113" media="(prefers-color-scheme: dark)">
-<meta name="color-scheme" content="light dark"><link rel="icon" href="${FAVICON}">
-<title>${esc(title)}</title><style>${CSS}</style></head>`;
+<title>${esc(title)}</title>
+<meta name="description" content="${esc(description)}"><meta name="robots" content="${robots}">
+${index ? `<link rel="canonical" href="${url}"><link rel="alternate" hreflang="de" href="${url}"><link rel="alternate" hreflang="x-default" href="${url}">
+<meta property="og:type" content="website"><meta property="og:site_name" content="${NAME}"><meta property="og:locale" content="de_DE">
+<meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(description)}"><meta property="og:url" content="${url}">
+<meta property="og:image" content="${SITE}/assets/og.png"><meta property="og:image:type" content="image/png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="${esc(OG_ALT)}">
+<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(title)}"><meta name="twitter:description" content="${esc(description)}"><meta name="twitter:image" content="${SITE}/assets/og.png"><meta name="twitter:image:alt" content="${esc(OG_ALT)}">
+${verification().google ? `<meta name="google-site-verification" content="${esc(verification().google)}">` : ''}${verification().bing ? `<meta name="msvalidate.01" content="${esc(verification().bing)}">` : ''}
+<meta name="author" content="${AUTHOR.name}"><meta name="application-name" content="${NAME}"><meta name="apple-mobile-web-app-title" content="ISGY Plus">
+` : ''}<meta name="theme-color" content="#f7f6f3" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#111113" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark"><meta name="format-detection" content="telephone=no">
+<link rel="icon" href="/favicon.ico" sizes="48x48"><link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png"><link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest">
+${jsonld.map((j) => `<script type="application/ld+json">${JSON.stringify(j).replace(/</g, '\\u003c')}</script>`).join('\n')}
+<style>${CSS}${css}</style></head>`;
 }
-const tail = `<script>${JS}</script></body></html>`;
-const logo = (href = '/') => `<a class="logo" href="${href}"><span class="mark">IS</span>ISGY Intern <small>für KI-Assistenten</small></a>`;
-const REPO = 'https://github.com/Stefanos0710/plugin-isgy-intern';
-const DISCLAIMER = 'Inoffiziell – kein Angebot des Gymnasiums Ismaning. Nur Lesezugriff auf deine eigenen Portal-Daten.';
+export const tail = (js = '') => `<script>${JS}${js}</script></body></html>`;
+export const logo = (href = '/') => `<a class="logo" href="${href}" aria-label="ISGY Intern Plus – Startseite"><img class="mark-img" src="/assets/logo-96.png" width="32" height="32" alt=""><span class="lt">ISGY Intern <small>Plus</small></span></a>`;
+export const DISCLAIMER = 'Inoffiziell – kein Angebot des Gymnasiums Ismaning. Nur Lesezugriff auf deine eigenen Portal-Daten.';
+export const TRADEMARKS = 'Claude ist eine Marke von Anthropic, ChatGPT und OpenAI sind Marken von OpenAI, Gemini ist eine Marke von Google. Die Logos dienen nur der Kennzeichnung der unterstützten Dienste; es besteht keine Verbindung zu den Unternehmen.';
+const GITHUB = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 0-.8.4-1.3.7-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3"/></svg>';
+
+// Shared header and footer of the public pages (start page, AI page).
+export const siteHeader = (active = '') => `<a class="skip" href="#inhalt">Zum Inhalt springen</a>
+<header class="nav"><div class="wrap">${logo()}<nav class="nav-links" aria-label="Hauptnavigation">
+<a href="/#funktionen" class="hide-sm">Funktionen</a><a href="/#installieren" class="hide-sm">Installieren</a><a href="/mcp"${active === 'mcp' ? ' aria-current="page"' : ''}>KI-Assistenten</a><a href="/konto">Konto</a><a class="gh hide-sm" href="${REPO}" rel="noopener" aria-label="Quellcode auf GitHub">${GITHUB}</a>
+</nav></div></header>`;
+
+export const siteFooter = () => `<footer class="foot"><div class="wrap">
+<div class="foot-grid">
+<div class="foot-brand">${logo()}<p>Die inoffizielle Erweiterung für isgy-intern.de, das Schulportal des Gymnasiums Ismaning – plus Anbindung an Claude, ChatGPT und Gemini. Kostenlos und Open Source.</p></div>
+<nav aria-labelledby="f-prod"><h2 id="f-prod">Produkt</h2><ul><li><a href="/#funktionen">Funktionen</a></li><li><a href="/#installieren">Installieren</a></li><li><a href="/mcp">KI-Assistenten</a></li><li><a href="/konto">KI-Konto</a></li></ul></nav>
+<nav aria-labelledby="f-proj"><h2 id="f-proj">Projekt</h2><ul><li><a href="${REPO}" rel="noopener">GitHub</a></li><li><a href="${REPO}#readme" rel="noopener">Dokumentation</a></li><li><a href="${REPO}/blob/HEAD/mcp/README.md" rel="noopener">MCP-Server</a></li><li><a href="${REPO}/issues" rel="noopener">Fehler melden</a></li></ul></nav>
+<nav aria-labelledby="f-law"><h2 id="f-law">Rechtliches</h2><ul><li><a href="/impressum">Impressum</a></li><li><a href="/datenschutz">Datenschutz</a></li></ul></nav>
+</div>
+<div class="foot-bottom"><span>© ${new Date().getFullYear()} ${NAME} · Version ${VERSION} · ${DISCLAIMER}</span><span>${TRADEMARKS} Browser-Logos: Simple Icons (CC0); Marken ihrer jeweiligen Inhaber.</span></div>
+</div></footer>`;
 
 // Simple centered page for login, keys, account and errors.
-export function layout(title, body, { wide = false } = {}) {
-  return `${head(title)}<body class="auth-page">
-<header class="nav"><div class="wrap">${logo()}<nav class="nav-links"><a href="/#einrichten" class="hide-sm">Einrichten</a><a href="/konto">Konto</a></nav></div></header>
+export function layout(title, body, { wide = false, robots } = {}) {
+  return `${head(title, { robots })}<body class="auth-page">${logoSprite()}
+<header class="nav"><div class="wrap">${logo()}<nav class="nav-links"><a href="/mcp" class="hide-sm">KI-Assistenten</a><a href="/konto">Konto</a></nav></div></header>
 <main class="auth-main"><div class="auth-card${wide ? ' wide' : ''}">${body}</div></main>
-<p class="foot-mini">${DISCLAIMER}</p>${tail}`;
+<p class="foot-mini">${DISCLAIMER}<br><a href="/impressum">Impressum</a> · <a href="/datenschutz">Datenschutz</a></p>${tail()}`;
 }
 
 // ---------- login form (OAuth authorize, personal key, saving the portal login in the account) ----------
@@ -302,8 +376,10 @@ const loginModes = (accounts) => (accounts ? ['acct', 'pw', 'code'] : ['pw', 'co
 
 export function authorizePage({ client, redirectHost, req, error, mode, username, email, accounts, me }) {
   const initial = esc(String(client || '?').trim().charAt(0).toUpperCase() || '?');
+  const brand = brandOf(client, redirectHost);
+  const clientAv = brand ? `<span class="av brand">${brandIcon(brand, 28)}</span>` : `<span class="av">${initial}</span>`;
   return layout('Mit ISGY Intern verbinden', `
-<div class="connect" aria-hidden="true"><span class="av">${initial}</span><span class="link"><i></i><i></i><i></i></span><span class="av isgy">IS</span></div>
+<div class="connect" aria-hidden="true">${clientAv}<span class="link"><i></i><i></i><i></i></span><img class="av" src="/assets/logo-96.png" width="48" height="48" alt=""></div>
 <h1>Mit ISGY Intern verbinden</h1>
 <p class="intro"><b>${esc(client)}</b> möchte Zugriff auf deine Daten von isgy-intern.de.<br><span style="font-size:.85rem">Danach geht es zurück zu ${esc(redirectHost)}.</span></p>
 ${SCOPE}${me ? continueAs('/authorize', { req }, me, 'Verbinden') : ''}${loginForm({ action: '/authorize', hidden: { req }, error, mode, username, email, modes: loginModes(accounts) })}`);
@@ -316,7 +392,7 @@ export function errorPage(title, message) {
 
 export function keyPage({ origin, error, mode, username, email, accounts, me }) {
   return layout('Persönlicher Zugriffsschlüssel', `
-<div class="connect" aria-hidden="true"><span class="av isgy">${I.key.replace('<svg', '<svg width="24" height="24"')}</span></div>
+<div class="connect" aria-hidden="true"><img class="av" src="/assets/logo-96.png" width="48" height="48" alt=""></div>
 <h1>Persönlicher Zugriffsschlüssel</h1>
 <p class="intro">Nur für Programme <b>ohne</b> OAuth-Anmeldung. Claude, ChatGPT und Gemini CLI brauchen das nicht – dort einfach <code>${esc(origin)}/mcp</code> eintragen.</p>
 ${me ? continueAs('/schluessel', {}, me, 'Schlüssel erstellen') : ''}${loginForm({ action: '/schluessel', error, mode, username, email, button: 'Schlüssel erstellen', modes: loginModes(accounts) })}`);
@@ -340,7 +416,7 @@ export function accountAuthPage({ error, email = '', register = false, next = ''
   const hidden = next ? `<input type="hidden" name="next" value="${esc(next)}">` : '';
   const err = error ? `<div class="alert" role="alert">${I.alert}<span>${esc(error)}</span></div>` : '';
   return layout(register ? 'Konto erstellen' : 'Anmelden', `
-<div class="connect" aria-hidden="true"><span class="av isgy">IS</span></div>
+<div class="connect" aria-hidden="true"><img class="av" src="/assets/logo-96.png" width="48" height="48" alt=""></div>
 <h1>${register ? 'Konto erstellen' : 'Bei deinem Konto anmelden'}</h1>
 <p class="intro">${register ? 'Einmal dein isgy-intern-Login hinterlegen – danach verbinden sich KI-Assistenten und die Erweiterung nur noch mit diesem Konto.' : 'Dein ISGY-KI-Konto: gespeichertes isgy-intern-Login, Notizen aus der Erweiterung, Verbindungen.'}</p>
 <div class="auth">
@@ -413,7 +489,7 @@ ${notes.length ? `<ul class="nlist">${open.slice(0, 12).map((n) => `<li><span cl
 <div class="block">
 <h2 class="bh">${I.bolt}KI-Assistenten verbinden</h2>
 <div class="copybox"><code id="url">${esc(origin)}/mcp</code><button class="btn" type="button" data-copy="url">${I.copy}Kopieren</button></div>
-<p class="hint">URL in Claude, ChatGPT oder Gemini CLI eintragen und bei der Anmeldung <b>„Konto“</b> wählen. <a href="/#einrichten">Anleitung</a></p>
+<p class="hint">URL in Claude, ChatGPT oder Gemini CLI eintragen und bei der Anmeldung <b>„Konto“</b> wählen. <a href="/mcp#einrichten">Anleitung</a></p>
 </div>
 
 <details class="danger"><summary>Sicherheit &amp; Konto löschen</summary>
@@ -424,7 +500,7 @@ ${notes.length ? `<ul class="nlist">${open.slice(0, 12).map((n) => `<li><span cl
 </details>`, { wide: true });
 }
 
-// ---------- start page ----------
+// ---------- AI page (/mcp) ----------
 const ASK = [
   ['Was habe ich morgen – und fällt was aus?', 'Stunden mit Uhrzeit, Raum und Lehrkraft, Vertretungen und Entfälle direkt eingearbeitet.', 'tagesplan'],
   ['Was muss ich bis Montag machen?', 'Hausaufgaben je Fach aus dem Klassentagebuch, mit der Stunde, zu der sie fällig sind.', 'hausaufgaben'],
@@ -438,8 +514,8 @@ const ASK = [
 ];
 
 function setupTabs(url) {
-  const tab = (id, label, color, letter, checked) => [`<input type="radio" name="client" id="t-${id}"${checked ? ' checked' : ''}>`, `<label for="t-${id}"><span class="ico" style="background:${color}">${letter}</span>${label}</label>`];
-  const tabs = [tab('claude', 'Claude', '#d97757', 'C', true), tab('chatgpt', 'ChatGPT', '#10a37f', 'G'), tab('gemini', 'Gemini', 'linear-gradient(135deg,#4285f4,#9b72cb)', '✦'), tab('andere', 'Andere', '#52525b', '⋯')];
+  const tab = (id, label, icon, checked) => [`<input type="radio" name="client" id="t-${id}"${checked ? ' checked' : ''}>`, `<label for="t-${id}"><span class="ico ${id === 'andere' ? 'other' : ''}">${icon}</span>${label}</label>`];
+  const tabs = [tab('claude', 'Claude', brandIcon('claude', 20), true), tab('chatgpt', 'ChatGPT', brandIcon('openai', 20)), tab('gemini', 'Gemini', brandIcon('gemini', 20)), tab('andere', 'Andere', '⋯')];
   const u = esc(url);
   return `<div class="tabs">${tabs.map((t) => t[0]).join('')}
 <div class="tab-bar" role="tablist" aria-label="KI-Assistent">${tabs.map((t) => t[1]).join('')}</div>
@@ -473,22 +549,44 @@ function setupTabs(url) {
 </div>`;
 }
 
-export function homePage(origin) {
+const FAQ = [
+  ['Wie verbinde ich isgy-intern.de mit Claude, ChatGPT oder Gemini?', 'Trage die Server-URL (oben auf dieser Seite) als eigenen Connector bzw. MCP-Server ein und melde dich einmal an. In Claude geht das unter Einstellungen → Connectors, in ChatGPT im Entwicklermodus unter Apps & Connectors, in Gemini über die Gemini CLI. Die Schritt-für-Schritt-Anleitung steht im Abschnitt „Einrichten“.'],
+  ['Was ist ein MCP-Server?', 'MCP (Model Context Protocol) ist ein offener Standard, über den KI-Assistenten Werkzeuge und Daten anderer Dienste nutzen können. Der ISGY-Intern-MCP-Server stellt deinem Assistenten Werkzeuge wie „tagesplan“, „hausaufgaben“ oder „pruefungen“ bereit, die deine Daten live von isgy-intern.de abrufen.'],
+  ['Kostet das etwas?', 'Nein, ISGY Intern Plus ist kostenlos. Für eigene Connectors brauchen die KI-Dienste teils ein Bezahl-Abo (z. B. ChatGPT Plus für den Entwicklermodus); das ist unabhängig von dieser Seite.'],
+  ['Funktioniert es mit dem Office-365-Login?', 'Ja. Wer sich im Portal über Office 365 anmeldet, hat kein Portal-Passwort. Mit der Browser-Erweiterung und einem KI-Konto übergibt die Erweiterung deine Sitzung automatisch; ohne Konto kopierst du mit Strg+K einen Verbindungscode.'],
+  ['Wie sicher sind meine Daten?', 'Von isgy-intern.de wird nur gelesen. Ohne Konto wird nichts gespeichert; mit Konto liegt dein isgy-intern-Zugang AES-256-verschlüsselt in der Datenbank (Supabase, Frankfurt). Du kannst jederzeit überall abmelden oder das Konto samt Notizen löschen.'],
+  ['Kann die KI im Portal etwas ändern?', 'Nein. Der KI-Assistent kann nur lesen. Schreiben kann er ausschließlich deine eigenen Aufgaben und Notizen im „Mein Tag“-Dashboard – zum Beispiel „Schreib mir auf: Bio-Referat bis Freitag“.'],
+  ['Geht das auch auf dem Handy?', 'Ja. Einmal in Claude (Web oder App) bzw. ChatGPT eingerichtet, steht der Connector auch in den Handy-Apps zur Verfügung – du kannst also unterwegs fragen, was morgen ausfällt.'],
+];
+
+function schema() {
+  const author = { '@type': 'Person', name: AUTHOR.name, url: AUTHOR.url };
+  return [
+    { '@context': 'https://schema.org', '@type': 'SoftwareApplication', '@id': `${SITE}/mcp#app`, name: 'ISGY Intern MCP-Server', description: MCP_DESCRIPTION,
+      applicationCategory: 'EducationalApplication', applicationSubCategory: 'Model Context Protocol (MCP) Server', operatingSystem: 'Web', inLanguage: 'de', image: `${SITE}/assets/logo-512.png`, url: `${SITE}/mcp`,
+      isAccessibleForFree: true, offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR', availability: 'https://schema.org/InStock' }, author, isPartOf: { '@id': `${SITE}/#website` }, sameAs: [`${REPO}/blob/HEAD/mcp/README.md`] },
+    { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: NAME, item: `${SITE}/` }, { '@type': 'ListItem', position: 2, name: 'KI-Assistenten', item: `${SITE}/mcp` }] },
+    { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: FAQ.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) },
+  ];
+}
+
+// /mcp in a browser: what the server does and how to connect it. The same URL is the MCP endpoint for clients.
+export function mcpPage(origin) {
   const url = `${origin}/mcp`;
-  return `${head('ISGY Intern – Schulportal im KI-Chat')}<body>
-<header class="nav"><div class="wrap">${logo()}<nav class="nav-links"><a href="#fragen" class="hide-sm">Funktionen</a><a href="#datenschutz" class="hide-sm">Datenschutz</a><a href="#einrichten" class="hide-sm">Einrichten</a><a href="/konto">Konto</a></nav></div></header>
-<main>
+  return `${head(MCP_TITLE, { index: true, path: '/mcp', description: MCP_DESCRIPTION, jsonld: schema() })}<body>${logoSprite()}
+${siteHeader('mcp')}
+<main id="inhalt">
 <div class="hero"><div class="wrap hero-grid">
 <div>
-<span class="eyebrow"><span class="dots"><i style="background:#d97757">C</i><i style="background:#10a37f">G</i><i style="background:linear-gradient(135deg,#4285f4,#9b72cb)">✦</i></span>Für Claude, ChatGPT &amp; Gemini</span>
+<span class="eyebrow"><span class="dots" aria-hidden="true"><i>${brandIcon('claude', 14)}</i><i>${brandIcon('openai', 14)}</i><i>${brandIcon('gemini', 14)}</i></span>Für Claude, ChatGPT &amp; Gemini</span>
 <h1>Dein Schulportal,<br><span class="hl">direkt im KI-Chat.</span></h1>
-<p class="lead">Frag einfach „Was habe ich morgen?“ – dein KI-Assistent liest Stundenplan, Vertretungen, Hausaufgaben und Prüfungstermine von isgy-intern.de und antwortet in Sekunden.</p>
+<p class="lead">Der <strong>ISGY-Intern-MCP-Server</strong> verbindet isgy-intern.de (Gymnasium Ismaning) mit deinem KI-Assistenten: Frag einfach „Was habe ich morgen?“ – und bekomme Stundenplan, Vertretungen, Hausaufgaben und Prüfungstermine in Sekunden.</p>
 <div class="copybox"><span class="lbl">Server-URL</span><code id="url">${esc(url)}</code><button class="btn" type="button" data-copy="url">${I.copy}Kopieren</button></div>
-<p class="hero-cta"><a href="/konto?neu=1">Konto erstellen</a> · <a href="#einrichten">Ohne Konto einrichten</a></p>
+<p class="hero-cta">Genau diese Seite ist die Adresse für den Connector. <a href="/konto?neu=1">Konto erstellen</a> · <a href="#einrichten">Einrichten</a></p>
 <div class="badges"><span>${I.check}Portal nur lesen</span><span>${I.check}Notizen-Sync</span><span>${I.check}Verschlüsselt</span><span>${I.check}Kostenlos</span></div>
 </div>
-<div class="chat" aria-label="Beispiel-Unterhaltung">
-<div class="chat-top"><span class="mark" style="width:24px;height:24px;font-size:10px;border-radius:7px">IS</span><b>ISGY Intern</b> verbunden<span class="pill">● aktiv</span></div>
+<div class="chat" role="img" aria-label="Beispiel: Auf die Frage „Was habe ich morgen, und fällt was aus?“ antwortet der KI-Assistent mit Stundenplan, Vertretung und Hausaufgaben.">
+<div class="chat-top"><img class="mark-img" style="width:24px;height:24px;border-radius:7px" src="/assets/logo-96.png" width="24" height="24" alt=""><b>ISGY Intern</b> verbunden<span class="pill">● aktiv</span></div>
 <div class="msg me">Was habe ich morgen, und fällt was aus?</div>
 <div class="tool">${I.bolt}tagesplan(datum: "morgen")</div>
 <div class="msg ai">Morgen hast du <b>07:55–13:00</b>.
@@ -497,35 +595,63 @@ Fällig ist noch <b>Mathe S. 42 Nr. 3</b>, und am Freitag ist die <b>Mathe-Schul
 </div>
 </div></div>
 
-<section id="fragen"><div class="wrap">
-<div class="sec-head"><span class="kicker">Was du fragen kannst</span><h2>Einfach fragen wie im Chat.</h2><p class="sub">Der Assistent sucht sich selbst das passende Werkzeug – du brauchst keine Befehle.</p></div>
+<section id="funktioniert-mit" aria-labelledby="h-works" style="padding-top:8px"><div class="wrap">
+<div class="sec-head"><span class="kicker">Kompatibel</span><h2 id="h-works">Funktioniert mit deinem KI-Assistenten</h2></div>
+<div class="works">
+<div class="w">${brandIcon('claude', 28)}<span>Claude<small>claude.ai, Desktop &amp; App, Claude Code</small></span></div>
+<div class="w">${brandIcon('openai', 28)}<span>ChatGPT<small>Plus, Pro &amp; Business (Entwicklermodus)</small></span></div>
+<div class="w">${brandIcon('gemini', 28)}<span>Gemini<small>Gemini CLI &amp; MCP-Clients</small></span></div>
+</div>
+</div></section>
+
+<section id="fragen" aria-labelledby="h-ask"><div class="wrap">
+<div class="sec-head"><span class="kicker">Was du fragen kannst</span><h2 id="h-ask">Einfach fragen wie im Chat.</h2><p class="sub">Der Assistent sucht sich selbst das passende Werkzeug – du brauchst keine Befehle.</p></div>
 <div class="grid g3">${ASK.map(([q, p, t]) => `<div class="card ask"><q>${esc(q)}</q><p>${esc(p)}</p><code>${t}</code></div>`).join('')}</div>
 </div></section>
 
-<section id="einrichten" style="background:var(--bg-2)"><div class="wrap">
-<div class="sec-head"><span class="kicker">In einer Minute eingerichtet</span><h2>Verbinden mit deinem KI-Assistenten</h2><p class="sub">Server-URL einfügen, einmal anmelden – fertig.</p></div>
+<section id="einrichten" aria-labelledby="h-setup" style="background:var(--bg-2)"><div class="wrap">
+<div class="sec-head"><span class="kicker">In einer Minute eingerichtet</span><h2 id="h-setup">Verbinden mit deinem KI-Assistenten</h2><p class="sub">Server-URL einfügen, einmal anmelden – fertig.</p></div>
 ${setupTabs(url)}
 </div></section>
 
-<section id="anmeldung"><div class="wrap">
-<div class="sec-head"><span class="kicker">Anmeldung</span><h2>Am besten mit Konto</h2><p class="sub">Ein Konto merkt sich dein isgy-intern-Login und deine Notizen – alles andere geht auch ohne.</p></div>
+<section id="anmeldung" aria-labelledby="h-login"><div class="wrap">
+<div class="sec-head"><span class="kicker">Anmeldung</span><h2 id="h-login">Am besten mit Konto</h2><p class="sub">Ein Konto merkt sich dein isgy-intern-Login und deine Notizen – alles andere geht auch ohne.</p></div>
 <div class="card feature-wide"><div class="feat-ico">${I.shield}</div><div><h3>ISGY-KI-Konto <span class="tag org">empfohlen</span></h3><p>Einmal registrieren, isgy-intern-Login hinterlegen, fertig. Claude, ChatGPT &amp; Co. melden sich dann nur noch mit E-Mail und Passwort an. Mit der Erweiterung verbunden, bleibt die Office-365-Sitzung automatisch aktuell und deine Aufgaben &amp; Notizen aus „Mein Tag“ werden synchronisiert – der KI-Assistent kann sie lesen und neue anlegen.</p>
 <a class="btn" href="/konto?neu=1" style="margin-top:14px">${I.key}Konto erstellen</a></div></div>
 <div class="grid" style="margin-top:14px">
 <div class="card"><div class="feat-ico">${I.key}</div><h3>Ohne Konto: Portal-Passwort</h3><p>Für Konten mit eigenem Portal-Passwort, z.&nbsp;B. Eltern. Der Server meldet sich selbst an – und automatisch neu, wenn die Sitzung abläuft.</p></div>
-<div class="card"><div class="feat-ico">${I.swap}</div><h3>Ohne Konto: Verbindungscode</h3><p>Für Office-365-Logins (Schüler). Mit Microsoft-Login gibt es kein Portal-Passwort. In der Erweiterung <a href="${REPO}#installation"><b>ISGY Intern Plus</b></a> mit <kbd>Strg</kbd>+<kbd>K</kbd> einen Verbindungscode kopieren und beim Anmelden einfügen.</p></div>
+<div class="card"><div class="feat-ico">${I.swap}</div><h3>Ohne Konto: Verbindungscode</h3><p>Für Office-365-Logins (Schüler). Mit Microsoft-Login gibt es kein Portal-Passwort. In der Erweiterung <a href="/"><b>ISGY Intern Plus</b></a> mit <kbd>Strg</kbd>+<kbd>K</kbd> einen Verbindungscode kopieren und beim Anmelden einfügen.</p></div>
 </div>
 </div></section>
 
-<section id="datenschutz" style="padding-top:0"><div class="wrap">
-<div class="sec-head"><span class="kicker">Datenschutz</span><h2>Deine Daten bleiben deine.</h2></div>
+<section id="erweiterung" aria-labelledby="h-ext" style="background:var(--bg-2)"><div class="wrap split">
+<div>
+<span class="kicker">Am besten zusammen</span><h2 id="h-ext">Mit der Browser-Erweiterung ISGY Intern Plus</h2>
+<p class="sub">Die Erweiterung räumt das Schulportal auf und ist die Brücke zwischen deinem Browser und dem KI-Konto: Sie hält die Office-365-Sitzung aktuell und synchronisiert deine Aufgaben &amp; Notizen.</p>
+<p style="margin-top:20px"><a class="btn" href="/">${I.bolt}Erweiterung entdecken</a></p>
+</div>
+<img src="/assets/logo-512.png" width="320" height="320" alt="ISGY Intern Plus – Kreidetafel mit „ISGY Intern“ und orangem PLUS-Badge" loading="lazy" decoding="async">
+</div></section>
+
+<section id="datenschutz" aria-labelledby="h-priv"><div class="wrap">
+<div class="sec-head"><span class="kicker">Datenschutz</span><h2 id="h-priv">Deine Daten bleiben deine.</h2></div>
 <div class="grid g3">
 <div class="card"><div class="feat-ico">${I.db}</div><h3>Verschlüsselt</h3><p>Ohne Konto wird nichts gespeichert. Mit Konto liegt dein isgy-intern-Login nur AES-256-verschlüsselt in der Datenbank (Supabase, Frankfurt), dazu deine Notizen.</p></div>
 <div class="card"><div class="feat-ico">${I.eye}</div><h3>Portal nur lesen</h3><p>Von isgy-intern.de werden ausschließlich Daten gelesen – dort wird nichts geändert oder abgeschickt. Schreiben kann der Assistent nur deine eigenen Notizen.</p></div>
 <div class="card"><div class="feat-ico">${I.shield}</div><h3>Jederzeit löschbar</h3><p>Connector entfernen, „Überall abmelden“ oder das Konto samt Notizen mit einem Klick löschen.</p></div>
 </div>
 </div></section>
+
+<section id="faq" aria-labelledby="h-faq" style="background:var(--bg-2)"><div class="wrap">
+<div class="sec-head"><span class="kicker">FAQ</span><h2 id="h-faq">Häufige Fragen zur KI-Anbindung</h2></div>
+<div class="faq">${FAQ.map(([q, a]) => `<details><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join('')}</div>
+</div></section>
 </main>
-<footer><div class="wrap"><span>${DISCLAIMER}</span><span><a href="/schluessel" style="color:inherit">Zugriffsschlüssel</a> · <a href="${REPO}" style="color:inherit">GitHub</a></span></div></footer>
-${tail}`;
+${siteFooter()}
+${tail()}`;
+}
+
+// ---------- legal pages (text in lib/legal.js) ----------
+export function legalPage(title, html) {
+  return layout(title, `<div class="legal">${html}</div>`, { wide: true, robots: 'noindex,follow' });
 }

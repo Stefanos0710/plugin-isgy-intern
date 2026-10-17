@@ -53,13 +53,15 @@
     #ai .dot.err { background: #dc2626; }
     #ai a { color: var(--accent); }
     #aiErr { color: #b91c1c; margin-left: 8px; }
+    .aih { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .ailogos { display: inline-flex; gap: 8px; align-items: center; }
   </style>
 </head>
 <body>
   <header><div><img src="icons/icon-48.png" alt=""><h1>ISGY Intern Plus<small>Einstellungen</small></h1></div></header>
   <main>
     <section id="ai">
-      <h2>KI-Konto (Claude, ChatGPT, Gemini)</h2>
+      <h2 class="aih"><span>KI-Konto</span><span class="ailogos" title="Claude, ChatGPT, Gemini"><img src="icons/ai-claude.svg" width="20" height="20" alt="Claude"><img src="icons/ai-openai.svg" width="20" height="20" alt="ChatGPT"><img src="icons/ai-gemini.svg" width="20" height="20" alt="Gemini"></span></h2>
       <div id="aiOn" hidden>
         <p class="on"><span class="dot" id="aiDot"></span><span>Verbunden als <b id="aiEmail"></b></span><span id="aiInfo" style="color:var(--muted)"></span></p>
         <p><button class="ghost" id="aiLogout" type="button">Abmelden</button> <a id="aiOpen" target="_blank" rel="noopener">Konto im Browser öffnen</a></p>

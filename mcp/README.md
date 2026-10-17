@@ -2,19 +2,19 @@
 
 Ein [MCP](https://modelcontextprotocol.io)-Server, mit dem **Claude, ChatGPT, Gemini CLI** und andere KI-Assistenten deine Daten aus isgy-intern.de lesen können: Stundenplan, Vertretungsplan, Klassentagebuch (Themen & Hausaufgaben), Termine aus dem Klassenkalender und die Lehrerkürzel. Nur Lesezugriff.
 
-**Server-URL:** `https://isgy-intern-mcp.vercel.app/mcp`
-Auf der Startseite <https://isgy-intern-mcp.vercel.app> stehen die Anleitungen für jeden Client noch einmal mit Kopier-Knopf.
+**Server-URL:** `https://isgy-intern-plus.vercel.app/mcp`
+Im Browser zeigt <https://isgy-intern-plus.vercel.app/mcp> die Anleitungen für jeden Client noch einmal mit Kopier-Knopf (dieselbe Adresse ist die Server-URL; MCP-Clients bekommen dort den Endpunkt). Die Startseite <https://isgy-intern-plus.vercel.app> stellt das ganze Projekt vor, vor allem die Browser-Erweiterung.
 
 ## Hinzufügen
 
-**Claude** (claude.ai, Desktop-App, Handy): Einstellungen → Connectors → *Benutzerdefinierten Connector hinzufügen* → Name `ISGY Intern`, URL `https://isgy-intern-mcp.vercel.app/mcp` → *Verbinden* → im Fenster anmelden.
-Claude Code: `claude mcp add --transport http isgy-intern https://isgy-intern-mcp.vercel.app/mcp`, dann `/mcp` → Anmelden.
+**Claude** (claude.ai, Desktop-App, Handy): Einstellungen → Connectors → *Benutzerdefinierten Connector hinzufügen* → Name `ISGY Intern`, URL `https://isgy-intern-plus.vercel.app/mcp` → *Verbinden* → im Fenster anmelden.
+Claude Code: `claude mcp add --transport http isgy-intern https://isgy-intern-plus.vercel.app/mcp`, dann `/mcp` → Anmelden.
 
-**ChatGPT** (Plus/Pro/Business): Einstellungen → Apps & Connectors → Erweitert → *Entwicklermodus* an. Dann *Erstellen*: Name `ISGY Intern`, URL `https://isgy-intern-mcp.vercel.app/mcp`, Authentifizierung *OAuth* → anmelden. Im Chat über *+ → Mehr* einschalten.
+**ChatGPT** (Plus/Pro/Business): Einstellungen → Apps & Connectors → Erweitert → *Entwicklermodus* an. Dann *Erstellen*: Name `ISGY Intern`, URL `https://isgy-intern-plus.vercel.app/mcp`, Authentifizierung *OAuth* → anmelden. Im Chat über *+ → Mehr* einschalten.
 
 **Gemini CLI**: in `~/.gemini/settings.json`
 ```json
-{ "mcpServers": { "isgy-intern": { "httpUrl": "https://isgy-intern-mcp.vercel.app/mcp" } } }
+{ "mcpServers": { "isgy-intern": { "httpUrl": "https://isgy-intern-plus.vercel.app/mcp" } } }
 ```
 Beim ersten Start öffnet sich die Anmeldung (sonst `/mcp auth isgy-intern`).
 
@@ -24,7 +24,7 @@ Beim ersten Start öffnet sich die Anmeldung (sonst `/mcp auth isgy-intern`).
 
 Beim Verbinden öffnet sich eine Anmeldeseite mit drei Wegen:
 
-- **Konto (empfohlen)** – auf <https://isgy-intern-mcp.vercel.app/konto> mit E-Mail und Passwort registrieren und einmal den isgy-intern-Zugang hinterlegen (Portal-Passwort oder automatisch über die Erweiterung). Danach melden sich KI-Assistenten nur noch mit dem Konto an. Ist man auf der Seite schon angemeldet, reicht ein Klick auf „Verbinden“.
+- **Konto (empfohlen)** – auf <https://isgy-intern-plus.vercel.app/konto> mit E-Mail und Passwort registrieren und einmal den isgy-intern-Zugang hinterlegen (Portal-Passwort oder automatisch über die Erweiterung). Danach melden sich KI-Assistenten nur noch mit dem Konto an. Ist man auf der Seite schon angemeldet, reicht ein Klick auf „Verbinden“.
 - **Benutzername & Passwort** (ohne Konto) – für Konten mit Portal-Passwort (z. B. Eltern). Der Server meldet sich selbst an und, wenn die Sitzung abläuft, automatisch neu.
 - **Office 365 / Verbindungscode** (ohne Konto) – in der Erweiterung `Strg+K` → *🤖 KI-Verbindungscode kopieren* und einfügen.
 
@@ -66,7 +66,16 @@ Dazu gibt es fertige **Prompts** (in Claude über das „+“-Menü): *Mein Schu
 - Die Tabellen liegen im Schema `private`, das die Supabase-API nicht ausliefert. Der Server erreicht sie nur über Funktionen, die zusätzlich `SUPABASE_API_SECRET` prüfen; der öffentliche Supabase-Schlüssel allein reicht für nichts.
 - Von isgy-intern.de wird nur gelesen. Schreiben kann der KI-Assistent nur die eigenen Notizen.
 - Auf der Kontoseite: Zugang entfernen, „Überall abmelden“ (macht alle Tokens von KI-Assistenten und Erweiterung ungültig) und Konto samt Notizen löschen.
+- Vollständige Angaben: [Datenschutzerklärung](https://isgy-intern-plus.vercel.app/datenschutz) und [Impressum](https://isgy-intern-plus.vercel.app/impressum).
 - Es gibt keine E-Mail-Bestätigung und kein Passwort-Zurücksetzen. Das Ganze ist inoffiziell und kein Angebot der Schule.
+
+## Website & SEO
+
+Für Suchmaschinen gibt es zwei Seiten: die Startseite `/` (das Projekt, vor allem die Erweiterung; `lib/home.js`) und `/mcp` im Browser (KI-Anbindung; `mcpPage()` in `lib/pages.js`). Beide haben eigenen Titel und Beschreibung, `canonical`, Open Graph / Twitter Cards (Vorschaubild `assets/og.png`), strukturierte Daten (JSON-LD: `WebSite`/`SoftwareApplication`/`BreadcrumbList`/`FAQPage`) und eine sichtbare FAQ; dazu `robots.txt`, `sitemap.xml` (mit Bildern), `site.webmanifest`, Favicons und eine `llms.txt` für KI-Crawler. Alle anderen Seiten (Anmeldung, Konto, Schlüssel) sind `noindex`. Die alte Adresse `isgy-intern-mcp.vercel.app` leitet nur diese beiden Seiten weiter; bestehende Verbindungen laufen weiter.
+
+Logos: Claude, OpenAI und Gemini sind die echten Marken-Logos (MIT-lizenzierte SVGs aus `@lobehub/icons-static-svg`), die Browser-Logos kommen aus Simple Icons (CC0), das ISGY-Logo aus `logo-plus.png`. Alles liegt in `assets/`; das Vorschaubild entsteht aus `scripts/og.html` (1200×630 rendern). Nach Änderungen an den Seiten `UPDATED` (und bei neuer Erweiterungs-Version `VERSION`) in `lib/site.js` hochsetzen.
+
+Nach dem ersten Deploy einmalig in der [Google Search Console](https://search.google.com/search-console) (Property-Typ **„URL-Präfix“** mit `https://isgy-intern-plus.vercel.app/`, Bestätigung per **HTML-Tag** → Wert in `GOOGLE_SITE_VERIFICATION`) und den [Bing Webmaster Tools](https://www.bing.com/webmasters) die Seite hinzufügen und `https://isgy-intern-plus.vercel.app/sitemap.xml` einreichen. Die Property-Art „Domain“ (DNS) funktioniert bei `vercel.app` nicht, weil die DNS-Einträge Vercel gehören.
 
 ## Selbst betreiben / entwickeln
 
@@ -78,6 +87,9 @@ Ordner `mcp/` als eigenes Vercel-Projekt (Root Directory `mcp`, Framework „Oth
 | `SUPABASE_URL`, `SUPABASE_KEY`, `SUPABASE_API_SECRET` | für Konten: Projekt-URL, publishable/anon key und ein zufälliges Geheimnis. Datenbank einmalig mit [supabase/0001_accounts_notes.sql](supabase/0001_accounts_notes.sql) einrichten und den SHA-256 des Geheimnisses eintragen (`insert into private.config values ('api_secret_sha256', '<hex>')`). Ohne diese Variablen läuft der Server ohne Konten. |
 | `ISGY_KUERZEL_PDF` | optional: Pfad der Kürzel-PDF, falls die automatische Suche sie nicht findet |
 | `ISGY_BASE_URL`, `PUBLIC_URL` | optional, nur für Tests / eigene Domain |
+| `OPERATOR_NAME`, `OPERATOR_STREET`, `OPERATOR_CITY`, `OPERATOR_EMAIL` | Angaben für Impressum und Datenschutzerklärung (`/impressum`, `/datenschutz`). Stehen bewusst nur in der Vercel-Konfiguration, nicht im Repository. |
+| `GOOGLE_SITE_VERIFICATION`, `BING_SITE_VERIFICATION`, `GOOGLE_VERIFICATION_FILE` | optional: Bestätigung der Website in Google Search Console / Bing (Meta-Tag-Wert bzw. Dateiname `google….html`). Bei einer `vercel.app`-Adresse geht nur „URL-Präfix“ mit HTML-Tag oder HTML-Datei, nicht DNS. |
+| `SITE_URL`, `LEGACY_HOSTS` | optional: öffentliche Adresse für `canonical`/Sitemap (Standard `https://isgy-intern-plus.vercel.app`) und ältere Hostnamen, deren Seiten `/` und `/mcp` weiterleiten |
 
 ```bash
 cd mcp
@@ -86,4 +98,4 @@ npm test          # Ende-zu-Ende-Test mit dem offiziellen MCP-SDK gegen ein nach
 npm run dev       # http://localhost:3000/mcp  (gegen das echte isgy-intern.de)
 ```
 
-Aufbau: `api/index.js` (einzige Vercel-Funktion, Routing), `lib/mcp.js` (JSON-RPC/MCP), `lib/oauth.js` (OAuth 2.1 mit dynamischer Client-Registrierung und PKCE, zustandslos), `lib/portal.js` (Zugriff auf isgy-intern.de), `lib/tools.js` (die Tools), `lib/pages.js` (Seiten), `lib/accounts.js` + `lib/konto.js` (Konten, Kontoseite, Erweiterungs-API `/api/ext/login|sync`), `lib/db.js` (Supabase-RPC).
+Aufbau: `api/index.js` (einzige Vercel-Funktion, Routing), `lib/mcp.js` (JSON-RPC/MCP), `lib/oauth.js` (OAuth 2.1 mit dynamischer Client-Registrierung und PKCE, zustandslos), `lib/portal.js` (Zugriff auf isgy-intern.de), `lib/tools.js` (die Tools), `lib/home.js` (Startseite), `lib/pages.js` (KI-Seite `/mcp`, Anmeldung, Konto, gemeinsames Layout), `lib/site.js` (Adresse, Logos, robots/sitemap/Manifest), `lib/accounts.js` + `lib/konto.js` (Konten, Kontoseite, Erweiterungs-API `/api/ext/login|sync`), `lib/db.js` (Supabase-RPC).

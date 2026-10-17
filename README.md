@@ -1,8 +1,18 @@
-<p align="center"><img src="logo-plus.png" width="128" alt="ISGY Intern Plus"></p>
+<p align="center"><img src="logo-plus.png" width="128" alt="ISGY Intern Plus – Kreidetafel-Logo mit PLUS-Badge"></p>
 
 # ISGY Intern Plus
 
-Browser-Erweiterung (Chrome / Edge / Brave, Manifest V3) für [isgy-intern.de](https://www.isgy-intern.de), die das Portal aufräumt und praktischer macht.
+Browser-Erweiterung (Chrome / Edge / Brave / Firefox, Manifest V3) und MCP-Server für das Schulportal [isgy-intern.de](https://www.isgy-intern.de) des Gymnasiums Ismaning: Die Erweiterung räumt das Portal auf („Mein Tag“-Dashboard, Lehrernamen statt Kürzel, Aufgaben & Notizen) – der MCP-Server lässt **Claude, ChatGPT und Gemini** Stundenplan, Vertretungen, Hausaufgaben und Prüfungen lesen.
+
+<p align="center">
+  <a href="https://isgy-intern-plus.vercel.app"><b>isgy-intern-plus.vercel.app</b></a><br>
+  Funktioniert mit
+  <img src="mcp/assets/claude.svg" width="18" height="18" alt=""> Claude ·
+  <picture><source media="(prefers-color-scheme: dark)" srcset="mcp/assets/openai-white.svg"><img src="mcp/assets/openai.svg" width="18" height="18" alt=""></picture> ChatGPT ·
+  <img src="mcp/assets/gemini.svg" width="18" height="18" alt=""> Gemini
+</p>
+
+<sub>Inoffiziell, kein Angebot des Gymnasiums Ismaning. Claude ist eine Marke von Anthropic, ChatGPT/OpenAI von OpenAI, Gemini von Google; die Logos dienen nur der Kennzeichnung der unterstützten Dienste.</sub>
 
 ## Funktionen
 
@@ -97,14 +107,14 @@ Neue Version holen (`git pull`), erneut `node build.mjs` ausführen und die Erwe
 
 ## KI-Assistenten & KI-Konto
 
-Der [MCP-Server](mcp/README.md) (`https://isgy-intern-mcp.vercel.app/mcp`) verbindet Claude, ChatGPT und Gemini CLI mit isgy-intern.de. Fragen wie „Was habe ich morgen?“, „Fällt was aus?“, „Mach mir einen Lernplan für die Mathe-Schulaufgabe“ oder „Schreib mir auf: Bio-Referat bis Freitag“ beantwortet der Assistent dann mit deinen echten Daten. Von isgy-intern.de wird nur gelesen; schreiben kann der Assistent nur deine eigenen Aufgaben & Notizen.
+Der [MCP-Server](mcp/README.md) (`https://isgy-intern-plus.vercel.app/mcp`) verbindet Claude, ChatGPT und Gemini CLI mit isgy-intern.de. Fragen wie „Was habe ich morgen?“, „Fällt was aus?“, „Mach mir einen Lernplan für die Mathe-Schulaufgabe“ oder „Schreib mir auf: Bio-Referat bis Freitag“ beantwortet der Assistent dann mit deinen echten Daten. Von isgy-intern.de wird nur gelesen; schreiben kann der Assistent nur deine eigenen Aufgaben & Notizen.
 
 ### Einrichten (empfohlen: mit Konto)
 
-1. **Konto erstellen** auf <https://isgy-intern-mcp.vercel.app/konto> (Tab „Registrieren“).
+1. **Konto erstellen** auf <https://isgy-intern-plus.vercel.app/konto> (Tab „Registrieren“).
 2. **Erweiterung verbinden**: Einstellungen der Erweiterung (⚙ im Dashboard) → **KI-Konto** → mit E-Mail und Konto-Passwort anmelden. Danach isgy-intern.de öffnen: Aufgaben & Notizen werden synchronisiert, und bei Office-365-Login hinterlegt die Erweiterung deine Sitzung automatisch im Konto.
    *Alternative für Konten mit Portal-Passwort (z. B. Eltern):* auf der Kontoseite unter „Zugang hinterlegen“ Benutzername und Passwort von isgy-intern eintragen.
-3. **KI-Assistenten verbinden**: die Server-URL in Claude (Einstellungen → Connectors), ChatGPT (Apps & Connectors, Entwicklermodus) oder Gemini CLI eintragen und bei der Anmeldung den Tab **„Konto“** wählen. Die Schritte für jeden Assistenten stehen auf der Startseite des Servers.
+3. **KI-Assistenten verbinden**: die Server-URL in Claude (Einstellungen → Connectors), ChatGPT (Apps & Connectors, Entwicklermodus) oder Gemini CLI eintragen und bei der Anmeldung den Tab **„Konto“** wählen. Die Schritte für jeden Assistenten stehen auf <https://isgy-intern-plus.vercel.app/mcp>.
 
 ### Welche Zugangsdaten wohin?
 
@@ -123,6 +133,7 @@ Ein Passwort-Zurücksetzen gibt es nicht; wer es vergisst, erstellt ein neues Ko
 - Aufgaben & Notizen liegen in `chrome.storage.local` und bleiben ohne KI-Konto nur in deinem Browser. Pins und Einstellungen werden über `chrome.storage.sync` mit deinem Browser-Profil synchronisiert.
 - **Ohne KI-Konto** sendet die Erweiterung nichts an fremde Server. Sie liest nur Daten von isgy-intern.de (Stundenplan, Vertretungsplan, Tagebuch, Klassenkalender) und schreibt dort nichts. Der KI-Verbindungscode wird nur in deine Zwischenablage kopiert.
 - **Nur wenn du dich in den Einstellungen mit einem KI-Konto anmeldest**, schickt die Erweiterung deine Aufgaben & Notizen und (bei Office-365-Login) die isgy-intern-Sitzung an den MCP-Server. Abmelden unter „KI-Konto“ beendet das sofort.
+- Die vollständige [Datenschutzerklärung](https://isgy-intern-plus.vercel.app/datenschutz) und das [Impressum](https://isgy-intern-plus.vercel.app/impressum) stehen auf der Website.
 - Im Konto (Supabase, Frankfurt) liegen: E-Mail, der Hash deines Konto-Passworts, dein isgy-intern-Zugang **verschlüsselt** (AES-256, nur der Server kann ihn entschlüsseln) und deine Aufgaben & Notizen. Details: [mcp/README.md](mcp/README.md#datenschutz--sicherheit).
 - Die Berechtigung „Cookies“ braucht die Erweiterung nur für Verbindungscode und KI-Konto (die Sitzungs-Cookies von isgy-intern.de).
 
