@@ -21,6 +21,7 @@ Browser-Erweiterung (Chrome / Edge / Brave, Manifest V3) für [isgy-intern.de](h
   - `g` dann `d` / `s` / `v` / `t` / `k` / `w` / `n` / `m` / `f`: Dashboard, Stundenplan, Vertretungsplan, Tagebuch, Klassenkalender, Wochenplan, News, Nachrichten, Dokumente
   - `Alt+1` … `Alt+9`: angepinnte Seiten
   - `?`: Übersicht aller Tastenkürzel
+- **KI-Assistenten** (Claude, ChatGPT, Gemini): über den [MCP-Server](mcp/README.md) kann ein KI-Assistent deinen Stundenplan, Vertretungen, Hausaufgaben und Termine lesen. Schüler mit Office-365-Login holen sich dafür mit `Strg+K` → „🤖 KI-Verbindungscode kopieren“ einen Code.
 - **Einstellungen** (⚙ im Dashboard oder Rechtsklick auf das Erweiterungs-Icon → Optionen): Kürzel-Anzeige, ausgeblendete Fächer, Vorschau-Tage, Tastenkürzel (frei belegbar), Akzentfarbe und mehr
 
 ## Installation
@@ -98,7 +99,8 @@ Neue Version holen (`git pull`), erneut `node build.mjs` ausführen und die Erwe
 - Die Kürzel- und E-Mail-Liste der Schule ist **nicht** in diesem Repository und darf hier auch nie landen (`*.pdf` steht in `.gitignore`).
 - Die Erweiterung lädt die PDF **einmal** mit deiner eigenen Anmeldung direkt von isgy-intern.de, liest sie im Speicher aus und speichert **nur die Zuordnung Kürzel → Name** lokal in deinem Browser (`chrome.storage.local`). Die PDF selbst und die E-Mail-Adressen werden nicht gespeichert.
 - Notizen bleiben lokal in deinem Browser. Pins und Einstellungen werden über `chrome.storage.sync` mit deinem Browser-Profil synchronisiert.
-- Die Erweiterung sendet nichts an fremde Server. Sie liest nur Daten von isgy-intern.de (Stundenplan, Vertretungsplan, Tagebuch, Klassenkalender) und schreibt dort nichts.
+- Die Erweiterung sendet nichts an fremde Server. Der KI-Verbindungscode wird nur in deine Zwischenablage kopiert; erst wenn du ihn selbst beim MCP-Server einfügst, kann dieser mit deiner Sitzung lesen.
+- Die Berechtigung „Cookies“ braucht die Erweiterung nur für diesen Verbindungscode (die Sitzungs-Cookies von isgy-intern.de). Sie liest nur Daten von isgy-intern.de (Stundenplan, Vertretungsplan, Tagebuch, Klassenkalender) und schreibt dort nichts.
 
 ## Aufbau
 
@@ -112,6 +114,7 @@ src/background.js    Öffnet die Einstellungsseite
 options.html/.js     Einstellungsseite
 icons/               Erweiterungs-Icons (ISGY-Logo + „Plus“)
 lib/                 pdf.js (Mozilla, Apache-2.0) zum Lesen der Kürzel-PDF
+mcp/                 MCP-Server für KI-Assistenten (Vercel), siehe mcp/README.md
 ```
 
 Genutzte Schnittstellen der Seite: `rest.php/stundenplan/getStundenplan`, `rest.php/vplan/getList`, `rest.php/tagebuch/getList/<datum>`, `rest.php/klassenkalender/getKalenders|getEvents`.

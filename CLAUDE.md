@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-"ISGY Intern Plus": a Manifest V3 browser extension (Chromium + Firefox) that augments the school portal isgy-intern.de. Plain JavaScript, no dependencies, no bundler, no tests, no linter. README and UI strings are in German; keep user-facing text German.
+"ISGY Intern Plus": a Manifest V3 browser extension (Chromium + Firefox) that augments the school portal isgy-intern.de. Plain JavaScript, no dependencies, no bundler, no linter (only mcp/ has tests). README and UI strings are in German; keep user-facing text German.
 
 ## Commands
 
@@ -20,4 +20,5 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Storage split: user settings and pins in `chrome.storage.sync`; caches (`kuerzel` map, `apiKey`) in `chrome.storage.local`.
 - Portal data access: the content script calls the portal's REST endpoints (vplan, klassenkalender) using the app key scraped from an inline script on the page (`KEY_RE` / `apiKey()`) and the session from `localStorage`. Auth headers are `auth-app` and `auth-session`. Fetches use relative URLs, so they rely on same-origin execution.
 - Kürzel → names: the school's PDF is fetched with the user's session, parsed in memory with the vendored pdf.js in [lib/](lib/) (dynamically imported through `chrome.runtime.getURL`, hence `web_accessible_resources`), and only the code → name map is cached. The PDF is never stored. [lib/](lib/) holds minified third-party code — don't edit it.
+- [mcp/](mcp/) is a separate Node project (not part of the extension build): a remote MCP server for Claude/ChatGPT/Gemini, deployed to Vercel (project `isgy-intern-mcp`, root directory `mcp`). One function `api/index.js` routes everything (vercel.json rewrites all paths). It implements Streamable HTTP MCP and a stateless OAuth 2.1 server (DCR + PKCE) by hand; portal credentials live only AES-GCM-encrypted inside the tokens (`MCP_SECRET`). [mcp/lib/portal.js](mcp/lib/portal.js) mirrors the extension's portal calls server-side (password login via `index.php?page=login&authorize=1`, or a browser session handed over as the extension's „KI-Verbindungscode“ for Office-365 accounts). Its only dependency is `pdfjs-dist` for the Kürzel PDF. `cd mcp && npm test` runs an end-to-end test with the official MCP SDK against a fake portal ([mcp/test/mock-portal.mjs](mcp/test/mock-portal.mjs)); keep the Kürzel parsing in sync with src/content.js.
 - [.gitignore](.gitignore) excludes `dist/`, `*.pdf`, `*.zip`, and the local Kürzel/e-mail list so personal school data is never committed.

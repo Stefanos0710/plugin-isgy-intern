@@ -614,6 +614,24 @@
     const dlg = showModal('Einstellungen', h('iframe', { class: 'ip-settings', src: chrome.runtime.getURL('options.html') }));
     dlg.classList.add('ip-modal-wide');
   }
+  // Connection code for the ISGY Intern MCP server (mcp/): the browser session, for Office-365 accounts without a portal password.
+  // The session cookies are HttpOnly, so the background script reads them.
+  async function copyAiCode() {
+    try {
+      const c = await chrome.runtime.sendMessage('portal-cookies');
+      const s = (localStorage.getItem('session') || '').replace('__q_strn|', '');
+      const json = JSON.stringify({ c: c || {}, s, k: await apiKey() });
+      const code = 'isgy1.' + btoa(json).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      try {
+        await navigator.clipboard.writeText(code);
+        alert('KI-Verbindungscode kopiert.\n\nJetzt im Anmeldefenster von „ISGY Intern“ (Claude, ChatGPT, Gemini …) unter „Office 365 (Schüler)“ einfügen.\n\nDer Code ist wie ein Passwort – nicht weitergeben.');
+      } catch {
+        prompt('Verbindungscode (Strg+C zum Kopieren):', code);
+      }
+    } catch (e) {
+      alert('Verbindungscode konnte nicht erstellt werden: ' + e.message);
+    }
+  }
   const gotoMap = () => Object.fromEntries(String(S.gotoKeys).split('\n').map((l) => l.split('=')).filter((p) => p.length >= 2 && p[0].trim()).map(([k, ...v]) => [k.trim(), v.join('=').trim()]));
   function commands() {
     const seen = new Set();
@@ -630,6 +648,7 @@
       { label: '🔍 Letzten Tagebucheintrag für Fach suchen …', run: () => { const s = prompt('Fach-Kürzel (z. B. M_1, D, E_1):'); if (s) showLastEntry(s.trim()); } },
       { label: '🔄 Kürzel-Liste neu laden', run: async () => { try { await loadKuerzel(true); alert(`${Object.keys(KZ).length} Kürzel geladen.`); location.reload(); } catch (e) { alert(e.message); } } },
       { label: '⌨ Tastenkürzel anzeigen', run: showHelp },
+      { label: '🤖 KI-Verbindungscode kopieren', run: copyAiCode },
     ];
   }
   function openPalette() {
