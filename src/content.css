@@ -250,9 +250,18 @@ main.ip-hide-original > :not(#isgy-plus) { display: none !important; }
 .ip-lesson.is-cancel .ip-teacher, .ip-lesson.is-cancel .ip-room { text-decoration: line-through; }
 
 /* ---------- Animations ---------- */
-@keyframes ip-rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+/* One easing family everywhere: a long soft "expo out" for movement, a gentle overshoot for small pops. */
+:root {
+  --ip-out: cubic-bezier(.16, 1, .3, 1);
+  --ip-spring: cubic-bezier(.34, 1.4, .64, 1);
+  --ip-fast: .22s;
+  --ip-med: .45s;
+  --ip-slow: .7s;
+}
+@keyframes ip-rise { from { opacity: 0; transform: translateY(16px); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
 @keyframes ip-fade { from { opacity: 0; } to { opacity: 1; } }
-@keyframes ip-pop { from { opacity: 0; transform: scale(.96) translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes ip-pop { from { opacity: 0; transform: scale(.94) translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes ip-slide { from { opacity: 0; transform: translateX(var(--ip-dir, 12px)); filter: blur(3px); } to { opacity: 1; transform: none; filter: none; } }
 @keyframes ip-wave { 0%, 60%, 100% { transform: rotate(0); } 10%, 30% { transform: rotate(14deg); } 20% { transform: rotate(-8deg); } 40% { transform: rotate(-4deg); } 50% { transform: rotate(10deg); } }
 
 .ip-head h2 {
@@ -262,32 +271,83 @@ main.ip-hide-original > :not(#isgy-plus) { display: none !important; }
 .ip-wave { display: inline-block; font-size: .85em; transform-origin: 70% 70%; -webkit-text-fill-color: initial; color: initial; }
 
 @media (prefers-reduced-motion: no-preference) {
-  .ip-date-kicker { animation: ip-rise .5s cubic-bezier(.2, .7, .2, 1) backwards; }
-  .ip-head h2 { animation: ip-rise .6s .05s cubic-bezier(.2, .7, .2, 1) backwards, ip-shine 1.6s .5s ease-in-out backwards; }
-  .ip-wave { animation: ip-wave 2.2s .6s ease-in-out; }
-  .ip-chip { animation: ip-pop .4s cubic-bezier(.2, .7, .2, 1) backwards; }
-  .ip-chip:nth-child(2) { animation-delay: .08s; } .ip-chip:nth-child(3) { animation-delay: .16s; } .ip-chip:nth-child(4) { animation-delay: .24s; }
-  .ip-actions { animation: ip-fade .6s .2s ease-out backwards; }
-  .ip-day { animation: ip-fade .25s ease-out; }
-  .ip-tab.is-active b { animation: ip-pop .25s ease-out; }
-  .ip-count { animation: ip-pop .35s .3s cubic-bezier(.2, .7, .2, 1) backwards; }
-  .ip-layout > *, .ip-side > * { animation: ip-rise .5s cubic-bezier(.2, .7, .2, 1) backwards; }
+  /* Smooth page-to-page cross-fade inside the portal (Chromium; other browsers just navigate). */
+  @view-transition { navigation: auto; }
+  ::view-transition-old(root) { animation: ip-fade var(--ip-fast) ease-in reverse both; }
+  ::view-transition-new(root) { animation: ip-fade var(--ip-med) var(--ip-out) both; }
+  html { scroll-behavior: smooth; }
+
+  /* Entrance: header, chips, cards, lessons arrive in a soft staggered cascade. */
+  .ip-date-kicker { animation: ip-rise var(--ip-slow) var(--ip-out) backwards; }
+  .ip-head h2 { animation: ip-rise var(--ip-slow) .06s var(--ip-out) backwards, ip-shine 1.8s .55s ease-in-out backwards; }
+  .ip-wave { animation: ip-wave 2.4s .7s ease-in-out; }
+  .ip-chip { animation: ip-pop var(--ip-med) var(--ip-spring) backwards; }
+  .ip-chip:nth-child(2) { animation-delay: .07s; } .ip-chip:nth-child(3) { animation-delay: .14s; } .ip-chip:nth-child(4) { animation-delay: .21s; }
+  .ip-actions { animation: ip-fade var(--ip-slow) .2s var(--ip-out) backwards; }
+  .ip-layout > *, .ip-side > * { animation: ip-rise var(--ip-slow) var(--ip-out) backwards; }
   .ip-main { animation-delay: .08s; }
   .ip-side > :nth-child(1) { animation-delay: .16s; }
   .ip-side > :nth-child(2) { animation-delay: .24s; }
-  .ip-lesson { animation: ip-rise .4s cubic-bezier(.2, .7, .2, 1) backwards; animation-delay: calc(var(--i, 0) * 45ms); }
-  .ip-orphans .ip-lesson, .ip-event, .ip-note, .ip-memo { animation: ip-rise .35s ease-out backwards; }
-  .ip-detail { animation: ip-rise .25s ease-out backwards; }
-  .ip-modal[open] { animation: ip-pop .22s cubic-bezier(.2, .7, .2, 1); }
-  .ip-modal[open]::backdrop { animation: ip-fade .22s ease-out; }
-  .ip-card { transition: box-shadow .2s, transform .2s; }
-  .ip-card:hover { transform: translateY(-2px); box-shadow: 0 2px 4px rgba(16, 24, 40, .05), 0 12px 28px rgba(16, 24, 40, .08); }
-  .ip-tab, .ip-seg-btn { transition: background .2s, box-shadow .2s, color .2s, transform .15s; }
+  .ip-side > :nth-child(3) { animation-delay: .32s; }
+  .ip-day { animation: ip-slide var(--ip-med) var(--ip-out); }
+  .ip-lesson { animation: ip-rise var(--ip-med) var(--ip-out) backwards; animation-delay: calc(var(--i, 0) * 40ms); }
+  .ip-orphans .ip-lesson, .ip-event, .ip-note, .ip-memo { animation: ip-rise var(--ip-med) var(--ip-out) backwards; }
+  .ip-event:nth-child(2), .ip-note:nth-child(2), .ip-memo:nth-child(2) { animation-delay: .04s; }
+  .ip-event:nth-child(3), .ip-note:nth-child(3), .ip-memo:nth-child(3) { animation-delay: .08s; }
+  .ip-event:nth-child(n+4), .ip-note:nth-child(n+4), .ip-memo:nth-child(n+4) { animation-delay: .12s; }
+  .ip-count { animation: ip-pop var(--ip-med) .3s var(--ip-spring) backwards; }
+  .ip-pal-item { animation: ip-fade var(--ip-fast) var(--ip-out) backwards; }
+  .ip-skel { transition: opacity var(--ip-med); }
+
+  /* Expanded diary entry: grows open and folds shut instead of jumping. */
+  #isgy-plus { interpolate-size: allow-keywords; }
+  .ip-detail {
+    overflow: hidden;
+    transition: height var(--ip-med) var(--ip-out), opacity var(--ip-med) var(--ip-out), transform var(--ip-med) var(--ip-out),
+      margin var(--ip-med) var(--ip-out), padding var(--ip-med) var(--ip-out), display var(--ip-med) allow-discrete;
+  }
+  .ip-detail[hidden] { display: none; height: 0; opacity: 0; transform: translateY(-6px); margin-block: 0; padding-block: 0; }
+  @starting-style { .ip-detail:not([hidden]) { height: 0; opacity: 0; transform: translateY(-6px); margin-block: 0; padding-block: 0; } }
+
+  /* Dialogs: scale/fade in and out, backdrop blurs in. */
+  .ip-modal, .ip-modal::backdrop {
+    transition: opacity var(--ip-med) var(--ip-out), transform var(--ip-med) var(--ip-spring), backdrop-filter var(--ip-med),
+      display var(--ip-med) allow-discrete, overlay var(--ip-med) allow-discrete;
+  }
+  .ip-modal { opacity: 0; transform: scale(.95) translateY(10px); }
+  .ip-modal[open] { opacity: 1; transform: none; }
+  .ip-modal::backdrop { opacity: 0; }
+  .ip-modal[open]::backdrop { opacity: 1; }
+  @starting-style {
+    .ip-modal[open] { opacity: 0; transform: scale(.95) translateY(10px); }
+    .ip-modal[open]::backdrop { opacity: 0; }
+  }
+
+  /* Interaction: every hover/press state eases instead of snapping. */
+  .ip-card { transition: box-shadow var(--ip-med) var(--ip-out), transform var(--ip-med) var(--ip-out); }
+  .ip-card:hover { transform: translateY(-3px); box-shadow: 0 2px 4px rgba(16, 24, 40, .05), 0 16px 32px rgba(16, 24, 40, .09); }
+  .ip-tab, .ip-seg-btn { transition: background var(--ip-med) var(--ip-out), box-shadow var(--ip-med) var(--ip-out), color var(--ip-fast), transform var(--ip-fast) var(--ip-spring); }
+  .ip-tab b { transition: color var(--ip-med) var(--ip-out); }
   .ip-tab:hover:not(.is-active) { background: rgba(255, 255, 255, .6); }
-  .ip-tab:active, .ip-btn:active, .ip-seg-btn:active { transform: scale(.97); }
-  .ip-lesson { transition: background .15s, transform .15s; }
-  .ip-lesson:hover { transform: translateX(3px); }
-  .ip-pill-now { animation: ip-pulse 2s ease-in-out infinite; }
+  .ip-tab.is-active b { animation: ip-pop var(--ip-med) var(--ip-spring); }
+  .ip-tab:active, .ip-btn:active, .ip-seg-btn:active, .ip-nav:active:not(:disabled), .ip-icon:active, .ip-search:active { transform: scale(.96); }
+  .ip-lesson { transition: background var(--ip-med) var(--ip-out), transform var(--ip-med) var(--ip-out), box-shadow var(--ip-med) var(--ip-out); }
+  .ip-lesson:hover { transform: translateX(4px); }
+  .ip-room { transition: background var(--ip-med) var(--ip-out); }
+  .ip-chip { transition: transform var(--ip-fast) var(--ip-spring), box-shadow var(--ip-med) var(--ip-out); }
+  .ip-chip:hover { transform: translateY(-1px); box-shadow: 0 2px 4px rgba(16, 24, 40, .06), 0 6px 14px rgba(16, 24, 40, .08); }
+  .ip-search, .ip-icon, .ip-nav, .ip-btn, .ip-input, .ip-x, .ip-textbtn, .ip-link, .ip-pal-item, .ip-memo-text, .ip-date-in {
+    transition: border-color var(--ip-fast) var(--ip-out), color var(--ip-fast) var(--ip-out), background var(--ip-fast) var(--ip-out),
+      box-shadow var(--ip-fast) var(--ip-out), filter var(--ip-fast) var(--ip-out), opacity var(--ip-fast) var(--ip-out),
+      transform var(--ip-fast) var(--ip-spring), width var(--ip-med) var(--ip-out);
+  }
+  .ip-input:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--ip-accent) 18%, transparent); }
+  .ip-note, .ip-memo { transition: opacity var(--ip-med) var(--ip-out), background var(--ip-med) var(--ip-out); }
+  .ip-note-text { transition: color var(--ip-med) var(--ip-out); }
+  .ip-note .ip-x, .ip-memo .ip-x { transition: opacity var(--ip-fast) var(--ip-out), color var(--ip-fast); }
+  .ip-pin-btn { transition: opacity var(--ip-fast) var(--ip-out), transform var(--ip-fast) var(--ip-spring); }
+  .ip-pin-btn:active { transform: translateY(-50%) scale(.85); }
+  .ip-pill-now { animation: ip-pulse 2.2s ease-in-out infinite; }
 }
 @keyframes ip-shine { from { background-position: 100% 0; } to { background-position: 0 0; } }
 @keyframes ip-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, .45); } 50% { box-shadow: 0 0 0 5px rgba(22, 163, 74, 0); } }

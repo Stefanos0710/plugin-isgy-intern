@@ -127,9 +127,12 @@
   function replaceCodes() {
     if (!KZ || S.kuerzelFormat === 'off') return;
     for (const el of document.querySelectorAll('.stundenplan-slot-meta')) {
-      const tn = [...el.childNodes].find((n) => n.nodeType === 3 && n.nodeValue.trim());
-      const code = tn && tn.nodeValue.trim();
-      if (code && KZ[code]) { tn.nodeValue = teacher(code); el.title = code; }
+      // The code may share its text node with other text (room, separators), so replace per token.
+      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      for (let tn; (tn = walker.nextNode());) {
+        const out = tn.nodeValue.replace(/[^\s,;/|·•()]+/g, (tok, i, str) => (KZ[clean(tok)] && str[i - 1] !== '(' ? teacher(tok) : tok));
+        if (out !== tn.nodeValue) { el.title = tn.nodeValue.trim(); tn.nodeValue = out; }
+      }
     }
   }
   // Hide site clutter by text, since the markup has no stable ids: the "keine E-Mail Adresse" system notice
@@ -521,15 +524,19 @@
       const chip = (text, cls2 = '') => h('span', { class: 'ip-chip ' + cls2 }, text);
       const focus = days[start], hrs = hoursOf(focus);
       const subs = vplan.filter((v) => v.date === deFull(focus)).length;
-      chips.replaceChildren(
+      chips.replaceChildren(...[
         cls ? chip(`Klasse ${cls}`) : null,
         hrs.length ? chip(iso(focus) === iso(today()) ? `Heute ${hrs.length} Std · Schluss ${endOf(hrs.at(-1))}` : `${label(focus)} ab ${TIMES[hrs[0]] || hrs[0] + '. Std'} · ${hrs.length} Std`) : null,
         start === 1 && iso(days[0]) === iso(today()) ? chip('Schulschluss für heute ✓', 'is-ok') : null,
-        subs ? chip(`${subs} ${subs === 1 ? 'Vertretung' : 'Vertretungen'} ${iso(focus) === iso(today()) ? 'heute' : label(focus) === 'Morgen' ? 'morgen' : 'am ' + label(focus)}`, 'is-warn') : null);
+        subs ? chip(`${subs} ${subs === 1 ? 'Vertretung' : 'Vertretungen'} ${iso(focus) === iso(today()) ? 'heute' : label(focus) === 'Morgen' ? 'morgen' : 'am ' + label(focus)}`, 'is-warn') : null].filter(Boolean));
       const btns = days.map((d, i) => h('button', { class: 'ip-tab', role: 'tab', onclick: () => select(i) },
         h('b', {}, label(d)), h('span', {}, `${DAYS[d.getDay()].slice(0, 2)}, ${deShort(d)}`),
         views[i].subCount ? h('span', { class: 'ip-count', title: `${views[i].subCount} Vertretung(en)` }, views[i].subCount) : null));
+      let cur = 0;
       const select = (i) => {
+        // The new day slides in from the side of the tab that was clicked.
+        dayBox.style.setProperty('--ip-dir', `${i < cur ? -16 : 16}px`);
+        cur = i;
         btns.forEach((b, j) => { b.classList.toggle('is-active', j === i); b.setAttribute('aria-selected', String(j === i)); });
         dayBox.replaceChildren(views[i].el);
       };
