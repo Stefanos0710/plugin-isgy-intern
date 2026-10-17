@@ -2,6 +2,7 @@
 import { handleRpc } from '../lib/mcp.js';
 import { protectedResource, authServer, register, authorizeGet, authorizePost, token, credFromBearer, keyGet, keyPost } from '../lib/oauth.js';
 import { homePage, errorPage } from '../lib/pages.js';
+import { loadPdfjs } from '../lib/portal.js';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -100,7 +101,7 @@ export default async function handler(req, res) {
     if (path === '/' && m === 'GET') return send(res, 200, homePage(o), PAGE_HEADERS);
     if (path === '/health') {
       // Also proves the pdf.js bundle (only loaded lazily for the Kürzel list) made it into the deployment.
-      const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs').then((m) => m.version, (e) => 'fehlt: ' + e.message);
+      const pdfjs = await loadPdfjs().then((m) => m.version, (e) => 'fehlt: ' + e.message);
       return send(res, 200, { ok: true, pdfjs });
     }
     if (path === '/favicon.ico') return send(res, 204, null);

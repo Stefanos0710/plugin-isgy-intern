@@ -262,6 +262,20 @@ async function fetchPdf(portal, path) {
   return null;
 }
 
+// pdf.js needs DOMMatrix in Node and gets it from @napi-rs/canvas via a require() that Vercel's bundler can't see,
+// so load it here explicitly. The worker runs on the main thread (no worker file lookup at runtime).
+export async function loadPdfjs() {
+  if (!globalThis.DOMMatrix) {
+    const canvas = await import('@napi-rs/canvas');
+    globalThis.DOMMatrix = canvas.DOMMatrix;
+    globalThis.ImageData ??= canvas.ImageData;
+    globalThis.Path2D ??= canvas.Path2D;
+  }
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  globalThis.pdfjsWorker ??= await import('pdfjs-dist/legacy/build/pdf.worker.mjs');
+  return pdfjs;
+}
+
 async function loadKuerzel(portal) {
   let data = await fetchPdf(portal, process.env.ISGY_KUERZEL_PDF || DEFAULT_PDF);
   if (!data) {
@@ -272,8 +286,7 @@ async function loadKuerzel(portal) {
     if (link) data = await fetchPdf(portal, link);
   }
   if (!data) throw new PortalError('Kürzel-PDF nicht gefunden.');
-  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
-  globalThis.pdfjsWorker ??= await import('pdfjs-dist/legacy/build/pdf.worker.mjs');
+  const pdfjs = await loadPdfjs();
   const doc = await pdfjs.getDocument({ data, isEvalSupported: false, disableFontFace: true, useSystemFonts: false, verbosity: 0 }).promise;
   const rows = [];
   for (let p = 1; p <= doc.numPages; p++) rows.push(...parseKuerzelPage((await (await doc.getPage(p)).getTextContent()).items));

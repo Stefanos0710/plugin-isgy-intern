@@ -12,6 +12,7 @@
     "test": "node test/run.mjs"
   },
   "dependencies": {
+    "@napi-rs/canvas": "^0.1.100",
     "pdfjs-dist": "5.7.284"
   },
   "devDependencies": {
