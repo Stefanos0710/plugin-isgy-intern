@@ -92,7 +92,8 @@ export function startMock(port) {
         if (ep === 'klassenkalender/getEvents') {
           if (!/name="kalenders"\r\n\r\n7\r\n/.test(body)) return json(res, 200, []);
           return json(res, 200, [{ title: '10b: Schulaufgabe', dateStart: D1, dateEnd: D1, timeStart: '00:00', fach_title: 'Mathematik', stunde: '1', lnw: { short: 'SA', title: 'Schulaufgabe' } },
-            { title: '10b: Wandertag', dateStart: addDays(D1, 10), dateEnd: addDays(D1, 10), place: 'Ebersberger Forst' }]);
+            { title: '10b: Wandertag', dateStart: addDays(D1, 10), dateEnd: addDays(D1, 10), place: 'Ebersberger Forst' },
+            { title: '10b: Ex', dateStart: addDays(D1, 2), dateEnd: addDays(D1, 2), fach_title: 'Physik', stunde: '5', lnw: { short: 'Ex', title: 'Stegreifaufgabe' } }]);
         }
         if (ep === 'inbox/getMyInboxes') return json(res, 200, [{ id: 9, title: 'Max Muster', folders: [{ id: 1, title: 'Posteingang' }, { id: 2, title: 'Gesendet' }, { id: 3, title: 'Archive' }, { id: 4, title: 'Entwurf' }] }]);
         if (/^inbox\/getMessages\/\w+$/.test(ep)) {
@@ -130,6 +131,8 @@ export function startMock(port) {
           { subject: 'M', lesson: 2, teacher: 'Mm', topic: `Quadratische Funktionen (${d})`, homework: d === LAST ? 'S. 42 Nr. 3a–c\n\nbis Freitag' : '', notes: '' },
           { subject: 'E_1', lesson: 4, teacher: 'Hb', topic: 'Reported speech', homework: 'Vocab unit 3', notes: '',
             publicFiles: d === LAST ? [{ id: 5, name: 'AB Vokabeln.pdf', url: `http://${req.headers.host}/index.php?page=ext_tagebuch&uploadID=5&accessCode=x&fd=1` }] : [] },
+          // Test preparation: due on the Ex day (Wed), not at the next Ph lesson (Tue).
+          ...(d === addDays(LAST, -1) ? [{ subject: 'Ph', lesson: 2, teacher: 'Kl', topic: 'Optik', homework: 'Lernen auf die angesagte Ex', notes: '' }] : []),
         ];
         return json(res, 200, { data: { entries, holiday } });
       }

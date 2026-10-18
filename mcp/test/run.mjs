@@ -130,6 +130,10 @@ const calls = [
   ['nachrichten', { nur_ungelesen: true }, [/\[id 101\]/]],
   ['nachrichten', { suche: 'mathe' }, [/\[id 102\]/]],
   ['datei_lesen', { ref: 'msg:abc123' }, [/Max Mustermann/]],
+  // Test preparation is due on the test day (Ex in Ph on Wed 21.10.), not at the next Ph lesson (Tue 20.10.).
+  ['hausaufgaben', { fach: 'Physik' }, [/Ph bei Karl Klein \(Kl\) \(aufgegeben Do, 15\.10\.\): Lernen auf die angesagte Ex\n  → fällig Mittwoch, 21\.10\.2026 \(in 3 Tagen, Tag der Prüfung: Stegreifaufgabe\)/]],
+  ['hausaufgaben', { faellig: '20.10.2026', fach: 'Physik' }, [/- Ph: nichts fällig – die Hausaufgabe vom Do, 15\.10\. ist für die Prüfung \(Stegreifaufgabe\) am Mittwoch, 21\.10\.2026 fällig/]],
+  ['hausaufgaben', { faellig: '21.10.2026', fach: 'Physik' }, [/- Ph: Lernen auf die angesagte Ex  \(aufgegeben Do, 15\.10\., heute ist die Prüfung: Stegreifaufgabe\)/]],
   ['tagebuch', { datum: 'morgen' },[/noch keine Tagebucheinträge/, /Fällig am Montag, 19\.10\.2026/]],
   ['hausaufgaben', {}, [/nach Fälligkeit sortiert/, /NOCH FÄLLIG/, /M bei Max Mustermann \(Mm\) \(aufgegeben Fr, 16\.10\.\): S\. 42[\s\S]*fällig Freitag, 23\.10\.2026 \(in 5 Tagen, Datum aus dem Text\)/, /Anhänge: AB Vokabeln\.pdf \[datei_lesen ref „tb:2026-10-16:5“\]/,
     /E_1 bei Hans Bauer \(Hb\) \(aufgegeben Fr, 16\.10\.\): Vocab unit 3\n  → fällig Mittwoch, 21\.10\.2026 \(in 3 Tagen, nächste Stunde; übersprungen: Mo, 19\.10\. entfällt\)/]],
