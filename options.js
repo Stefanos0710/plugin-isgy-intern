@@ -135,5 +135,25 @@ $('aiLogout').onclick = async () => {
   await chrome.storage.local.set({ aiAccount: { server: a?.server, email: a?.email, token: '' } });
   loadAi();
 };
+// KI-Verbindungscode: built by the content script in an open isgy-intern.de tab (only it has the session).
+$('aiCodeShow').onclick = async () => {
+  $('aiCodeErr').textContent = '';
+  const tabs = await chrome.tabs.query({ url: ['https://www.isgy-intern.de/*', 'https://isgy-intern.de/*'] }).catch(() => []);
+  tabs.sort((a, b) => b.active - a.active);
+  let res;
+  for (const t of tabs) {
+    res = await chrome.tabs.sendMessage(t.id, 'ai-code').catch(() => null);
+    if (res?.code) break;
+  }
+  if (!res?.code) { $('aiCodeErr').textContent = res?.error || 'Öffne isgy-intern.de, melde dich an und versuche es erneut.'; return; }
+  $('aiCode').value = res.code;
+  $('aiCode').hidden = $('aiCodeCopy').hidden = false;
+  $('aiCode').select();
+};
+$('aiCodeCopy').onclick = async () => {
+  await navigator.clipboard.writeText($('aiCode').value).catch(() => { $('aiCode').select(); document.execCommand('copy'); });
+  $('aiCodeCopy').textContent = 'Kopiert ✓';
+  setTimeout(() => { $('aiCodeCopy').textContent = 'Kopieren'; }, 1500);
+};
 chrome.storage.onChanged.addListener((ch, area) => { if (area === 'local' && ch.aiAccount) loadAi(); });
 loadAi();

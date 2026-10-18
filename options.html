@@ -52,7 +52,9 @@
     #ai .dot { width: 9px; height: 9px; border-radius: 50%; background: #16a34a; display: inline-block; }
     #ai .dot.err { background: #dc2626; }
     #ai a { color: var(--accent); }
-    #aiErr { color: #b91c1c; margin-left: 8px; }
+    #aiErr, #aiCodeErr { color: #b91c1c; margin-left: 8px; }
+    #aiCodeH { margin: 18px 0 8px; font-size: 14px; }
+    #aiCode { width: 100%; margin-bottom: 6px; font-family: monospace; font-size: 12px; }
     .aih { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
     .ailogos { display: inline-flex; gap: 8px; align-items: center; }
   </style>
@@ -76,6 +78,10 @@
         <p><button id="aiLogin" type="button">Verbinden</button><span id="aiErr"></span></p>
         <small>Noch kein Konto? <a id="aiReg" target="_blank" rel="noopener">Hier kostenlos erstellen</a>. Das Konto-Passwort ist nicht dein isgy-intern-Passwort.</small>
       </div>
+      <h3 id="aiCodeH">KI-Verbindungscode (MCP)</h3>
+      <p><button class="ghost" id="aiCodeShow" type="button">Code anzeigen</button> <button class="ghost" id="aiCodeCopy" type="button" hidden>Kopieren</button><span id="aiCodeErr"></span></p>
+      <input type="text" id="aiCode" readonly hidden>
+      <small>Für Office-365-Konten ohne Portal-Passwort: im Anmeldefenster von „ISGY Intern“ (Claude, ChatGPT, Gemini …) unter „Office 365 (Schüler)“ einfügen. Der Code ist wie ein Passwort – nicht weitergeben. Auch in der Befehlspalette: „KI-Code“ oder „MCP“ eingeben.</small>
     </section>
 
     <section>

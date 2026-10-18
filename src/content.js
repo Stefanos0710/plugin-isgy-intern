@@ -660,12 +660,22 @@
   }
   // Connection code for the ISGY Intern MCP server (mcp/): the browser session, for Office-365 accounts without a portal password.
   // The session cookies are HttpOnly, so the background script reads them.
+  async function aiCode() {
+    const c = await chrome.runtime.sendMessage('portal-cookies');
+    const s = (localStorage.getItem('session') || '').replace('__q_strn|', '');
+    if (!s) throw new Error('Nicht auf isgy-intern.de angemeldet.');
+    const json = JSON.stringify({ c: c || {}, s, k: await apiKey() });
+    return 'isgy1.' + btoa(json).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+  // The options page asks the open portal tab for the code (only the page has the session).
+  chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
+    if (msg !== 'ai-code' || window !== top) return;
+    aiCode().then((code) => reply({ code }), (e) => reply({ error: e.message }));
+    return true;
+  });
   async function copyAiCode() {
     try {
-      const c = await chrome.runtime.sendMessage('portal-cookies');
-      const s = (localStorage.getItem('session') || '').replace('__q_strn|', '');
-      const json = JSON.stringify({ c: c || {}, s, k: await apiKey() });
-      const code = 'isgy1.' + btoa(json).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      const code = await aiCode();
       try {
         await navigator.clipboard.writeText(code);
         alert('KI-Verbindungscode kopiert.\n\nJetzt im Anmeldefenster von „ISGY Intern“ (Claude, ChatGPT, Gemini …) unter „Office 365 (Schüler)“ einfügen.\n\nDer Code ist wie ein Passwort – nicht weitergeben.');
@@ -692,8 +702,9 @@
       { label: '🔍 Letzten Tagebucheintrag für Fach suchen …', run: () => { const s = prompt('Fach-Kürzel (z. B. M_1, D, E_1):'); if (s) showLastEntry(s.trim()); } },
       { label: '🔄 Kürzel-Liste neu laden', run: async () => { try { await loadKuerzel(true); alert(`${Object.keys(KZ).length} Kürzel geladen.`); location.reload(); } catch (e) { alert(e.message); } } },
       { label: '⌨ Tastenkürzel anzeigen', run: showHelp },
-      { label: '🤖 KI-Verbindungscode kopieren', run: copyAiCode },
-      { label: '🔄 Mit KI-Konto synchronisieren', run: async () => {
+      { label: '🤖 KI-Verbindungscode kopieren', keys: 'ki-code kicode mcp ai claude chatgpt gemini', run: copyAiCode },
+      { label: '👤 KI-Konto: anmelden / verwalten', keys: 'login anmelden konto account mcp', run: openOptions },
+      { label: '🔄 Mit KI-Konto synchronisieren', keys: 'mcp sync', run: async () => {
         if (!(await local.get('aiAccount')).aiAccount?.token) return openOptions();
         try { await aiSync(true); const { aiAccount: a } = await local.get('aiAccount'); alert(a.error ? 'KI-Konto: ' + a.error : 'Mit dem KI-Konto synchronisiert.'); } catch (e) { alert(e.message); }
       } },
@@ -710,7 +721,7 @@
       list.children[sel]?.scrollIntoView({ block: 'nearest' });
     };
     const norm = (s) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-    const filter = () => { const q = norm(input.value).split(/\s+/).filter(Boolean); shown = all.filter((c) => q.every((w) => norm(c.label).includes(w))); sel = 0; draw(); };
+    const filter = () => { const q = norm(input.value).split(/\s+/).filter(Boolean); shown = all.filter((c) => q.every((w) => norm(c.label + ' ' + (c.keys || '')).includes(w))); sel = 0; draw(); };
     const dlg = showModal('Befehle', h('div', { class: 'ip-palette' }, input, list));
     const run = (c) => { dlg.close(); if (c.href) location.href = c.href; else c.run(); };
     input.addEventListener('input', filter);
