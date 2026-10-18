@@ -6,6 +6,8 @@ export const SITE_HOST = new URL(SITE).host;
 // Older addresses that answer too (existing connections keep working); only the start page redirects to SITE.
 export const LEGACY_HOSTS = (process.env.LEGACY_HOSTS ?? 'isgy-intern-mcp.vercel.app').split(',').map((h) => h.trim()).filter(Boolean);
 export const REPO = 'https://github.com/Stefanos0710/plugin-isgy-intern';
+// Signed Firefox build on addons.mozilla.org (one click, updates itself).
+export const FIREFOX_XPI = 'https://addons.mozilla.org/firefox/downloads/file/5134563/isgy_intern_plus-1.3.3.xpi';
 export const AUTHOR = { name: 'Stefanos0710', url: 'https://github.com/Stefanos0710' };
 // Bump when the start page content changes (sitemap <lastmod>).
 export const UPDATED = '2026-10-17';

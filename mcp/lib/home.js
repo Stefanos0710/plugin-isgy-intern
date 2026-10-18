@@ -1,6 +1,6 @@
 // Start page (/): the project as a whole – mainly the browser extension, with a pointer to the AI page (/mcp).
 // Uses head/nav/footer and the base CSS from pages.js; everything page-specific (mockup, bento, AI band) lives here.
-import { SITE, REPO, NAME, TITLE, DESCRIPTION, AUTHOR, VERSION, BROWSERS, logoSprite, browserSprite, brandIcon, browserIcon } from './site.js';
+import { SITE, REPO, FIREFOX_XPI, NAME, TITLE, DESCRIPTION, AUTHOR, VERSION, BROWSERS, logoSprite, browserSprite, brandIcon, browserIcon } from './site.js';
 import { head, tail, siteHeader, siteFooter, esc, I } from './pages.js';
 
 const CSS = `
@@ -229,7 +229,7 @@ const FAQ = [
   ['Was ist ISGY Intern Plus?', 'ISGY Intern Plus ist eine kostenlose Browser-Erweiterung für isgy-intern.de, das Schulportal des Gymnasiums Ismaning. Sie ersetzt das Dashboard durch „Mein Tag“ mit Stundenplan, Vertretungen und Entfällen, zeigt Lehrernamen statt Kürzel, den letzten Tagebucheintrag per Klick, Termine und Prüfungen sowie eigene Aufgaben & Notizen. Dazu gibt es einen MCP-Server, über den Claude, ChatGPT und Gemini dein Schulportal lesen können.'],
   ['Ist das ein offizielles Angebot der Schule?', 'Nein. ISGY Intern Plus ist ein inoffizielles Schülerprojekt und steht in keiner Verbindung zum Gymnasium Ismaning oder zum Betreiber des Portals. Es nutzt ausschließlich deinen eigenen Zugang und liest nur deine eigenen Daten.'],
   ['Kostet das etwas?', 'Nein. ISGY Intern Plus ist kostenlos und Open Source – ohne Werbung, ohne Tracking und ohne Abo.'],
-  ['In welchen Browsern funktioniert die Erweiterung?', 'In Chrome, Microsoft Edge, Brave, Opera, Vivaldi, Arc und allen anderen Chromium-Browsern sowie in Firefox (dauerhaft mit einer kostenlosen Signatur von Mozilla). Safari lässt sich auf dem Mac über Apples Konverter nutzen.'],
+  ['In welchen Browsern funktioniert die Erweiterung?', 'In Chrome, Microsoft Edge, Brave, Opera, Vivaldi, Arc und allen anderen Chromium-Browsern sowie in Firefox – dort mit einem Klick über addons.mozilla.org, von Mozilla signiert und mit automatischen Updates. Safari lässt sich auf dem Mac über Apples Konverter nutzen.'],
   ['Gibt es die Erweiterung im Chrome Web Store?', 'Noch nicht. Derzeit installierst du sie direkt aus dem Quellcode auf GitHub: einmal „node build.mjs“ ausführen und den Ordner im Entwicklermodus laden – das dauert etwa zwei Minuten. Die Anleitung steht im Abschnitt „Installieren“.'],
   ['Werden meine Daten irgendwohin geschickt?', 'Ohne KI-Konto nicht: Die Erweiterung liest nur von isgy-intern.de und speichert alles lokal in deinem Browser. Die Kürzel-Liste der Schule wird im Speicher ausgelesen, gespeichert wird nur die Zuordnung Kürzel → Name. Erst wenn du dich mit einem KI-Konto verbindest, werden deine Aufgaben & Notizen (und bei Office-365-Login die Portal-Sitzung) an den Server übertragen.'],
   ['Funktioniert das auch auf dem Handy?', 'Die Erweiterung braucht einen Desktop-Browser. Auf dem Handy nutzt du am besten die KI-Anbindung: Einmal in Claude oder ChatGPT eingerichtet, fragst du in der App einfach „Was habe ich morgen?“.'],
@@ -370,13 +370,13 @@ Soll ich dir das als Aufgaben in „Mein Tag“ eintragen?</div>
 <div class="term"><span class="p">$</span> node build.mjs
 <span class="ok">✓</span> dist/chromium
 <span class="ok">✓</span> dist/firefox</div></div>
-<div class="st3 rv"><h3>Im Browser laden</h3><p><code>chrome://extensions</code> öffnen, <b>Entwicklermodus</b> einschalten, <b>„Entpackte Erweiterung laden“</b> und <code>dist/chromium</code> wählen. Firefox: signierte <code>.xpi</code>.</p>
+<div class="st3 rv"><h3>Im Browser laden</h3><p><code>chrome://extensions</code> öffnen, <b>Entwicklermodus</b> einschalten, <b>„Entpackte Erweiterung laden“</b> und <code>dist/chromium</code> wählen. <b>Firefox</b>: einfach <a href="${FIREFOX_XPI}" rel="noopener">hier installieren</a> – ohne Bauen.</p>
 <div class="toggle"><span>Entwicklermodus</span><i aria-hidden="true"></i></div></div>
 <div class="st3 rv"><h3>isgy-intern.de öffnen</h3><p>Ganz normal einloggen – dein Dashboard heißt jetzt „Mein Tag“. Einstellungen findest du unter ⚙.</p>
 <div class="done-row">${I.check}Fertig. Viel Spaß mit dem neuen Portal!</div></div>
 </div>
-<div class="inst-foot rv"><a class="btn lg pri" href="${REPO}#installation" rel="noopener">Schritt-für-Schritt-Anleitung${ICON.arrow}</a><a class="btn lg sec" href="${REPO}" rel="noopener">${ICON.code}Quellcode auf GitHub</a></div>
-<p class="inst-note">Updates: <code>git pull</code>, erneut <code>node build.mjs</code> und die Erweiterung neu laden. Safari auf dem Mac geht über Apples Konverter.</p>
+<div class="inst-foot rv"><a class="btn lg pri" href="${FIREFOX_XPI}" rel="noopener">${browserIcon('firefox', 18)}Für Firefox installieren</a><a class="btn lg sec" href="${REPO}#installation" rel="noopener">Anleitung für Chrome &amp; Co.${ICON.arrow}</a><a class="btn lg sec" href="${REPO}" rel="noopener">${ICON.code}Quellcode auf GitHub</a></div>
+<p class="inst-note">Updates: In Firefox automatisch. Sonst <code>git pull</code>, erneut <code>node build.mjs</code> und die Erweiterung neu laden. Safari auf dem Mac geht über Apples Konverter.</p>
 </div></section>
 
 <section id="datenschutz" aria-labelledby="h-priv" style="background:var(--bg-2)"><div class="wrap">
