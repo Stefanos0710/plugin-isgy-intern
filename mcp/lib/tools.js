@@ -97,14 +97,119 @@ function dateArg(input, name = 'datum') {
   return d;
 }
 
-// Next date after `afterDs` (max. 3 weeks) with a lesson in one of the subjects, per the regular timetable.
-function nextLesson(sp, wanted, afterDs) {
+// Holidays and other free days from the class calendar ("Herbstferien", "Feiertag", "unterrichtsfrei" …).
+const FREE_RE = /ferien|feiertag|unterrichtsfrei|schulfrei|ferientag/i;
+function freeDaysOf(events) {
+  const free = new Set();
+  for (const e of events || []) {
+    if (!FREE_RE.test(`${e.title} ${e.fach_title || ''}`) || isExam(e)) continue;
+    for (let d = e.dateStart, i = 0; d && d <= (e.dateEnd || e.dateStart) && i < 60; d = addDays(d, 1), i++) free.add(d);
+  }
+  return free;
+}
+// Does the Vertretungsplan cancel every lesson of the subject on that day?
+function cancelledOn(vp, cls, ds, wanted) {
+  const vs = (vp || []).filter((v) => fromDe(v.date) === ds && classMatch(v.klasse, cls) && subjectMatches(v.fach_alt, wanted));
+  return vs.length > 0 && vs.every((v) => subInfo(v, (x) => clean(x)).cancel);
+}
+const hoursOf = (sp, ds, wanted) => dayPlan(sp, ds).map((slots, h) => ((slots || []).some((s) => subjectMatches(s.subject, wanted)) ? h + 1 : 0)).filter(Boolean);
+
+// Next (dir = 1) or previous (dir = -1) date with a lesson in one of the subjects (max. 3 weeks), per the timetable.
+// `opt` = { free, vp, cls }: skips holidays and lessons the Vertretungsplan cancels; `skipped` lists those.
+function findLesson(sp, wanted, fromDs, dir, opt = {}) {
+  const skipped = [];
   for (let i = 1; i <= 21; i++) {
-    const d = addDays(afterDs, i);
-    const hours = dayPlan(sp, d).map((slots, h) => ((slots || []).some((s) => subjectMatches(s.subject, wanted)) ? h + 1 : 0)).filter(Boolean);
-    if (hours.length) return { d, hours };
+    const d = addDays(fromDs, dir * i);
+    const hours = hoursOf(sp, d, wanted);
+    if (!hours.length) continue;
+    if (opt.free?.has(d)) { skipped.push({ d, why: 'unterrichtsfrei' }); continue; }
+    if (opt.vp && cancelledOn(opt.vp, opt.cls, d, wanted)) { skipped.push({ d, why: 'entfällt' }); continue; }
+    return { d, hours, skipped };
   }
   return null;
+}
+const nextLesson = (sp, wanted, afterDs, opt) => findLesson(sp, wanted, afterDs, 1, opt);
+const prevLesson = (sp, wanted, beforeDs, opt) => findLesson(sp, wanted, beforeDs, -1, opt);
+
+// Explicit due date in a homework text, relative to the day it was given:
+// "bis 23.10.", "zum 23.10.2026", "bis Freitag", "für Montag", "bis morgen". Vague "nächste Woche" → { vague }.
+const WD_NUM = { montag: 1, dienstag: 2, mittwoch: 3, donnerstag: 4, freitag: 5 };
+function textDue(hw, givenDs) {
+  const s = clean(hw).toLowerCase();
+  let m = s.match(/\b(?:bis|zum|zur|für|fuer|am|abgabe)\s+(?:(?:den|zum|spätestens)\s+)?(\d{1,2})\.\s?(\d{1,2})\.(\d{2,4})?/);
+  if (m) {
+    const y = m[3] ? Number(m[3].length === 2 ? '20' + m[3] : m[3]) : Number(givenDs.slice(0, 4));
+    let d = `${y}-${String(m[2]).padStart(2, '0')}-${String(m[1]).padStart(2, '0')}`;
+    if (!m[3] && d < givenDs) d = `${y + 1}${d.slice(4)}`;
+    if (/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(d)) return { d };
+  }
+  m = s.match(/\b(?:bis|zum|zur|für|fuer|am)\s+(?:(?:nächsten?|naechsten?|kommenden?|den)\s+)?(montag|dienstag|mittwoch|donnerstag|freitag)\b/);
+  if (m) { let d = addDays(givenDs, 1); while (weekday(d) !== WD_NUM[m[1]]) d = addDays(d, 1); return { d }; }
+  if (/\bbis\s+morgen\b/.test(s)) return { d: nextSchoolDay(givenDs, false) };
+  if (/n(ä|ae)chste\s+woche|in\s+(einer|zwei|2|drei|3)\s+wochen/.test(s)) return { vague: s.match(/n(ä|ae)chste\s+woche|in\s+(einer|zwei|2|drei|3)\s+wochen/)[0] };
+  return null;
+}
+
+// All homework from the diary with its due date: explicit date in the text, else the next lesson of the subject
+// (skipping holidays and cancelled lessons). Sorted by due date.
+function homeworkItems(sp, diary, opt, wanted = null) {
+  const items = [];
+  for (const { d, es } of diary) for (const e of es) {
+    if (!clean(e.homework) || (wanted && !subjectMatches(e.subject, wanted))) continue;
+    const subj = clean(e.subject);
+    const td = textDue(e.homework, d);
+    const nx = nextLesson(sp, [subj], d, opt);
+    const due = td?.d || nx?.d || '';
+    items.push({ d, e, subj, due, how: td?.d ? 'Datum im Text' : nx ? 'nächste Stunde' : '', vague: td?.vague, nx });
+  }
+  return items.sort((a, b) => (a.due || '9').localeCompare(b.due || '9') || a.subj.localeCompare(b.subj));
+}
+
+// What is due on `ds`, per subject that has a lesson that day. The homework for a lesson is normally given in the
+// subject's PREVIOUS lesson – so we look there, not at the diary of `ds` itself.
+// Returns lines for the output; `day` is buildDay(ds, …), `diary` must reach back ~3 weeks before ds.
+function homeworkDueOn(ds, day, sp, diary, opt, wanted = null) {
+  const out = [];
+  const shown = new Set(); // `${d}|${homework}` already listed
+  const subjects = [...new Set(day.items.map((it) => clean(it.slot.subject)))].filter((s) => !wanted || subjectMatches(s, wanted));
+  const parallel = new Set(dayPlan(sp, ds).filter((slots) => (slots || []).length > 1).flatMap((slots) => slots.map((s) => clean(s.subject))));
+  const entriesOn = (d, subj) => (diary.find((x) => x.d === d)?.es || []).filter((e) => subjectMatches(e.subject, [subj]));
+  const hwText = (es) => [...new Set(es.filter((e) => clean(e.homework)).map((e) => multiline(e.homework)))].join('\n');
+  for (const subj of subjects) {
+    const tag = parallel.has(subj) ? ' (Wahlfach/Gruppe – gilt nur, wenn du es hast)' : '';
+    const its = day.items.filter((it) => clean(it.slot.subject) === subj);
+    if (its.every((it) => it.cancel)) {
+      const nx = nextLesson(sp, [subj], ds, opt);
+      out.push(`- ${subj}${tag}: Stunde ENTFÄLLT laut Vertretungsplan – Hausaufgaben dafür werden vermutlich erst ${nx ? `zur nächsten Stunde am ${label(nx.d)}` : 'zur nächsten Stunde'} fällig.`);
+      continue;
+    }
+    const prev = prevLesson(sp, [subj], ds, { free: opt.free });
+    if (!prev) continue;
+    if (prev.d > today()) { out.push(`- ${subj}${tag}: Hausaufgaben dafür werden erst in der Stunde am ${label(prev.d)} aufgegeben.`); continue; }
+    const es =entriesOn(prev.d, subj).filter((e) => !e.cancelled);
+    if (es.length) {
+      es.forEach((e) => shown.add(`${prev.d}|${e.homework}`));
+      const hw = hwText(es);
+      const later = hw && textDue(hw, prev.d)?.d;
+      out.push(!hw ? `- ${subj}${tag}: keine Hausaufgabe eingetragen (Stunde davor, ${short(prev.d)})`
+        : later && later > ds ? `- ${subj}${tag}: nichts fällig – die Hausaufgabe vom ${short(prev.d)} ist laut Text erst am ${label(later)} fällig: ${indent(hw, '  ')}`
+          : `- ${subj}${tag}: ${indent(hw, '  ')}  (aufgegeben in der Stunde davor, ${short(prev.d)})`);
+      continue;
+    }
+    // No entry for the previous lesson: not entered yet, or the lesson was cancelled. Show the latest homework, flagged.
+    const last = diary.find((x) => x.d < ds && x.d < prev.d && entriesOn(x.d, subj).length);
+    const why = prev.d === today() ? 'die heutige Stunde ist noch nicht im Tagebuch eingetragen' : entriesOn(prev.d, subj).length ? 'die Stunde ist ausgefallen' : 'kein Tagebucheintrag – ausgefallen oder noch nicht eingetragen';
+    const lastHw = last ? hwText(entriesOn(last.d, subj)) : '';
+    if (last) entriesOn(last.d, subj).forEach((e) => shown.add(`${last.d}|${e.homework}`));
+    out.push(`- ${subj}${tag}: Für die Stunde davor (${short(prev.d)}) ${why}.` +
+      (lastHw ? ` Letzte eingetragene Hausaufgabe (vom ${short(last.d)}): ${indent(lastHw, '  ')} – die war eigentlich schon am ${short(prev.d)} fällig; ist die Stunde ausgefallen, ist sie jetzt fällig.` : ''));
+  }
+  // Homework from other lessons with this exact date in the text ("bis Freitag", "bis 23.10.").
+  for (const it of homeworkItems(sp, diary, opt, wanted)) {
+    if (it.how !== 'Datum im Text' || it.due !== ds || it.d >= ds || shown.has(`${it.d}|${it.e.homework}`)) continue;
+    out.push(`- ${it.subj}: ${indent(it.e.homework, '  ')}  (aufgegeben ${short(it.d)}, im Text steht dieser Termin)`);
+  }
+  return out;
 }
 
 // ---------- class diary ----------
@@ -204,18 +309,13 @@ function dayHeader(day) {
   return `Unterricht ${span(day.first, day.last)} (${day.first}.–${day.last}. Stunde)${early}`;
 }
 
-// For each subject of a day: the homework from its most recent diary entry before that day.
-function dueHomework(day, diary, ds) {
-  const subjects = [...new Set(day.items.filter((it) => !it.cancel).map((it) => clean(it.slot.subject)))];
-  const out = [];
-  for (const subj of subjects) {
-    const hit = diary.find(({ d, es }) => d < ds && es.some((e) => subjectMatches(e.subject, [subj])));
-    if (!hit) continue;
-    const hw = hit.es.filter((e) => subjectMatches(e.subject, [subj]) && clean(e.homework)).map((e) => multiline(e.homework));
-    out.push(hw.length ? `- ${subj}: ${indent([...new Set(hw)].join('\n'), '  ')}  (aufgegeben ${short(hit.d)})` : `- ${subj}: keine Hausaufgabe im letzten Eintrag (${short(hit.d)})`);
-  }
-  return out;
+// '→ fällig Mi, 21.10. (in 3 Tagen)' for a homeworkItems() entry.
+function dueLabel(it) {
+  if (!it.due) return it.vague ? `Termin laut Text: „${it.vague}“` : 'Fälligkeit unklar';
+  const skipped = it.how === 'nächste Stunde' && it.nx?.skipped.length ? `; übersprungen: ${it.nx.skipped.map((s) => `${short(s.d)} ${s.why}`).join(', ')}` : '';
+  return `fällig ${label(it.due)} (${rel(it.due)}${it.how === 'Datum im Text' ? ', Datum aus dem Text' : ', nächste Stunde'}${skipped})${it.vague ? ` – im Text: „${it.vague}“` : ''}`;
 }
+const HW_DUE_HEAD = 'Hausaufgaben, die an diesem Tag fällig sind (je Fach aus der Stunde davor – dort werden sie aufgegeben):';
 
 function defaultDay(sp) {
   // After the last lesson of today, show the next school day (like the extension's dashboard).
@@ -238,8 +338,10 @@ async function tagesplan(portal, args, ctx) {
     openTodos(ctx),
   ]);
   const day = buildDay(ds, sp, vp.v, cls, teacher);
+  const free = freeDaysOf(kal.v.events);
   const out = [`${label(ds)} (${rel(ds)}) – Klasse ${cls}`];
   if (isWeekend(ds)) out.push('Wochenende – kein Unterricht.', `Nächster Schultag: ${label(nextSchoolDay(ds))}.`);
+  else if (free.has(ds)) out.push('Laut Klassenkalender unterrichtsfrei (Ferien/Feiertag) – kein Unterricht.');
   else {
     out.push(dayHeader(day));
     if (day.lines.length) out.push('', ...day.lines);
@@ -250,8 +352,8 @@ async function tagesplan(portal, args, ctx) {
   const evs = kal.v.events.filter((e) => inRange(e, ds, ds)).sort(byStart);
   if (evs.length) out.push('', 'Termine an diesem Tag:', ...evs.map((e) => `- ${isExam(e) ? '📝 ' : ''}${formatEvent(e, cls, { relative: false })}`));
   if (kal.err) out.push(`(Klassenkalender nicht verfügbar: ${kal.err})`);
-  const hw = diary.v?.length ? dueHomework(day, diary.v, ds) : [];
-  if (hw.length) out.push('', 'Hausaufgaben für diesen Tag (jeweils aus dem letzten Tagebucheintrag des Fachs):', ...hw);
+  const hw = diary.v?.length && !free.has(ds) ? homeworkDueOn(ds, day, sp, diary.v, { free, vp: vp.v, cls }) : [];
+  if (hw.length) out.push('', HW_DUE_HEAD, ...hw);
   const soon = kal.v.events.filter((e) => isExam(e) && inRange(e, addDays(ds, 1), addDays(ds, 7))).sort(byStart);
   if (soon.length) out.push('', 'Prüfungen in den Tagen danach:', ...soon.map((e) => '- ' + formatEvent(e, cls)));
   const mine = (todos || []).filter((n) => n.date && n.date <= ds);
@@ -285,16 +387,14 @@ async function uebersicht(portal, args, ctx) {
   out.push('', `${ds === t ? 'HEUTE' : 'NÄCHSTER SCHULTAG'}: ${label(ds)} (${rel(ds)})`, dayHeader(day), ...day.lines.map((l) => '  ' + l));
   if (day.orphans.length) out.push(...day.orphans.map((x) => '  ' + x));
   if (vp.err) out.push(`  (Vertretungsplan nicht verfügbar: ${vp.err})`);
-  const hwDue = diary.v?.length ? dueHomework(day, diary.v, ds) : [];
-  if (hwDue.length) out.push('', `HAUSAUFGABEN FÜR ${short(ds).toUpperCase()}:`, ...hwDue);
+  const opt = { free: freeDaysOf(kal.v.events), vp: vp.v, cls };
+  const hwDue = diary.v?.length ? homeworkDueOn(ds, day, sp, diary.v, opt) : [];
+  if (hwDue.length) out.push('', `HAUSAUFGABEN FÄLLIG ${short(ds).toUpperCase()} (je Fach aus der Stunde davor):`, ...hwDue);
 
-  const allHw = (diary.v || []).slice(0, 5).flatMap(({ d, es }) => es.filter((e) => clean(e.homework)).map((e) => ({ d, e })));
-  if (allHw.length) {
-    out.push('', 'ALLE HAUSAUFGABEN DER LETZTEN 5 SCHULTAGE:');
-    for (const { d, e } of allHw) {
-      const nx = nextLesson(sp, [clean(e.subject)], d);
-      out.push(`- ${clean(e.subject)} (${short(d)}): ${indent(e.homework, '  ')}${nx ? `  → nächste Stunde ${short(nx.d)}` : ''}`);
-    }
+  const open = homeworkItems(sp, (diary.v || []).slice(0, 7), opt).filter((it) => !it.due || it.due > ds);
+  if (open.length) {
+    out.push('', 'SPÄTER FÄLLIGE HAUSAUFGABEN:');
+    for (const it of open) out.push(`- ${it.subj} (aufgegeben ${short(it.d)}): ${indent(it.e.homework, '  ')}  → ${dueLabel(it)}`);
   }
   const evs = kal.v.events.filter((e) => inRange(e, t, addDays(t, 21))).sort(byStart);
   const exams = evs.filter(isExam), other = evs.filter((e) => !isExam(e) && inRange(e, t, addDays(t, 10)));
@@ -364,6 +464,8 @@ async function tagebuch(portal, args) {
   if (!args.datum) while (isWeekend(von)) von = addDays(von, -1);
   const bis = args.bis ? dateArg(args.bis, 'bis') : von;
   if (bis < von) throw new InputError('„bis“ liegt vor „datum“.');
+  // A future day has no entries yet; whoever asks about it almost always wants what is due then.
+  if (von > today()) return `Für ${label(von)} gibt es noch keine Tagebucheinträge (Einträge entstehen erst in der Stunde). Stattdessen, was an dem Tag fällig ist:\n\n` + await hausaufgaben(portal, { faellig: von, fach: args.fach });
   if (diffDays(von, bis) > 31) throw new InputError('Höchstens 31 Tage auf einmal.');
   const wanted = args.fach ? requireSubject(args.fach, sp) : null;
   const days = [];
@@ -381,25 +483,37 @@ async function tagebuch(portal, args) {
 
 // ---------- hausaufgaben ----------
 async function hausaufgaben(portal, args) {
-  const { sp, teacher } = await context(portal);
-  const n = clamp(args.tage, 7, 1, 30);
+  const { sp, cls, teacher } = await context(portal);
   const wanted = args.fach ? requireSubject(args.fach, sp) : null;
-  const diary = await diaryDays(portal, today(), n);
-  const out = [];
-  for (const { d, es } of diary) {
-    const hw = es.filter((e) => clean(e.homework) && (!wanted || subjectMatches(e.subject, wanted)));
-    if (!hw.length) continue;
-    out.push(`${label(d)} (${rel(d)}):`);
-    for (const e of hw) {
-      const nx = nextLesson(sp, [clean(e.subject)], d);
-      out.push(`- ${clean(e.subject)} bei ${teacher(e.teacher)}: ${indent(e.homework, '  ')}`);
-      if (nx) out.push(`  → nächste ${clean(e.subject)}-Stunde laut Stundenplan: ${label(nx.d)} (${rel(nx.d)}), ${nx.hours[0]}. Std`);
-    }
-    out.push('');
+  const [vp, kal] = await Promise.all([safe(portal.vplan(), []), safe(portal.kalender(cls), { events: [] })]);
+  const opt = { free: freeDaysOf(kal.v.events), vp: vp.v, cls };
+  const notes = [vp.err && 'Vertretungsplan nicht verfügbar – Entfälle sind nicht berücksichtigt.', kal.err && 'Klassenkalender nicht verfügbar – Ferien/Feiertage sind nicht berücksichtigt.'].filter(Boolean);
+
+  // "Hausaufgaben für morgen" = what is due on that day, not what is entered in the diary on that day.
+  if (args.faellig) {
+    let ds = dateArg(args.faellig, 'faellig');
+    const moved = isWeekend(ds) || opt.free.has(ds);
+    if (moved) { do ds = nextSchoolDay(addDays(ds, 1)); while (opt.free.has(ds)); }
+    const diary = await diaryDays(portal, addDays(ds, -1), 15);
+    const day = buildDay(ds, sp, vp.v, cls, teacher);
+    const lines = homeworkDueOn(ds, day, sp, diary, opt, wanted);
+    const head = `${moved ? `${label(dateArg(args.faellig))} ist schulfrei – stattdessen der nächste Schultag. ` : ''}Fällig am ${label(ds)} (${rel(ds)})${wanted ? ' in ' + wanted.join('/') : ''}:`;
+    if (!lines.length) return [head, wanted ? `Keine ${wanted.join('/')}-Stunde an diesem Tag.` : 'Laut Stundenplan kein Unterricht.', ...notes].join('\n');
+    return [head, 'Je Fach die Hausaufgabe aus der Stunde davor – dort wird sie aufgegeben.', '', ...lines, ...(notes.length ? ['', ...notes] : [])].join('\n');
   }
-  if (!out.length) return `In den letzten ${n} Schultagen wurde${wanted ? ' für ' + wanted.join('/') : ''} keine Hausaufgabe ins Klassentagebuch eingetragen.`;
-  return [`Hausaufgaben aus dem Klassentagebuch (letzte ${n} Schultage, neueste zuerst).`,
-    'Fällig ist eine Hausaufgabe normalerweise zur nächsten Stunde des Fachs, außer im Text steht ein anderes Datum.', '', ...out].join('\n').trim();
+
+  const n = clamp(args.tage, 7, 1, 30);
+  const items = homeworkItems(sp, await diaryDays(portal, today(), n), opt, wanted);
+  if (!items.length) return `In den letzten ${n} Schultagen wurde${wanted ? ' für ' + wanted.join('/') : ''} keine Hausaufgabe ins Klassentagebuch eingetragen.`;
+  const t = today();
+  const line = (it) => `- ${it.subj} bei ${teacher(it.e.teacher)} (aufgegeben ${short(it.d)}): ${indent(it.e.homework, '  ')}\n  → ${dueLabel(it)}`;
+  const open = items.filter((it) => !it.due || it.due >= t), past = items.filter((it) => it.due && it.due < t);
+  const out = [`Hausaufgaben aus dem Klassentagebuch (letzte ${n} Schultage), nach Fälligkeit sortiert.`,
+    'Fällig = Datum aus dem Text, sonst die nächste Stunde des Fachs laut Stundenplan (ohne Ferien und Entfälle).'];
+  if (open.length) out.push('', 'NOCH FÄLLIG:', ...open.map(line));
+  if (past.length) out.push('', 'SCHON FÄLLIG GEWESEN (vermutlich erledigt bzw. eingesammelt):', ...past.map(line));
+  if (notes.length) out.push('', ...notes);
+  return out.join('\n');
 }
 
 // ---------- letzter_eintrag ----------
@@ -610,8 +724,8 @@ export const TOOLS = [
   {
     name: 'hausaufgaben',
     title: 'Hausaufgaben',
-    description: 'Alle Hausaufgaben aus dem Klassentagebuch der letzten Schultage, nach Tag gruppiert, jeweils mit der nächsten Stunde des Fachs (= übliche Fälligkeit). Optional nur ein Fach.',
-    inputSchema: { type: 'object', properties: { tage: { type: 'integer', minimum: 1, maximum: 30, description: 'Wie viele Schultage zurück (Standard 7).' }, fach: FACH }, additionalProperties: false },
+    description: 'Hausaufgaben mit Fälligkeit. Mit „faellig“ (z. B. „morgen“): was an DIESEM Tag abzugeben/zu erledigen ist – für „Was ist für morgen auf?“, „Hausaufgaben für Montag?“. Wichtig: Hausaufgaben für morgen wurden in der jeweils VORHERIGEN Stunde des Fachs aufgegeben, nicht morgen – dieses Tool rechnet das richtig (inkl. Entfälle, Ferien, Datumsangaben im Text). Ohne „faellig“: alle Hausaufgaben der letzten Schultage, nach Fälligkeit sortiert.',
+    inputSchema: { type: 'object', properties: { faellig: { ...DATUM, description: 'Tag, an dem die Hausaufgaben fällig sind: „morgen“, „Montag“, YYYY-MM-DD … Für „Hausaufgaben für <Tag>“ immer diesen Parameter nutzen.' }, tage: { type: 'integer', minimum: 1, maximum: 30, description: 'Ohne faellig: wie viele Schultage zurück (Standard 7).' }, fach: FACH }, additionalProperties: false },
     run: hausaufgaben,
   },
   {
@@ -758,7 +872,7 @@ export const PROMPTS = [
     title: 'Hausaufgaben-Check',
     description: 'Welche Hausaufgaben sind offen und bis wann?',
     arguments: [],
-    text: () => 'Hole mit dem Tool „hausaufgaben“ von ISGY Intern die Hausaufgaben der letzten 7 Schultage und mache mir daraus eine To-do-Liste, sortiert nach Fälligkeit (nächste Stunde des Fachs). Markiere, was bis morgen fällig ist.',
+    text: () => 'Rufe das Tool „hausaufgaben“ von ISGY Intern einmal ohne Parameter (alle offenen, nach Fälligkeit) und einmal mit faellig="morgen" auf. Mache mir daraus eine To-do-Liste, sortiert nach Fälligkeit, und markiere, was bis morgen fällig ist. Übernimm Hinweise wie „Stunde entfällt“ oder „kein Tagebucheintrag“.',
   },
   {
     name: 'lernplan',

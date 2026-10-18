@@ -83,7 +83,8 @@ export function startMock(port) {
         if (ep === 'klassenkalender/getEvents') {
           if (!/name="kalenders"\r\n\r\n7\r\n/.test(body)) return json(res, 200, []);
           return json(res, 200, [{ title: '10b: Schulaufgabe', dateStart: D1, dateEnd: D1, timeStart: '00:00', fach_title: 'Mathematik', stunde: '1', lnw: { short: 'SA', title: 'Schulaufgabe' } },
-            { title: '10b: Wandertag', dateStart: addDays(D1, 10), dateEnd: addDays(D1, 10), place: 'Ebersberger Forst' }]);
+            { title: '10b: Wandertag', dateStart: addDays(D1, 10), dateEnd: addDays(D1, 10), place: 'Ebersberger Forst' },
+            { title: 'Herbstferien', dateStart: addDays(D1, 14), dateEnd: addDays(D1, 18) }]);
         }
       }
       if (!authed) return json(res, 401, []);

@@ -105,7 +105,20 @@ const calls = [
   ['pruefungen', { fach: 'Englisch' }, [/Keine Prüfungen in E_1/]],
   ['fach', { fach: 'Mathe' }, [/Fach M – Klasse 10b/, /Lehrkraft: Max Mustermann \(Mm\)/, /Wochenstunden: 4/, /Anstehende Prüfungen/, /Nächste Stunden/]],
   ['tagesplan', { datum: 'morgen' }, [/Klasse 10b/]],
-  ['tagesplan', { datum: D1 }, [/Klasse 10b/, /ENTFÄLLT/, /Lehrkraft: Max Mustermann \(Mm\)/, /Raum: 204/, /Schulaufgabe/, /Unterricht 07:55–10:30/, /Hausaufgaben für diesen Tag/, /- M: S\. 42/]],
+  ['tagesplan', { datum: D1 }, [/Klasse 10b/, /ENTFÄLLT/, /Lehrkraft: Max Mustermann \(Mm\)/, /Raum: 204/, /Schulaufgabe/, /Unterricht 07:55–10:30/, /an diesem Tag fällig/,
+    /- M: nichts fällig – die Hausaufgabe vom Fr, 16\.10\. ist laut Text erst am Freitag, 23\.10\.2026 fällig/, // "bis Freitag" in the text
+    /- E_1: Stunde ENTFÄLLT laut Vertretungsplan .* Mittwoch, 21\.10\.2026/, /- D: Für die Stunde davor \(Do, 15\.10\.\) kein Tagebucheintrag/]],
+  // "Hausaufgaben für morgen": due tomorrow = given in the previous lesson, not tomorrow's diary.
+  ['hausaufgaben', { faellig: 'morgen' }, [/Fällig am Montag, 19\.10\.2026 \(morgen\)/, /- E_1: Stunde ENTFÄLLT/, /- M: nichts fällig/]],
+  ['hausaufgaben', { faellig: 'heute' },[/ist schulfrei – stattdessen der nächste Schultag/, /Fällig am Montag, 19\.10\.2026/]],
+  // Friday: the previous M lesson (Wed) is still ahead, but the "bis Freitag" homework from 16.10. is due.
+  ['hausaufgaben', { faellig: '23.10.2026', fach: 'Mathe' }, [/- M: Hausaufgaben dafür werden erst in der Stunde am Mittwoch, 21\.10\.2026 aufgegeben/, /- M: S\. 42 Nr\. 3a–c[\s\S]*im Text steht dieser Termin/]],
+  // Holidays from the class calendar (Herbstferien 02.–06.11.) move the due day.
+  ['hausaufgaben', { faellig: '02.11.2026' }, [/ist schulfrei – stattdessen der nächste Schultag\. Fällig am Montag, 09\.11\.2026/]],
+  ['tagesplan', { datum: '03.11.2026' }, [/unterrichtsfrei \(Ferien\/Feiertag\)/]],
+  ['tagebuch', { datum: 'morgen' },[/noch keine Tagebucheinträge/, /Fällig am Montag, 19\.10\.2026/]],
+  ['hausaufgaben', {}, [/nach Fälligkeit sortiert/, /NOCH FÄLLIG/, /M bei Max Mustermann \(Mm\) \(aufgegeben Fr, 16\.10\.\): S\. 42[\s\S]*fällig Freitag, 23\.10\.2026 \(in 5 Tagen, Datum aus dem Text\)/,
+    /E_1 bei Hans Bauer \(Hb\) \(aufgegeben Fr, 16\.10\.\): Vocab unit 3\n  → fällig Mittwoch, 21\.10\.2026 \(in 3 Tagen, nächste Stunde; übersprungen: Mo, 19\.10\. entfällt\)/]],
   ['tagesplan', {}, [/Klasse 10b/]],
   ['stundenplan', {}, [/Montag:/, /1\.–2\. Std 07:55–09:25  M · Max Mustermann \(Mm\) · Raum 204/, /Wochenstunden je Fach: .*M 4/]],
   ['vertretungen', {}, [/Vertretungen \(Klasse 10b\)/, /3\. Std \(09:45–10:30\): D bei Sabine Weber \(Sw\), Raum 101 → VERTRETUNG/, /Veröffentlichte Tage/]],

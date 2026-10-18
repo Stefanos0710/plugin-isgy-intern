@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "node dev-server.mjs",
-    "test": "node test/run.mjs"
+    "test": "node --import ./test/clock.mjs test/run.mjs"
   },
   "dependencies": {
     "@napi-rs/canvas": "^0.1.100",

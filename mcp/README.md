@@ -45,7 +45,7 @@ Jede Antwort beginnt mit „Stand: <Datum, Uhrzeit>“, damit der Assistent „h
 | --- | --- |
 | `uebersicht` | alles auf einen Blick: laufende/nächste Stunde, heute bzw. nächster Schultag mit Vertretungen, fällige und alle Hausaufgaben der letzten Tage, Prüfungen und Termine |
 | `tagesplan` | ein Tag im Detail: Stunden mit Uhrzeiten, Vertretungen/Entfälle, Freistunden, Schulschluss, die für den Tag fälligen Hausaufgaben, Prüfungen danach |
-| `hausaufgaben` | Hausaufgaben der letzten Schultage, je mit der nächsten Stunde des Fachs (= übliche Fälligkeit), optional ein Fach |
+| `hausaufgaben` | mit `faellig` (z. B. „morgen“): was an dem Tag fällig ist – je Fach aus der Stunde davor, mit Entfällen, Ferien und Terminen im Text. Ohne: alle Hausaufgaben der letzten Schultage nach Fälligkeit |
 | `pruefungen` | Schulaufgaben, Exen, Kurzarbeiten … mit den Unterrichtsthemen der letzten Wochen als Lernstoff |
 | `fach` | Steckbrief eines Fachs: Lehrkraft, Wochenstunden, nächste Stunden, Prüfungen, letzte Tagebucheinträge |
 | `vertretungen` | Vertretungsplan, eigene Klasse oder alle, und welche Tage schon veröffentlicht sind |

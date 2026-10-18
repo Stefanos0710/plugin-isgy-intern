@@ -6,7 +6,7 @@ import { portalFor, AuthError, PortalError } from './portal.js';
 import { credOf } from './accounts.js';
 import { DbError } from './db.js';
 
-export const SERVER_INFO = { name: 'isgy-intern', title: 'ISGY Intern', version: '1.2.0' };
+export const SERVER_INFO = { name: 'isgy-intern', title: 'ISGY Intern', version: '1.3.0' };
 const VERSIONS = ['2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05'];
 
 const INSTRUCTIONS = `ISGY Intern: Lesezugriff auf das Schulportal isgy-intern.de des Gymnasiums Ismaning (Bayern) für den angemeldeten Schüler bzw. das Elternteil – Stundenplan, Vertretungsplan, Klassentagebuch (Themen + Hausaufgaben), Klassenkalender (Prüfungen, Termine) und Lehrerkürzel.
@@ -14,7 +14,8 @@ const INSTRUCTIONS = `ISGY Intern: Lesezugriff auf das Schulportal isgy-intern.d
 Welches Tool wofür:
 - Offene Fragen („Was steht an?“, Gesprächsbeginn) → uebersicht
 - Ein bestimmter Tag („Was habe ich morgen?“, „Was ist am Freitag fällig?“) → tagesplan
-- Hausaufgaben → hausaufgaben; ein Fach → letzter_eintrag oder fach
+- „Hausaufgaben für morgen/Montag/…“, „Was ist auf?“ → hausaufgaben mit faellig=<Tag>. NICHT tagebuch für diesen Tag: Hausaufgaben für morgen wurden in der vorherigen Stunde des Fachs aufgegeben, morgen steht noch nichts im Tagebuch.
+- Alle offenen Hausaufgaben → hausaufgaben ohne Parameter; ein Fach → hausaufgaben mit fach, letzter_eintrag oder fach
 - Schulaufgaben/Exen/Tests und Lernstoff dafür → pruefungen
 - Alles zu einem Fach → fach; verpasster Stoff → tagebuch
 - Vertretungen gezielt → vertretungen; Wochenplan → stundenplan; Termine → termine; Kürzel → lehrer
@@ -25,7 +26,9 @@ Wissenswertes:
 - Stundenzeiten: ${Object.keys(TIMES).map((n) => `${n}. ${lessonTime(n)}`).join(', ')}.
 - Fächer werden als Kürzel angegeben (M = Mathe, D = Deutsch, E = Englisch, Ph = Physik, …; „_1“ o. Ä. = Kurs/Gruppe). Die Tools verstehen auch ausgeschriebene Namen.
 - Bayerische Begriffe: Schulaufgabe = große angekündigte Klassenarbeit, Ex (Stegreifaufgabe) = unangekündigter Kurztest, Kurzarbeit = angekündigter kurzer Test.
-- Hausaufgaben stehen im Klassentagebuch beim Tag, an dem sie aufgegeben wurden; fällig sind sie meist zur nächsten Stunde des Fachs.
+- Hausaufgaben stehen im Klassentagebuch beim Tag, an dem sie aufgegeben wurden; fällig sind sie meist zur nächsten Stunde des Fachs, außer im Text steht ein Termin („bis Freitag“). Fällt die nächste Stunde aus (Entfall, Ferien), verschiebt sich die Fälligkeit. Die Tools rechnen das schon aus – nimm ihre Fälligkeiten, statt selbst zu rechnen.
+- Fehlt der Tagebucheintrag für eine Stunde, ist sie ausgefallen oder noch nicht eingetragen – sag das dem Nutzer, statt eine ältere Hausaufgabe als sicher fällig darzustellen.
+- Parallel stehende Fächer (Wahlfächer, Sprachen, Religion/Ethik) betreffen den Nutzer nur, wenn er das Fach hat.
 - Der Vertretungsplan wird meist nur für die nächsten Tage veröffentlicht; fehlende Einträge für spätere Tage heißen nicht, dass nichts ausfällt.
 - Aufgaben/Notizen, die du anlegst, erscheinen sofort im „Mein Tag“-Dashboard der Erweiterung. Lege nur an, was der Nutzer möchte, und nenne kurz, was du gespeichert hast.
 - Alle Daten sind privat und gehören dem Nutzer; nichts davon an Dritte weitergeben.
