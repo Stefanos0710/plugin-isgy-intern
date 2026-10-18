@@ -663,7 +663,6 @@
   async function aiCode() {
     const c = await chrome.runtime.sendMessage('portal-cookies');
     const s = (localStorage.getItem('session') || '').replace('__q_strn|', '');
-    if (!s) throw new Error('Nicht auf isgy-intern.de angemeldet.');
     const json = JSON.stringify({ c: c || {}, s, k: await apiKey() });
     return 'isgy1.' + btoa(json).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   }
