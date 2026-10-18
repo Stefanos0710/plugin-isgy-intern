@@ -22,6 +22,29 @@ const targets = {
   },
 };
 
+// Strip pdf.js code paths we never hit, so AMO's linter stops flagging eval/dynamic import.
+// Safe because content.js passes isEvalSupported: false and preloads globalThis.pdfjsWorker.
+const PDFJS_PATCHES = {
+  'lib/pdf.min.mjs': [
+    ['try{new Function("");return!0}catch{return!1}', 'return!1'],
+    ['return(await import(this.workerSrc)).WorkerMessageHandler', 'throw new Error("pdf.js worker not preloaded")'],
+  ],
+  'lib/pdf.worker.min.mjs': [
+    ['try{new Function("");return!0}catch{return!1}', 'return!1'],
+    ['if(e)return new Function("src","srcOffset","dest","destOffset",e)', ''],
+  ],
+};
+function patchPdfjs(out) {
+  for (const [file, patches] of Object.entries(PDFJS_PATCHES)) {
+    let src = readFileSync(join(out, file), 'utf8');
+    for (const [from, to] of patches) {
+      if (!src.includes(from)) throw new Error(`pdf.js patch not found in ${file} (pdf.js updated?): ${from}`);
+      src = src.replace(from, to);
+    }
+    writeFileSync(join(out, file), src);
+  }
+}
+
 const crcTable = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
 const crc32 = (b) => { let c = 0xffffffff; for (const x of b) c = crcTable[(c ^ x) & 255] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
 
@@ -57,6 +80,7 @@ for (const [name, tweak] of Object.entries(targets)) {
   const out = join('dist', name);
   mkdirSync(out, { recursive: true });
   for (const f of FILES) cpSync(f, join(out, f), { recursive: true });
+  patchPdfjs(out);
   writeFileSync(join(out, 'manifest.json'), JSON.stringify(tweak(manifest), null, 2));
   const zipPath = join('dist', `isgy-intern-plus-${manifest.version}-${name}.zip`);
   writeFileSync(zipPath, zip(out));
