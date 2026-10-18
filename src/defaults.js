@@ -24,3 +24,6 @@ const ISGY_DEFAULTS = {
   modernTheme: true, // restyle all portal pages (src/theme.css)
   pins: [], // [{href, label}]
 };
+
+// The ISGY Intern MCP server (mcp/) for the "KI-Konto": note sync and fresh portal session for AI assistants.
+const ISGY_AI_SERVER = 'https://isgy-intern-plus.vercel.app';

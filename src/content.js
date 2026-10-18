@@ -255,7 +255,43 @@
 
   // ---------- Notes ----------
   let notes = (await local.get('notes')).notes || [];
-  const saveNotes = () => local.set({ notes });
+  // KI-Konto sync: every changed note gets an `updated` timestamp, deleted ones become tombstones until the
+  // server has them. The background script talks to the server (see aiSync there).
+  const noteKey = (n) => JSON.stringify([n.type || 'todo', n.text, n.date || '', !!n.done]);
+  let known = new Map(notes.map((n) => [n.id, noteKey(n)]));
+  let notesDeleted = (await local.get('notesDeleted')).notesDeleted || [];
+  let notesRev = 0;
+  const saveNotes = () => {
+    const now = Date.now(), ids = new Set();
+    for (const n of notes) {
+      ids.add(n.id);
+      if (known.get(n.id) !== noteKey(n)) { n.updated = now; known.set(n.id, noteKey(n)); }
+    }
+    for (const id of [...known.keys()]) if (!ids.has(id)) { known.delete(id); notesDeleted.push({ id, deleted: true, updated: now }); }
+    notesRev++;
+    local.set({ notes, notesDeleted });
+    queueSync(true);
+  };
+  let syncTimer;
+  const queueSync = (changed) => { clearTimeout(syncTimer); syncTimer = setTimeout(() => aiSync(changed).catch((e) => console.warn('[ISGY Plus] KI-Sync', e)), changed ? 1500 : 300); };
+  async function aiSync(force) {
+    const { aiAccount, aiLastSync = 0 } = await local.get(['aiAccount', 'aiLastSync']);
+    if (!aiAccount?.token || (!force && Date.now() - aiLastSync < 120e3)) return;
+    // Only from logged-in pages: then the session handed over is the current one.
+    const session = document.querySelector('.su-sidebar-nav')
+      ? { s: (localStorage.getItem('session') || '').replace('__q_strn|', ''), k: await apiKey().catch(() => '') } : undefined;
+    const rev = notesRev, sentDeleted = notesDeleted.slice();
+    const toServer = (n) => ({ id: n.id, type: n.type === 'note' ? 'note' : 'todo', text: n.text, date: n.date || '', done: !!n.done, updated: n.updated || 0 });
+    const res = await chrome.runtime.sendMessage({ type: 'ai-sync', session, notes: [...notes.map(toServer), ...sentDeleted] });
+    if (!Array.isArray(res?.notes)) return;
+    notesDeleted = notesDeleted.filter((d) => !sentDeleted.includes(d));
+    if (rev !== notesRev) return queueSync(true); // edited meanwhile: send that first
+    notes = res.notes.map((n) => ({ id: Number(n.id), type: n.type, text: n.text, date: n.date || '', done: !!n.done, updated: Number(n.updated) || 0 }));
+    known = new Map(notes.map((n) => [n.id, noteKey(n)]));
+    await local.set({ notes, notesDeleted, aiLastSync: Date.now() });
+    document.dispatchEvent(new CustomEvent('ip-notes-synced'));
+  }
+  queueSync(false);
 
   // ---------- Dashboard ----------
   const lessonsOf = (s) => {
@@ -399,6 +435,7 @@
     const body = h('div', {});
     const tabs = h('div', { class: 'ip-seg', role: 'tablist' });
     const card = h('section', { class: 'ip-card' }, h('h3', {}, 'Aufgaben & Notizen'), tabs, body);
+    document.addEventListener('ip-notes-synced', () => { if (!card.contains(document.activeElement)) draw(); });
     const save = () => { saveNotes(); draw(); };
     const dueLabel = (ds) => {
       const diff = Math.round((new Date(ds + 'T00:00') - today()) / 864e5);
@@ -621,6 +658,24 @@
     const dlg = showModal('Einstellungen', h('iframe', { class: 'ip-settings', src: chrome.runtime.getURL('options.html') }));
     dlg.classList.add('ip-modal-wide');
   }
+  // Connection code for the ISGY Intern MCP server (mcp/): the browser session, for Office-365 accounts without a portal password.
+  // The session cookies are HttpOnly, so the background script reads them.
+  async function copyAiCode() {
+    try {
+      const c = await chrome.runtime.sendMessage('portal-cookies');
+      const s = (localStorage.getItem('session') || '').replace('__q_strn|', '');
+      const json = JSON.stringify({ c: c || {}, s, k: await apiKey() });
+      const code = 'isgy1.' + btoa(json).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      try {
+        await navigator.clipboard.writeText(code);
+        alert('KI-Verbindungscode kopiert.\n\nJetzt im Anmeldefenster von „ISGY Intern“ (Claude, ChatGPT, Gemini …) unter „Office 365 (Schüler)“ einfügen.\n\nDer Code ist wie ein Passwort – nicht weitergeben.');
+      } catch {
+        prompt('Verbindungscode (Strg+C zum Kopieren):', code);
+      }
+    } catch (e) {
+      alert('Verbindungscode konnte nicht erstellt werden: ' + e.message);
+    }
+  }
   const gotoMap = () => Object.fromEntries(String(S.gotoKeys).split('\n').map((l) => l.split('=')).filter((p) => p.length >= 2 && p[0].trim()).map(([k, ...v]) => [k.trim(), v.join('=').trim()]));
   function commands() {
     const seen = new Set();
@@ -637,6 +692,11 @@
       { label: '🔍 Letzten Tagebucheintrag für Fach suchen …', run: () => { const s = prompt('Fach-Kürzel (z. B. M_1, D, E_1):'); if (s) showLastEntry(s.trim()); } },
       { label: '🔄 Kürzel-Liste neu laden', run: async () => { try { await loadKuerzel(true); alert(`${Object.keys(KZ).length} Kürzel geladen.`); location.reload(); } catch (e) { alert(e.message); } } },
       { label: '⌨ Tastenkürzel anzeigen', run: showHelp },
+      { label: '🤖 KI-Verbindungscode kopieren', run: copyAiCode },
+      { label: '🔄 Mit KI-Konto synchronisieren', run: async () => {
+        if (!(await local.get('aiAccount')).aiAccount?.token) return openOptions();
+        try { await aiSync(true); const { aiAccount: a } = await local.get('aiAccount'); alert(a.error ? 'KI-Konto: ' + a.error : 'Mit dem KI-Konto synchronisiert.'); } catch (e) { alert(e.message); }
+      } },
     ];
   }
   function openPalette() {

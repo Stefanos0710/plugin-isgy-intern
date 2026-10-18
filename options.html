@@ -20,7 +20,7 @@
     label { display: block; margin: 14px 0; }
     label > span { display: block; font-weight: 600; margin-bottom: 4px; }
     small { color: var(--muted); display: block; margin-top: 4px; }
-    input[type=text], input[type=number], select, textarea { font: inherit; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; width: 100%; background: #fff; }
+    input[type=text], input[type=email], input[type=password], input[type=number], select, textarea { font: inherit; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; width: 100%; background: #fff; }
     input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
     textarea { font-family: ui-monospace, monospace; font-size: 12px; }
     .row { display: flex; align-items: center; gap: 10px; cursor: pointer; } .row span { font-weight: 600; margin: 0; }
@@ -46,11 +46,38 @@
     .legend { display: flex; gap: 14px; align-items: center; margin-bottom: 8px; color: var(--muted); font-size: 12px; }
     .legend .chip { display: inline-block; width: auto; margin: 0; padding: 1px 8px; pointer-events: none; }
     @media (max-width: 600px) { .grid2 { grid-template-columns: 1fr; } }
+    /* KI-Konto */
+    #ai p { margin: 0 0 10px; }
+    #ai .on { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+    #ai .dot { width: 9px; height: 9px; border-radius: 50%; background: #16a34a; display: inline-block; }
+    #ai .dot.err { background: #dc2626; }
+    #ai a { color: var(--accent); }
+    #aiErr { color: #b91c1c; margin-left: 8px; }
+    .aih { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .ailogos { display: inline-flex; gap: 8px; align-items: center; }
   </style>
 </head>
 <body>
   <header><div><img src="icons/icon-48.png" alt=""><h1>ISGY Intern Plus<small>Einstellungen</small></h1></div></header>
   <main>
+    <section id="ai">
+      <h2 class="aih"><span>KI-Konto</span><span class="ailogos" title="Claude, ChatGPT, Gemini"><img src="icons/ai-claude.svg" width="20" height="20" alt="Claude"><img src="icons/ai-openai.svg" width="20" height="20" alt="ChatGPT"><img src="icons/ai-gemini.svg" width="20" height="20" alt="Gemini"></span></h2>
+      <div id="aiOn" hidden>
+        <p class="on"><span class="dot" id="aiDot"></span><span>Verbunden als <b id="aiEmail"></b></span><span id="aiInfo" style="color:var(--muted)"></span></p>
+        <p><button class="ghost" id="aiLogout" type="button">Abmelden</button> <a id="aiOpen" target="_blank" rel="noopener">Konto im Browser öffnen</a></p>
+        <small>Aufgaben &amp; Notizen aus „Mein Tag“ werden mit dem Konto synchronisiert – dein KI-Assistent kann sie lesen und neue anlegen. Solange du auf isgy-intern.de angemeldet bist, hält die Erweiterung außerdem die Sitzung für den KI-Assistenten aktuell (wichtig bei Office-365-Login).</small>
+      </div>
+      <div id="aiOff">
+        <p>Mit deinem ISGY-KI-Konto verbinden: Aufgaben &amp; Notizen werden synchronisiert und dein KI-Assistent bekommt automatisch eine aktuelle isgy-intern-Sitzung. Vorhandene Notizen werden ins Konto übernommen.</p>
+        <div class="grid2">
+          <label><span>E-Mail</span><input type="email" id="aiMail" autocomplete="email"></label>
+          <label><span>Konto-Passwort</span><input type="password" id="aiPw" autocomplete="current-password"></label>
+        </div>
+        <p><button id="aiLogin" type="button">Verbinden</button><span id="aiErr"></span></p>
+        <small>Noch kein Konto? <a id="aiReg" target="_blank" rel="noopener">Hier kostenlos erstellen</a>. Das Konto-Passwort ist nicht dein isgy-intern-Passwort.</small>
+      </div>
+    </section>
+
     <section>
       <h2>Meine Fächer</h2>
       <div class="legend"><span class="chip">Fach</span> habe ich <span class="chip off">Fach</span> habe ich nicht</div>
