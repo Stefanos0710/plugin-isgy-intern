@@ -1,7 +1,7 @@
 // End-to-end test with the official MCP SDK client against a fake portal: node test/run.mjs
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { startMock, USER, D1, clearSessions } from './mock-portal.mjs';
+import { startMock, USER, D1, clearSessions, writes } from './mock-portal.mjs';
 import { startSupabase, state as dbState, API_SECRET, KEY } from './mock-supabase.mjs';
 
 process.env.ISGY_BASE_URL = 'http://127.0.0.1:4100';
@@ -93,7 +93,7 @@ await step('OAuth flow with password + initialize', async () => {
 
 await step('tools/list', async () => {
   const { tools } = await client.listTools();
-  assert.deepEqual(tools.map((t) => t.name).sort(), ['aufgabe_erledigt', 'fach', 'hausaufgaben', 'lehrer', 'letzter_eintrag', 'notiz_anlegen', 'notiz_loeschen', 'notizen', 'pruefungen', 'stundenplan', 'tagebuch', 'tagesplan', 'termine', 'uebersicht', 'vertretungen']);
+  assert.deepEqual(tools.map((t) => t.name).sort(), ['aufgabe_erledigt', 'datei_lesen', 'dokumente', 'fach', 'hausaufgaben', 'lehrer', 'letzter_eintrag', 'nachricht', 'nachrichten', 'notiz_anlegen', 'notiz_loeschen', 'notizen', 'pruefungen', 'stundenplan', 'tagebuch', 'tagesplan', 'termine', 'uebersicht', 'vertretungen']);
   assert.equal(tools.find((t) => t.name === 'notiz_loeschen').annotations.destructiveHint, true);
   assert.ok(tools.filter((t) => !/^(notiz_|aufgabe_)/.test(t.name)).every((t) => t.annotations.readOnlyHint));
   assert.ok(!tools.find((t) => t.name === 'notiz_anlegen').annotations.readOnlyHint);
@@ -110,14 +110,28 @@ const calls = [
     /- E_1: Stunde ENTFÄLLT laut Vertretungsplan .* Mittwoch, 21\.10\.2026/, /- D: Für die Stunde davor \(Do, 15\.10\.\) kein Tagebucheintrag/]],
   // "Hausaufgaben für morgen": due tomorrow = given in the previous lesson, not tomorrow's diary.
   ['hausaufgaben', { faellig: 'morgen' }, [/Fällig am Montag, 19\.10\.2026 \(morgen\)/, /- E_1: Stunde ENTFÄLLT/, /- M: nichts fällig/]],
-  ['hausaufgaben', { faellig: 'heute' },[/ist schulfrei – stattdessen der nächste Schultag/, /Fällig am Montag, 19\.10\.2026/]],
+  ['hausaufgaben', { faellig: 'heute' },[/ist schulfrei \(Wochenende\) – stattdessen der nächste Schultag/, /Fällig am Montag, 19\.10\.2026/]],
   // Friday: the previous M lesson (Wed) is still ahead, but the "bis Freitag" homework from 16.10. is due.
   ['hausaufgaben', { faellig: '23.10.2026', fach: 'Mathe' }, [/- M: Hausaufgaben dafür werden erst in der Stunde am Mittwoch, 21\.10\.2026 aufgegeben/, /- M: S\. 42 Nr\. 3a–c[\s\S]*im Text steht dieser Termin/]],
-  // Holidays from the class calendar (Herbstferien 02.–06.11.) move the due day.
-  ['hausaufgaben', { faellig: '02.11.2026' }, [/ist schulfrei – stattdessen der nächste Schultag\. Fällig am Montag, 09\.11\.2026/]],
-  ['tagesplan', { datum: '03.11.2026' }, [/unterrichtsfrei \(Ferien\/Feiertag\)/]],
+  // Holidays from the diary's `holiday` field (Herbstferien 02.–06.11.) move the due day.
+  ['hausaufgaben', { faellig: '02.11.2026' }, [/ist schulfrei \(Herbstferien\) – stattdessen der nächste Schultag\. Fällig am Montag, 09\.11\.2026/]],
+  ['tagesplan', { datum: '03.11.2026' }, [/Unterrichtsfrei: Herbstferien/]],
+  // Files: diary attachments, Dokumente, message attachments – read as text. Refs are checked, no arbitrary URLs.
+  ['tagebuch', { datum: '16.10.2026', fach: 'Englisch' }, [/Anhänge: AB Vokabeln\.pdf \[datei_lesen ref „tb:2026-10-16:5“\]/]],
+  ['datei_lesen', { ref: 'tb:2026-10-16:5' }, [/Datei: AB Vokabeln\.pdf \(application\/pdf/, /Max Mustermann/]],
+  ['dokumente', {}, [/Allgemein \(1\):/, /Hausordnung\.pdf \[datei_lesen ref „dl:32:Hausordnung\.pdf“\]/, /Formulare für Eltern/]],
+  ['dokumente', { suche: 'sport' }, [/Befreiung Sportunterricht/, /^(?![\s\S]*Hausordnung)/]],
+  ['datei_lesen', { ref: 'dl:32:Hausordnung.pdf' }, [/Max Mustermann/]],
+  ['datei_lesen', { ref: 'dl:99:x.pdf' }, [/nicht gefunden/]],
+  ['datei_lesen', { ref: 'https://evil.example/x.pdf' }, [/Unbekannte ref/]],
+  // Messages: list, read (stays unread), attachment.
+  ['nachrichten', {}, [/Posteingang: 2 Treffer/, /\[id 101\] 16\.10\.2026 10:56 · Von: Sabine Weber · „Wandertag“ · UNGELESEN · 📎1/]],
+  ['nachricht', { id: '101' }, [/Betreff: Wandertag/, /Liebe Klasse,\nbitte „Brotzeit“ mitbringen\./, /Infos \(https:\/\/example\.org\/info\)/, /Elternbrief\.pdf \[datei_lesen ref „msg:abc123“\]/, /bleibt im Portal ungelesen/]],
+  ['nachrichten', { nur_ungelesen: true }, [/\[id 101\]/]],
+  ['nachrichten', { suche: 'mathe' }, [/\[id 102\]/]],
+  ['datei_lesen', { ref: 'msg:abc123' }, [/Max Mustermann/]],
   ['tagebuch', { datum: 'morgen' },[/noch keine Tagebucheinträge/, /Fällig am Montag, 19\.10\.2026/]],
-  ['hausaufgaben', {}, [/nach Fälligkeit sortiert/, /NOCH FÄLLIG/, /M bei Max Mustermann \(Mm\) \(aufgegeben Fr, 16\.10\.\): S\. 42[\s\S]*fällig Freitag, 23\.10\.2026 \(in 5 Tagen, Datum aus dem Text\)/,
+  ['hausaufgaben', {}, [/nach Fälligkeit sortiert/, /NOCH FÄLLIG/, /M bei Max Mustermann \(Mm\) \(aufgegeben Fr, 16\.10\.\): S\. 42[\s\S]*fällig Freitag, 23\.10\.2026 \(in 5 Tagen, Datum aus dem Text\)/, /Anhänge: AB Vokabeln\.pdf \[datei_lesen ref „tb:2026-10-16:5“\]/,
     /E_1 bei Hans Bauer \(Hb\) \(aufgegeben Fr, 16\.10\.\): Vocab unit 3\n  → fällig Mittwoch, 21\.10\.2026 \(in 3 Tagen, nächste Stunde; übersprungen: Mo, 19\.10\. entfällt\)/]],
   ['tagesplan', {}, [/Klasse 10b/]],
   ['stundenplan', {}, [/Montag:/, /1\.–2\. Std 07:55–09:25  M · Max Mustermann \(Mm\) · Raum 204/, /Wochenstunden je Fach: .*M 4/]],
@@ -139,6 +153,10 @@ for (const [name, args, res] of calls) {
     if (process.env.VERBOSE) console.log(t.replace(/^/gm, '    '));
   });
 }
+
+await step('reading messages writes nothing except restoring "unread"', async () => {
+  assert.deepEqual(writes, ['setUnread 101']);
+});
 
 await step('prompts', async () => {
   const { prompts } = await client.listPrompts();

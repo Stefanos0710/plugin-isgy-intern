@@ -1,6 +1,7 @@
 // The MCP tools. Each returns plain German text that reads well for both the model and the user,
 // with enough context (date, times, teachers, what's due) that the model rarely needs a second call.
 import { db } from './db.js';
+import { BASE, loadPdfjs, PortalError } from './portal.js';
 import { TIMES, DAYS, today, nowMinutes, addDays, isWeekend, weekday, diffDays, deDate, label, fromDe, parseDay, nextSchoolDay, rel, short, lessonTime, lessonStart } from './dates.js';
 
 // Bad arguments from the model: reported back as tool error, not logged.
@@ -97,15 +98,50 @@ function dateArg(input, name = 'datum') {
   return d;
 }
 
-// Holidays and other free days from the class calendar ("Herbstferien", "Feiertag", "unterrichtsfrei" …).
+// Free days as Map date → name: "Ferien"/"Feiertag" events from the class calendar …
 const FREE_RE = /ferien|feiertag|unterrichtsfrei|schulfrei|ferientag/i;
 function freeDaysOf(events) {
-  const free = new Set();
+  const free = new Map();
   for (const e of events || []) {
     if (!FREE_RE.test(`${e.title} ${e.fach_title || ''}`) || isExam(e)) continue;
-    for (let d = e.dateStart, i = 0; d && d <= (e.dateEnd || e.dateStart) && i < 60; d = addDays(d, 1), i++) free.add(d);
+    for (let d = e.dateStart, i = 0; d && d <= (e.dateEnd || e.dateStart) && i < 60; d = addDays(d, 1), i++) free.set(d, eventTitle(e, ''));
   }
   return free;
+}
+// … plus the holidays the class diary reports for each day (also for future days, so this is the reliable source).
+async function freeDays(portal, events, diary = [], until = addDays(today(), 21)) {
+  const free = freeDaysOf(events);
+  for (const x of diary) if (x.holiday) free.set(x.d, x.holiday);
+  const days = [];
+  for (let d = addDays(today(), 1); d <= until && days.length < 60; d = addDays(d, 1)) if (!isWeekend(d)) days.push(d);
+  const res = await mapLimit(days, 6, (d) => portal.tagebuchDay(d, 43200).catch(() => null));
+  days.forEach((d, i) => { if (res[i]?.holiday) free.set(d, res[i].holiday); });
+  return free;
+}
+
+// Attachments of a diary entry, with the ref for datei_lesen.
+const entryFiles = (e, d) => (e.publicFiles || []).filter((f) => f?.id).map((f) => `${clean(f.name)} [datei_lesen ref „tb:${d}:${f.id}“]`);
+
+// Message HTML → readable text (links kept as "text (url)").
+const ENT = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', auml: 'ä', ouml: 'ö', uuml: 'ü', Auml: 'Ä', Ouml: 'Ö', Uuml: 'Ü', szlig: 'ß', euro: '€', ndash: '–', mdash: '—', bdquo: '„', ldquo: '“', rdquo: '”' };
+const htmlText = (h) => multiline(String(h ?? '')
+  .replace(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi, (m, href, t) => (t.replace(/<[^>]+>/g, '').trim() === href ? href : `${t} (${href})`))
+  .replace(/<(br|\/p|\/div|\/li|\/h\d|\/tr|\/ul|\/ol)\b[^>]*>/gi, '\n').replace(/<li\b[^>]*>/gi, '- ').replace(/<[^>]+>/g, '')
+  .replace(/&(#x[0-9a-f]+|#\d+|\w+);/gi, (m, e) => (e[0] === '#' ? String.fromCodePoint(e[1] === 'x' || e[1] === 'X' ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10)) : ENT[e] ?? m))
+  .replace(/[ \t ]+/g, ' ').replace(/ *\n */g, '\n'));
+
+// Text of a PDF (page by page, capped).
+async function pdfText(buf, maxChars) {
+  const pdfjs = await loadPdfjs();
+  const doc = await pdfjs.getDocument({ data: buf, isEvalSupported: false, disableFontFace: true, useSystemFonts: false, verbosity: 0 }).promise;
+  let out = '', pages = 0;
+  for (let p = 1; p <= doc.numPages && out.length < maxChars; p++, pages++) {
+    const items = (await (await doc.getPage(p)).getTextContent()).items;
+    out += `\n--- Seite ${p} ---\n` + items.map((i) => i.str + (i.hasEOL ? '\n' : '')).join('').replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n');
+  }
+  const total = doc.numPages;
+  await doc.destroy();
+  return { text: out.slice(0, maxChars).trim(), pages, total, cut: out.length > maxChars || pages < total };
 }
 // Does the Vertretungsplan cancel every lesson of the subject on that day?
 function cancelledOn(vp, cls, ds, wanted) {
@@ -122,7 +158,7 @@ function findLesson(sp, wanted, fromDs, dir, opt = {}) {
     const d = addDays(fromDs, dir * i);
     const hours = hoursOf(sp, d, wanted);
     if (!hours.length) continue;
-    if (opt.free?.has(d)) { skipped.push({ d, why: 'unterrichtsfrei' }); continue; }
+    if (opt.free?.has(d)) { skipped.push({ d, why: opt.free.get?.(d) || 'unterrichtsfrei' }); continue; }
     if (opt.vp && cancelledOn(opt.vp, opt.cls, d, wanted)) { skipped.push({ d, why: 'entfällt' }); continue; }
     return { d, hours, skipped };
   }
@@ -194,6 +230,8 @@ function homeworkDueOn(ds, day, sp, diary, opt, wanted = null) {
       out.push(!hw ? `- ${subj}${tag}: keine Hausaufgabe eingetragen (Stunde davor, ${short(prev.d)})`
         : later && later > ds ? `- ${subj}${tag}: nichts fällig – die Hausaufgabe vom ${short(prev.d)} ist laut Text erst am ${label(later)} fällig: ${indent(hw, '  ')}`
           : `- ${subj}${tag}: ${indent(hw, '  ')}  (aufgegeben in der Stunde davor, ${short(prev.d)})`);
+      const files = es.flatMap((e) => entryFiles(e, prev.d));
+      if (files.length) out.push(`  Anhänge: ${files.join('; ')}`);
       continue;
     }
     // No entry for the previous lesson: not entered yet, or the lesson was cancelled. Show the latest homework, flagged.
@@ -225,16 +263,18 @@ async function diaryDays(portal, end, count) {
   let d = end > today() ? today() : end;
   const days = [];
   for (; days.length < count; d = addDays(d, -1)) if (!isWeekend(d)) days.push(d);
-  const lists = await mapLimit(days, 6, (x) => portal.tagebuch(x, ttlFor(x)));
-  return days.map((x, i) => ({ d: x, es: dedupe(sortEntries(lists[i])) }));
+  const lists = await mapLimit(days, 6, (x) => portal.tagebuchDay(x, ttlFor(x)));
+  return days.map((x, i) => ({ d: x, es: dedupe(sortEntries(lists[i].entries)), holiday: lists[i].holiday }));
 }
 
-function formatEntry(e, teacher, { withSubject = true, pre = '' } = {}) {
+function formatEntry(e, teacher, { withSubject = true, pre = '', d = '' } = {}) {
   const flags = [e.substitution && 'Vertretung', e.cancelled && 'entfallen'].filter(Boolean);
   const lines = [`${pre}${withSubject ? clean(e.subject) + ' · ' : ''}${clean(e.lesson)}. Std · ${teacher(e.teacher)}${flags.length ? ' · ' + flags.join(', ') : ''}`];
   if (clean(e.topic)) lines.push(`${pre}  Thema: ${indent(e.topic, pre + '         ')}`);
   lines.push(clean(e.homework) ? `${pre}  Hausaufgabe: ${indent(e.homework, pre + '               ')}` : `${pre}  Hausaufgabe: keine eingetragen`);
   if (clean(e.notes)) lines.push(`${pre}  Notiz: ${indent(e.notes, pre + '         ')}`);
+  const files = d ? entryFiles(e, d) : [];
+  if (files.length) lines.push(`${pre}  Anhänge: ${files.join('; ')}`);
   return lines.join('\n');
 }
 
@@ -338,10 +378,10 @@ async function tagesplan(portal, args, ctx) {
     openTodos(ctx),
   ]);
   const day = buildDay(ds, sp, vp.v, cls, teacher);
-  const free = freeDaysOf(kal.v.events);
+  const free = await freeDays(portal, kal.v.events, diary.v, addDays(ds, 7));
   const out = [`${label(ds)} (${rel(ds)}) – Klasse ${cls}`];
   if (isWeekend(ds)) out.push('Wochenende – kein Unterricht.', `Nächster Schultag: ${label(nextSchoolDay(ds))}.`);
-  else if (free.has(ds)) out.push('Laut Klassenkalender unterrichtsfrei (Ferien/Feiertag) – kein Unterricht.');
+  else if (free.has(ds)) out.push(`Unterrichtsfrei: ${free.get(ds)} – kein Unterricht.`);
   else {
     out.push(dayHeader(day));
     if (day.lines.length) out.push('', ...day.lines);
@@ -387,7 +427,7 @@ async function uebersicht(portal, args, ctx) {
   out.push('', `${ds === t ? 'HEUTE' : 'NÄCHSTER SCHULTAG'}: ${label(ds)} (${rel(ds)})`, dayHeader(day), ...day.lines.map((l) => '  ' + l));
   if (day.orphans.length) out.push(...day.orphans.map((x) => '  ' + x));
   if (vp.err) out.push(`  (Vertretungsplan nicht verfügbar: ${vp.err})`);
-  const opt = { free: freeDaysOf(kal.v.events), vp: vp.v, cls };
+  const opt = { free: await freeDays(portal, kal.v.events, diary.v), vp: vp.v, cls };
   const hwDue = diary.v?.length ? homeworkDueOn(ds, day, sp, diary.v, opt) : [];
   if (hwDue.length) out.push('', `HAUSAUFGABEN FÄLLIG ${short(ds).toUpperCase()} (je Fach aus der Stunde davor):`, ...hwDue);
 
@@ -474,7 +514,7 @@ async function tagebuch(portal, args) {
   const out = [];
   days.forEach((d, i) => {
     const es = dedupe(sortEntries(lists[i].filter((e) => !wanted || subjectMatches(e.subject, wanted))));
-    if (es.length) out.push(`${label(d)} (${rel(d)}):`, ...es.map((e) => formatEntry(e, teacher, { pre: '  ' })), '');
+    if (es.length) out.push(`${label(d)} (${rel(d)}):`, ...es.map((e) => formatEntry(e, teacher, { pre: '  ', d })), '');
   });
   const what = `${wanted ? ' für ' + wanted.join('/') : ''} ${von === bis ? 'am ' + label(von) : `von ${deDate(von)} bis ${deDate(bis)}`}`;
   if (!out.length) return `Keine Tagebucheinträge${what}.${bis > today() ? ' (Für zukünftige Tage gibt es noch keine Einträge.)' : ''}`;
@@ -486,27 +526,34 @@ async function hausaufgaben(portal, args) {
   const { sp, cls, teacher } = await context(portal);
   const wanted = args.fach ? requireSubject(args.fach, sp) : null;
   const [vp, kal] = await Promise.all([safe(portal.vplan(), []), safe(portal.kalender(cls), { events: [] })]);
-  const opt = { free: freeDaysOf(kal.v.events), vp: vp.v, cls };
-  const notes = [vp.err && 'Vertretungsplan nicht verfügbar – Entfälle sind nicht berücksichtigt.', kal.err && 'Klassenkalender nicht verfügbar – Ferien/Feiertage sind nicht berücksichtigt.'].filter(Boolean);
+  const notes = [vp.err && 'Vertretungsplan nicht verfügbar – Entfälle sind nicht berücksichtigt.'].filter(Boolean);
 
   // "Hausaufgaben für morgen" = what is due on that day, not what is entered in the diary on that day.
   if (args.faellig) {
-    let ds = dateArg(args.faellig, 'faellig');
-    const moved = isWeekend(ds) || opt.free.has(ds);
-    if (moved) { do ds = nextSchoolDay(addDays(ds, 1)); while (opt.free.has(ds)); }
+    const asked = dateArg(args.faellig, 'faellig');
+    const free = await freeDays(portal, kal.v.events, [], addDays(asked, 28));
+    let ds = asked;
+    while (isWeekend(ds) || free.has(ds)) ds = addDays(ds, 1);
     const diary = await diaryDays(portal, addDays(ds, -1), 15);
+    for (const x of diary) if (x.holiday) free.set(x.d, x.holiday);
+    const opt = { free, vp: vp.v, cls };
     const day = buildDay(ds, sp, vp.v, cls, teacher);
     const lines = homeworkDueOn(ds, day, sp, diary, opt, wanted);
-    const head = `${moved ? `${label(dateArg(args.faellig))} ist schulfrei – stattdessen der nächste Schultag. ` : ''}Fällig am ${label(ds)} (${rel(ds)})${wanted ? ' in ' + wanted.join('/') : ''}:`;
+    const head = `${ds !== asked ? `${label(asked)} ist schulfrei (${free.get(asked) || 'Wochenende'}) – stattdessen der nächste Schultag. ` : ''}Fällig am ${label(ds)} (${rel(ds)})${wanted ? ' in ' + wanted.join('/') : ''}:`;
     if (!lines.length) return [head, wanted ? `Keine ${wanted.join('/')}-Stunde an diesem Tag.` : 'Laut Stundenplan kein Unterricht.', ...notes].join('\n');
     return [head, 'Je Fach die Hausaufgabe aus der Stunde davor – dort wird sie aufgegeben.', '', ...lines, ...(notes.length ? ['', ...notes] : [])].join('\n');
   }
 
   const n = clamp(args.tage, 7, 1, 30);
-  const items = homeworkItems(sp, await diaryDays(portal, today(), n), opt, wanted);
+  const diary = await diaryDays(portal, today(), n);
+  const opt = { free: await freeDays(portal, kal.v.events, diary), vp: vp.v, cls };
+  const items = homeworkItems(sp, diary, opt, wanted);
   if (!items.length) return `In den letzten ${n} Schultagen wurde${wanted ? ' für ' + wanted.join('/') : ''} keine Hausaufgabe ins Klassentagebuch eingetragen.`;
   const t = today();
-  const line = (it) => `- ${it.subj} bei ${teacher(it.e.teacher)} (aufgegeben ${short(it.d)}): ${indent(it.e.homework, '  ')}\n  → ${dueLabel(it)}`;
+  const line = (it) => {
+    const files = entryFiles(it.e, it.d);
+    return `- ${it.subj} bei ${teacher(it.e.teacher)} (aufgegeben ${short(it.d)}): ${indent(it.e.homework, '  ')}\n  → ${dueLabel(it)}${files.length ? '\n  Anhänge: ' + files.join('; ') : ''}`;
+  };
   const open = items.filter((it) => !it.due || it.due >= t), past = items.filter((it) => it.due && it.due < t);
   const out = [`Hausaufgaben aus dem Klassentagebuch (letzte ${n} Schultage), nach Fälligkeit sortiert.`,
     'Fällig = Datum aus dem Text, sonst die nächste Stunde des Fachs laut Stundenplan (ohne Ferien und Entfälle).'];
@@ -532,7 +579,7 @@ async function letzterEintrag(portal, args) {
   }
   if (!found.length) return `Kein Tagebucheintrag für ${wanted.join('/')} in den letzten 12 Wochen${args.vor ? ' vor ' + deDate(dateArg(args.vor)) : ''}.`;
   const nx = nextLesson(sp, wanted, today());
-  const out = found.map(({ d, es }) => `${label(d)} (${rel(d)}):\n${es.map((e) => formatEntry(e, teacher, { pre: '  ' })).join('\n')}`);
+  const out = found.map(({ d, es }) => `${label(d)} (${rel(d)}):\n${es.map((e) => formatEntry(e, teacher, { pre: '  ', d })).join('\n')}`);
   if (nx) out.push(`Nächste ${wanted.join('/')}-Stunde laut Stundenplan: ${label(nx.d)} (${rel(nx.d)}), ${nx.hours.map((h) => h + '.').join('/')} Std.`);
   return out.join('\n\n');
 }
@@ -628,6 +675,112 @@ async function lehrer(portal, args) {
   return hits.slice(0, 300).map(([k, n]) => `${k}: ${n}`).join('\n');
 }
 
+
+// ---------- dokumente + datei_lesen ----------
+const needPortal = (portal) => { if (!portal) throw new InputError('In deinem ISGY-KI-Konto ist noch kein isgy-intern-Zugang hinterlegt.'); return portal; };
+const dlRef = (id, name) => `dl:${id}:${name}`;
+
+async function dokumente(portal, args) {
+  const cats = await needPortal(portal).downloads();
+  const q = clean(args.suche).toLowerCase(), k = clean(args.kategorie).toLowerCase();
+  const out = [];
+  let n = 0;
+  for (const c of cats) {
+    if (k && !clean(c.title).toLowerCase().includes(k)) continue;
+    const files = (c.files || []).filter((f) => !q || `${f.title} ${f.info} ${(f.filesObj || []).map((o) => o.name).join(' ')}`.toLowerCase().includes(q));
+    if (!files.length) continue;
+    out.push('', `${clean(c.title)} (${files.length}):`);
+    for (const f of files) {
+      n++;
+      const names = (f.filesObj || []).map((o) => clean(o.name)).filter(Boolean);
+      out.push(`- ${clean(f.title)}${clean(f.published) ? ` (${clean(f.published)})` : ''}${clean(f.info) ? ' – ' + clean(f.info) : ''}`,
+        ...names.map((nm) => `  ${nm} [datei_lesen ref „${dlRef(f.id, nm)}“]`));
+    }
+  }
+  if (!n) return `Keine Dokumente${q ? ` zu „${args.suche}“` : ''}${k ? ` in Kategorie „${args.kategorie}“` : ''}. Kategorien: ${cats.map((c) => clean(c.title)).join(', ')}`;
+  return [`Dokumente (isgy-intern → Dokumente)${q ? `, Suche „${args.suche}“` : ''}: ${n} Einträge. Inhalt mit datei_lesen und der ref lesen.`, ...out].join('\n');
+}
+
+// ref → portal path: dl:<id>:<name> (Dokumente), tb:<YYYY-MM-DD>:<fileId> (Tagebuch-Anhang), msg:<uniqid> (Nachrichten-Anhang).
+async function refPath(portal, ref) {
+  const s = clean(ref).replace(/^[„"']|[“"']$/g, '');
+  let m = s.match(/^dl:(\d+):(.+)$/);
+  if (m) {
+    const f = (await portal.downloads()).flatMap((c) => c.files || []).find((x) => String(x.id) === m[1]);
+    const name = f?.filesObj?.map((o) => o.name).find((x) => x === m[2]);
+    if (!name) throw new InputError(`Dokument ${s} nicht gefunden – refs mit dem Tool dokumente abrufen.`);
+    return { path: `index.php?page=ext_downloads&view=default&task=download&id=${m[1]}&file=${encodeURIComponent(name)}`, name };
+  }
+  m = s.match(/^tb:(\d{4}-\d{2}-\d{2}):(\d+)$/);
+  if (m) {
+    const f = (await portal.tagebuchDay(m[1])).entries.flatMap((e) => e.publicFiles || []).find((x) => String(x.id) === m[2]);
+    if (!f?.url) throw new InputError(`Anhang ${s} nicht gefunden.`);
+    const u = new URL(f.url, BASE + '/');
+    if (u.hostname.replace(/^www\./, '') !== new URL(BASE).hostname.replace(/^www\./, '')) throw new PortalError('Anhang liegt nicht auf isgy-intern.de.');
+    return { path: u.pathname.slice(1) + u.search, name: clean(f.name) };
+  }
+  m = s.match(/^msg:([A-Za-z0-9]+)$/);
+  if (m) return { path: `index.php?page=ext_inbox&view=file&fid=${m[1]}`, name: '' };
+  throw new InputError(`Unbekannte ref „${ref}“. Erwartet z. B. „dl:32:Hausordnung.pdf“, „tb:2026-10-06:123“ oder „msg:abc123“ – aus den Tools dokumente, tagebuch, hausaufgaben oder nachricht.`);
+}
+
+async function dateiLesen(portal, args) {
+  const { path, name } = await refPath(needPortal(portal), args.ref);
+  const { buf, type } = await portal.file(path);
+  const isPdf = type.includes('pdf') || Buffer.from(buf.subarray(0, 5)).toString() === '%PDF-';
+  const head = `Datei: ${name || args.ref} (${type || '?'}, ${Math.round(buf.length / 1024)} KB)`;
+  if (isPdf) {
+    const max = clamp(args.max_zeichen, 30000, 1000, 100000);
+    const r = await pdfText(buf, max);
+    if (!r.text.replace(/--- Seite \d+ ---/g, '').trim()) return `${head}\nDas PDF enthält keinen auslesbaren Text (vermutlich eingescannt).`;
+    return `${head}, ${r.total} Seite(n)${r.cut ? ` – gekürzt auf ${r.pages} Seite(n) / ${max} Zeichen (max_zeichen erhöhen)` : ''}\n\n${r.text}`;
+  }
+  if (/^text\/|json|xml/.test(type)) return `${head}\n\n${(type.includes('html') ? htmlText : multiline)(Buffer.from(buf).toString('utf8')).slice(0, 30000)}`;
+  if (type.startsWith('image/')) return `${head}\nDas ist ein Bild – den Inhalt kann ich als Text nicht lesen. Öffne es auf isgy-intern.de.`;
+  return `${head}\nDieses Dateiformat kann ich nicht als Text lesen (nur PDF und Text).`;
+}
+
+// ---------- nachrichten (portal messages, read-only) ----------
+const FOLDERS = { posteingang: 'Posteingang', eingang: 'Posteingang', gesendet: 'Gesendet', archiv: 'Archive', archive: 'Archive', entwurf: 'Entwurf', entwuerfe: 'Entwurf', entwürfe: 'Entwurf' };
+async function folderMessages(portal, ordner, all) {
+  const want = FOLDERS[clean(ordner || 'posteingang').toLowerCase()];
+  if (!want) throw new InputError(`Unbekannter Ordner „${ordner}“. Erlaubt: Posteingang, Gesendet, Archiv, Entwurf.`);
+  const out = [];
+  for (const ib of await portal.inboxes()) {
+    const f = (ib.folders || []).find((x) => clean(x.title) === want);
+    if (f) out.push(...(await portal.messages(ib.id, f.id, all)).map((m) => ({ ...m, inboxTitle: clean(ib.title) })));
+  }
+  return { want, list: out };
+}
+const msgLine = (m, sent) => `- [id ${m.id}] ${clean(m.date)} · ${sent ? 'An: ' + (clean(m.receiver) || '?') : 'Von: ' + clean(m.from?.title || m.from?.userName || '?')} · „${clean(m.subject) || '(kein Betreff)'}“${m.isRead ? '' : ' · UNGELESEN'}${m.files ? ` · 📎${m.files}` : ''}${m.isConfirm ? ' · Lesebestätigung erbeten' : ''}`;
+
+async function nachrichten(portal, args) {
+  const q = clean(args.suche).toLowerCase();
+  const { want, list } = await folderMessages(needPortal(portal), args.ordner, !!q);
+  const n = clamp(args.anzahl, 20, 1, 100);
+  const hits = list.filter((m) => (!args.nur_ungelesen || !m.isRead) && (!q || `${m.subject} ${m.from?.title} ${m.from?.userName} ${m.receiver}`.toLowerCase().includes(q)));
+  const unread = list.filter((m) => !m.isRead).length;
+  if (!hits.length) return `Keine Nachrichten${q ? ` zu „${args.suche}“` : ''}${args.nur_ungelesen ? ' (ungelesen)' : ''} im Ordner ${want}.`;
+  return [`Nachrichten im Portal – ${want}: ${hits.length} Treffer${q ? '' : ` (neueste ${Math.min(n, hits.length)} gezeigt)`}, ${unread} ungelesen. Text mit dem Tool nachricht und der id lesen.`,
+    ...hits.slice(0, n).map((m) => msgLine(m, want === 'Gesendet'))].join('\n');
+}
+
+async function nachricht(portal, args) {
+  const id = String(args.id ?? '').replace(/\D/g, '');
+  if (!id) throw new InputError('id fehlt – mit dem Tool nachrichten abrufen.');
+  needPortal(portal);
+  // Look the message up first: we must know whether it is unread, so reading it does not mark it as read.
+  let meta = null;
+  for (const o of ['posteingang', 'gesendet', 'archiv', 'entwurf']) { meta = (await folderMessages(portal, o, false)).list.find((m) => String(m.id) === id); if (meta) break; }
+  meta ??= (await folderMessages(portal, 'posteingang', true)).list.find((m) => String(m.id) === id);
+  if (!meta) throw new InputError(`Keine Nachricht mit id ${id}.`);
+  const m = await portal.message(id, !meta.isRead);
+  const to = (Array.isArray(m.to) ? m.to : []).map((t) => `${clean(t.title)}${t.count > 1 ? ` (${t.count})` : ''}`).filter(Boolean);
+  const files = (m.files || []).filter((f) => f?.uniqid).map((f) => `${clean(f.name)} [datei_lesen ref „msg:${f.uniqid}“]`);
+  return [`Betreff: ${clean(m.subject) || '(kein Betreff)'}`, `Von: ${clean(m.from?.title || m.from?.userName)}`, `Datum: ${clean(m.date)}`,
+    to.length ? `An: ${to.join(', ')}` : '', files.length ? `Anhänge: ${files.join('; ')}` : '',
+    meta.isRead ? '' : '(War ungelesen und bleibt im Portal ungelesen.)', '', htmlText(m.text) || '(kein Text)'].filter((x, i) => x || i === 6).join('\n');
+}
 
 // ---------- notes & to-dos (account only; synced with the extension's "Mein Tag" dashboard) ----------
 function needAccount(ctx) {
@@ -809,6 +962,34 @@ export const TOOLS = [
       additionalProperties: false,
     },
     run: termine,
+  },
+  {
+    name: 'dokumente',
+    title: 'Dokumente',
+    description: 'Dateien aus dem Bereich „Dokumente“ von isgy-intern (Formulare, Hausordnung, Mathe-Grundwissen, Berufsberatung …) nach Kategorien, mit ref zum Lesen über datei_lesen. Für „Gibt es das Formular für …?“, „Was steht in der Hausordnung zu …?“.',
+    inputSchema: { type: 'object', properties: { suche: { type: 'string', description: 'Optional: Suchbegriff in Titel/Dateiname.' }, kategorie: { type: 'string', description: 'Optional: Teil des Kategorienamens.' } }, additionalProperties: false },
+    run: dokumente,
+  },
+  {
+    name: 'datei_lesen',
+    title: 'Datei lesen',
+    description: 'Liest den Text einer Datei aus isgy-intern: Dokumente (ref „dl:…“ aus dokumente), Anhänge im Klassentagebuch, z. B. Arbeitsblätter (ref „tb:…“ aus tagebuch/hausaufgaben/letzter_eintrag) und Anhänge von Nachrichten (ref „msg:…“ aus nachricht). PDFs als Text; Bilder können nicht gelesen werden.',
+    inputSchema: { type: 'object', properties: { ref: { type: 'string', description: 'Die ref aus einem anderen Tool, z. B. „tb:2026-10-06:123“.' }, max_zeichen: { type: 'integer', minimum: 1000, maximum: 100000, description: 'Höchstens so viele Zeichen Text (Standard 30000).' } }, required: ['ref'], additionalProperties: false },
+    run: dateiLesen,
+  },
+  {
+    name: 'nachrichten',
+    title: 'Nachrichten (lesen)',
+    description: 'Listet die Nachrichten im Postfach von isgy-intern (Posteingang, Gesendet, Archiv, Entwurf) mit Datum, Absender, Betreff, gelesen/ungelesen und Anhängen. Nur Lesen – es wird nichts gesendet, gelöscht oder verschoben. Text einer Nachricht mit dem Tool nachricht.',
+    inputSchema: { type: 'object', properties: { ordner: { type: 'string', enum: ['Posteingang', 'Gesendet', 'Archiv', 'Entwurf'], description: 'Standard: Posteingang.' }, suche: { type: 'string', description: 'Optional: Suchbegriff in Betreff/Absender (durchsucht alle Nachrichten).' }, anzahl: { type: 'integer', minimum: 1, maximum: 100, description: 'Wie viele (Standard 20, neueste zuerst).' }, nur_ungelesen: { type: 'boolean', description: 'Nur ungelesene.' } }, additionalProperties: false },
+    run: nachrichten,
+  },
+  {
+    name: 'nachricht',
+    title: 'Nachricht lesen',
+    description: 'Zeigt eine Nachricht aus dem isgy-intern-Postfach vollständig (Absender, Empfänger, Text, Anhänge mit ref für datei_lesen). Nur Lesen: eine ungelesene Nachricht bleibt im Portal ungelesen.',
+    inputSchema: { type: 'object', properties: { id: { type: 'string', description: 'id aus dem Tool nachrichten.' } }, required: ['id'], additionalProperties: false },
+    run: nachricht,
   },
   {
     name: 'notizen',

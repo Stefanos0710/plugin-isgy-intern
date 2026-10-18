@@ -85,6 +85,7 @@ export class Portal {
     if (this.cred.m !== 'pw') throw new AuthError('Die übernommene Browser-Sitzung ist abgelaufen.');
     this.jar.clear();
     this.session = '';
+    this.noSession = false;
     this.appKey = '';
     this.cache.clear();
     await this.raw('index.php'); // picks up the session cookie the form is posted with
@@ -152,9 +153,13 @@ export class Portal {
   // The `auth-session` header value. The extension reads it from localStorage; with a password login we look for it
   // in the pages and fall back to the session cookies, keeping the first value the vplan endpoint accepts.
   async sessionToken() {
-    if (this.session) return this.session;
-    this.sessionCandidates = [];
+    if (this.session || this.noSession) return this.session;
     const key = await this.apiKey();
+    // The portal now accepts app key + login cookie alone (its own pages send `auth-session: null`).
+    const plain = await this.raw('rest.php/vplan/getList', { headers: { 'auth-app': key, Accept: 'application/json' } });
+    await plain.arrayBuffer();
+    if (plain.ok) { this.noSession = true; return ''; }
+    this.sessionCandidates = [];
     for (const page of ['index.php', 'index.php?page=ext_vplan']) this.scanForSession(await this.html(page));
     for (const [, v] of this.jar) if (v.length >= 16 && !this.sessionCandidates.includes(v)) this.sessionCandidates.push(v);
     for (const s of this.sessionCandidates.slice(0, 8)) {
@@ -166,7 +171,8 @@ export class Portal {
   }
 
   async authHeaders() {
-    return { 'auth-app': await this.apiKey(), 'auth-session': await this.sessionToken() };
+    const s = await this.sessionToken();
+    return { 'auth-app': await this.apiKey(), ...(s ? { 'auth-session': s } : {}) };
   }
 
   // JSON from rest.php. `auth` adds the app/session headers (vplan, klassenkalender).
@@ -182,7 +188,7 @@ export class Portal {
       const res = await this.raw(path, { method, body, headers });
       const text = await res.text();
       if (res.status === 401 || res.status === 403 || LOGIN_PAGE_RE.test(text)) {
-        if (auth && this.cred.m === 'pw') this.session = '';
+        if (auth && this.cred.m === 'pw') { this.session = ''; this.noSession = false; }
         let detail = '';
         try { detail = JSON.parse(text).errorText || ''; } catch {}
         throw new AuthError(`Kein Zugriff (${res.status}${detail ? ': ' + String(detail).trim() : ''}). Die Sitzung ist vermutlich abgelaufen.`);
@@ -198,8 +204,47 @@ export class Portal {
   stundenplan() { return this.json('rest.php/stundenplan/getStundenplan', { method: 'POST', ttl: 600 }); }
 
   async tagebuch(ds, ttl = 600) {
+    return (await this.tagebuchDay(ds, ttl)).entries;
+  }
+  // Entries plus the day's holiday name ("Herbstferien", "Buß- und Bettag" …; also for future days).
+  async tagebuchDay(ds, ttl = 600) {
     const j = await this.json(`rest.php/tagebuch/getList/${ds}`, { ttl });
-    return j?.data?.entries || [];
+    return { entries: j?.data?.entries || [], holiday: String(j?.data?.holiday || '').trim() };
+  }
+
+  // "Dokumente": categories with files ({id, title, published, info, filesObj: [{name}]}).
+  async downloads() {
+    const j = await this.json('rest.php/downloads/getList', { ttl: 3600 });
+    return Array.isArray(j) ? j : [];
+  }
+
+  // Portal messages – read-only use: list inboxes/folders, list messages, read one.
+  async inboxes() {
+    const j = await this.json('rest.php/inbox/getMyInboxes', { auth: true, ttl: 120 });
+    return Array.isArray(j) ? j : [];
+  }
+  // 'init' = newest 100 (what the portal page loads first), anything else = all.
+  async messages(inboxId, folderId, all = false) {
+    const j = await this.json(`rest.php/inbox/getMessages/${all ? 'all' : 'init'}`, { method: 'POST', form: { inbox_id: inboxId, folder_id: folderId }, auth: true, ttl: 120 });
+    return Array.isArray(j) ? j : [];
+  }
+  // Opening a message marks it as read on the portal; an unread one is set back to unread so reading changes nothing.
+  async message(id, wasUnread) {
+    const m = await this.json('rest.php/inbox/getMessage', { method: 'POST', form: { message_id: id }, auth: true });
+    if (wasUnread) await this.json('rest.php/inbox/setUnread', { method: 'POST', form: { mid: id }, auth: true }).catch(() => {});
+    return m;
+  }
+
+  // A file from the portal (download, diary attachment, message attachment). Only portal-relative paths.
+  async file(path) {
+    if (/^[a-z]+:|^\/\//i.test(path)) throw new PortalError('Nur Dateien von isgy-intern.de.');
+    await this.ready();
+    const res = await this.raw(path);
+    const buf = new Uint8Array(await res.arrayBuffer());
+    const type = (res.headers.get('content-type') || '').split(';')[0].trim();
+    if (!res.ok) throw new PortalError(`Datei nicht abrufbar (Fehler ${res.status}).`);
+    if (/text\/html/.test(type) && LOGIN_PAGE_RE.test(Buffer.from(buf).toString('utf8'))) throw new AuthError('Die Sitzung ist abgelaufen.');
+    return { buf, type };
   }
 
   async vplan() {

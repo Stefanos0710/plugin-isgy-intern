@@ -54,6 +54,9 @@ Jede Antwort beginnt mit „Stand: <Datum, Uhrzeit>“, damit der Assistent „h
 | `letzter_eintrag` | neueste Einträge eines Fachs und wann die nächste Stunde ist |
 | `termine` | Klassenkalender, Prüfungen markiert |
 | `lehrer` | Kürzel ↔ Name |
+| `dokumente` | Dateien aus „Dokumente“ (Formulare, Hausordnung, Grundwissen …) nach Kategorien |
+| `datei_lesen` | Text einer Datei: Dokumente, Tagebuch-Anhänge (Arbeitsblätter), Nachrichten-Anhänge (PDF/Text) |
+| `nachrichten` / `nachricht` | Postfach im Portal: Liste und einzelne Nachricht – nur lesen, ungelesene bleiben ungelesen |
 | `notizen` | eigene Aufgaben & Notizen aus der Erweiterung (nur mit Konto) |
 | `notiz_anlegen` / `aufgabe_erledigt` / `notiz_loeschen` | Aufgaben/Notizen anlegen, abhaken, löschen – landen direkt in „Mein Tag“ (nur mit Konto) |
 
