@@ -611,8 +611,10 @@
       } catch (err) { console.warn('[ISGY Plus] vplan', err); }
       // Show every school day up to the last published Vertretungsplan date (max. one month ahead), at least the rest of this week.
       const lastVp = Math.max(...vplan.map((v) => { const [d, m, y] = String(v.date).split('.').map(Number); return new Date(y, m - 1, d).getTime() || 0; }), 0);
+      // Always the rest of this week and all five days of next week (on a weekend: the coming week).
       const friday = addDays(today(), (12 - today().getDay()) % 7);
-      const end = Math.min(addDays(today(), 31).getTime(), Math.max(lastVp, friday.getTime()));
+      const nextFriday = addDays(friday, isWeekend(today()) ? 0 : 7);
+      const end = Math.min(addDays(today(), 31).getTime(), Math.max(lastVp, nextFriday.getTime()));
       const days = [];
       for (let d = today(); d <= end || days.length < 2; d = addDays(d, 1)) if (!isWeekend(d)) days.push(d);
       const label = (d) => { const diff = Math.round((d - today()) / 864e5); return diff === 0 ? 'Heute' : diff === 1 ? 'Morgen' : DAYS[d.getDay()]; };
@@ -639,8 +641,11 @@
         hrs.length ? chip(iso(focus) === iso(today()) ? `Heute ${hrs.length} Std · Schluss ${endOf(hrs.at(-1))}` : `${label(focus)} ab ${TIMES[hrs[0]] || hrs[0] + '. Std'} · ${hrs.length} Std`) : null,
         start === 1 && isToday ? chip(lastToday ? 'Schulschluss für heute' : 'Heute kein Unterricht', 'is-ok') : null,
         subs ? chip(`${subs} ${subs === 1 ? 'Vertretung' : 'Vertretungen'} ${iso(focus) === iso(today()) ? 'heute' : label(focus) === 'Morgen' ? 'morgen' : 'am ' + label(focus)}`, 'is-warn') : null].filter(Boolean));
-      const btns = days.map((d, i) => h('button', { class: 'ip-tab', role: 'tab', onclick: () => select(i) },
-        h('b', {}, label(d)), h('span', {}, `${DAYS[d.getDay()].slice(0, 2)}, ${deShort(d)}`),
+      const btns = days.map((d, i) => h('button', { class: 'ip-tab' + (i && d.getDay() === 1 ? ' is-newweek' : ''), role: 'tab', onclick: () => select(i) },
+        // Short labels so both weeks fit in one row: "Heute"/"Morgen", else the weekday as two letters.
+        ...(i < 2 && /Heute|Morgen/.test(label(d))
+          ? [h('b', {}, label(d)), h('span', {}, `${DAYS[d.getDay()].slice(0, 2)}, ${deShort(d)}`)]
+          : [h('b', { title: `${DAYS[d.getDay()]}, ${deFull(d)}` }, DAYS[d.getDay()].slice(0, 2)), h('span', {}, deShort(d))]),
         views[i].subCount ? h('span', { class: 'ip-count', title: `${views[i].subCount} Vertretung(en)` }, views[i].subCount) : null));
       let cur = 0;
       const select = (i) => {
