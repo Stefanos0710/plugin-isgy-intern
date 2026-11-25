@@ -131,7 +131,8 @@ const CSS = `
 main > #installieren.is-live > .mo-pc__grid{align-content:start;padding-top:var(--padt)}
 /* the phone keeps each section on its screens: the lists that repeat the lead go, the AI section takes two */
 @media (max-width:639px){#ki .facts,#ki .link,#datenschutz .facts,.faq-head > p,.faq__item:nth-child(-n+2),.footer__lede{display:none}#ki .frame,#datenschutz .frame{--ratio:80%}}
-.inst-lead{margin:var(--s-5) 0 var(--s-6)}
+.inst-lead{margin:var(--s-5) 0 var(--s-4)}
+.inst-dl{flex-wrap:wrap;margin-bottom:var(--s-6)}
 .mo-pc__visual--lit .fr,.mo-pc__visual--lit .term{width:min(100%,380px)}
 .mo-pc__visual--lit .fr{display:grid}
 /* the extension's settings, as its options page draws them */
@@ -155,7 +156,7 @@ const FAQ = [
   ['Ist das ein offizielles Angebot der Schule?', 'Nein. Es ist ein inoffizielles Schülerprojekt und nutzt nur deinen eigenen Zugang.'],
   ['In welchen Browsern läuft die Erweiterung?', 'Firefox mit einem Klick. Chrome, Edge, Brave, Opera, Vivaldi und Arc über die ZIP-Datei: entpacken und im Entwicklermodus laden. Auf Android in Firefox.'],
   ['Werden meine Daten irgendwohin geschickt?', 'Ohne KI-Konto nicht. Mit KI-Konto gehen deine Aufgaben und Notizen an den Server, bei Office-365-Login auch die Portal-Sitzung.'],
-  ['Funktioniert das auf dem Handy?', 'Auf Android ja, in Firefox: Datei laden und in Firefox installieren. Auf dem iPhone erlaubt Apple keine solchen Erweiterungen. Dort fragst du Claude oder ChatGPT: „Was habe ich morgen?“'],
+  ['Funktioniert das auf dem Handy?', 'Auf Android ja, in Firefox: „Datei für Android“ laden, dann in Firefox unter Einstellungen › Über Firefox fünfmal aufs Logo tippen, zurück und „Erweiterung aus Datei installieren“. Auf dem iPhone erlaubt Apple keine solchen Erweiterungen. Dort fragst du Claude oder ChatGPT: „Was habe ich morgen?“'],
 ];
 
 function schema() {
@@ -335,16 +336,17 @@ export function homePage() {
     <div class="wrap mo-pc__grid">
       <div class="mo-pc__text">
         <h2 id="installieren-h">In 3 Schritten installiert</h2>
-        <p class="t-lead inst-lead">Kein Bauen, kein Terminal. Firefox installiert mit einem Klick, für Chrome &amp; Co. lädst du eine ZIP-Datei. Auf Android läuft es in Firefox.</p>
+        <p class="t-lead inst-lead">Kein Bauen, kein Terminal. Auf Android läuft es in Firefox.</p>
+        <div class="btn-row inst-dl"><a class="btn btn--primary" href="${FIREFOX_XPI}">Für Firefox installieren</a><a class="btn btn--secondary" href="${CHROME_ZIP}" rel="noopener">ZIP für Chrome &amp; Co.</a><a class="btn btn--secondary" href="${FIREFOX_FILE}" rel="noopener">Datei für Android</a></div>
         <ol class="mo-pc__steps">
           <li class="mo-pc__step">
             <h3>Herunterladen</h3>
-            <p><a class="link" href="${FIREFOX_XPI}" rel="noopener">Für Firefox installieren</a> – fertig, weiter bei Schritt 3. Chrome, Edge, Brave, Opera: <a class="link" href="${CHROME_ZIP}" rel="noopener">ZIP-Datei laden</a> und entpacken. Android: <a class="link" href="${FIREFOX_FILE}" rel="noopener">Datei für Firefox</a> laden.</p>
+            <p>Firefox: „Für Firefox installieren“ und „Zulassen“ – fertig. Chrome, Edge, Brave, Opera: ZIP laden und entpacken.</p>
             <figure class="mo-pc__visual mo-pc__visual--lit" role="img" aria-label="Die Downloads: ein Klick für Firefox, eine ZIP-Datei für Chrome und Co."><span class="fr ext ui ui-ext" aria-hidden="true"><span class="ext__row"><span><b>Firefox</b><small>Computer, mit einem Klick</small></span><span class="ext__btn is-on">Installieren</span></span><span class="ext__row"><span><b>Chrome, Edge, Brave, Opera</b><small>isgy-intern-plus-chromium.zip</small></span><span class="ext__btn">Laden</span></span><span class="ext__row"><span><b>Android</b><small>Firefox für Android</small></span><span class="ext__btn">Laden</span></span></span></figure>
           </li>
           <li class="mo-pc__step">
             <h3>Im Browser laden</h3>
-            <p>Chrome &amp; Co.: unter chrome://extensions den Entwicklermodus einschalten, „Entpackte Erweiterung laden“ und den entpackten Ordner wählen. Android: in Firefox unter Einstellungen › Über Firefox fünfmal aufs Logo tippen, dann zurück und „Erweiterung aus Datei installieren“.</p>
+            <p>Unter chrome://extensions den Entwicklermodus einschalten, „Entpackte Erweiterung laden“ und den entpackten Ordner wählen.</p>
             <figure class="mo-pc__visual mo-pc__visual--lit" role="img" aria-label="Die Erweiterungsseite des Browsers mit eingeschaltetem Entwicklermodus."><span class="fr ext ui ui-ext" aria-hidden="true"><span class="ext__row"><span><b>Entwicklermodus</b><small>chrome://extensions</small></span><span class="sw"></span></span><span class="ext__btn is-on">Entpackte Erweiterung laden</span></span></figure>
           </li>
           <li class="mo-pc__step">
