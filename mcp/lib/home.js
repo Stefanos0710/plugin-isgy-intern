@@ -41,49 +41,62 @@ const CSS = `
 
 /* ---- page CSS inside the visuals only ---- */
 /* the portal as the extension draws it (a picture of the product, true size) */
-.pw{--u-r:12px;overflow:hidden;border-radius:12px;background:#fff;color:#1c1917;font:400 13px/1.4 var(--font-text);box-shadow:var(--u-shadow);border:1px solid rgb(0 0 0 / .1)}
+.pw{--u-r:12px;overflow:hidden;border-radius:14px;background:#fff;color:#15171a;font:400 13px/1.4 var(--font-text);box-shadow:var(--u-shadow);border:1px solid rgb(0 0 0 / .1);font-feature-settings:"tnum" 1}
 .pw__bar{display:flex;align-items:center;gap:10px;height:40px;padding:0 14px;background:#f4f3f0;border-bottom:1px solid rgb(0 0 0 / .07);color:#6b6965}
 .pw__dots{display:flex;gap:6px}.pw__dots i{width:10px;height:10px;border-radius:50%;background:#dcdad5}
-.pw__addr{flex:1;min-width:0;display:flex;justify-content:center;gap:4px;white-space:nowrap;overflow:hidden}.pw__addr b{font-weight:500;color:#1c1917}
+.pw__addr{flex:1;min-width:0;display:flex;justify-content:center;gap:4px;white-space:nowrap;overflow:hidden}.pw__addr b{font-weight:500;color:#15171a}
 .pw__ext{width:20px;height:20px;border-radius:5px;box-shadow:0 0 0 2px rgb(232 115 12 / .45)}
-.pw__body{display:grid;grid-template-columns:168px minmax(0,1fr)}
-.pw__side{padding:14px 8px;border-right:1px solid rgb(0 0 0 / .07);display:grid;align-content:start;gap:2px;color:#6b6965}
-.pw__side p{margin:0 0 4px;padding:0 10px;font-size:12px;color:#8a8782}
-.pw__side span{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:8px;white-space:nowrap}
-.pw__side span.is-on{background:#fdf0e4;color:#a3510a;font-weight:500}
-.pw__side hr{border:0;border-top:1px solid rgb(0 0 0 / .07);margin:8px 6px}
-.pw__main{padding:16px 18px;min-width:0}
-.pw__head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-bottom:12px}
-.pw__head small{display:block;color:#6b6965;font-size:12px}.pw__head b{font-size:20px;font-weight:500;letter-spacing:-.02em}
-.pw__kbd{border:1px solid rgb(0 0 0 / .1);border-radius:8px;padding:5px 10px;color:#8a8782;font-size:12px}
-.pw__cols{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:14px}
-.pw__tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;background:#f4f3f0;border-radius:10px;margin-bottom:8px}
-.pw__tabs span{padding:6px 10px;border-radius:7px;color:#6b6965;font-size:12px}.pw__tabs b{display:block;font-weight:500;font-size:13px;color:#1c1917}
-.pw__tabs .is-on{background:#fff;box-shadow:0 1px 3px rgb(0 0 0 / .1)}.pw__tabs .is-on b{color:#a3510a}
-.ls{list-style:none;margin:0;padding:0;display:grid;gap:3px}
-.ls li{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:10px;align-items:center;padding:7px 10px;border-radius:9px}
-.ls .n{text-align:center;font-weight:500;font-size:14px;line-height:1.1}.ls .n small{display:block;font-weight:400;font-size:11px;color:#8a8782}
-.ls .s{min-width:0}.ls .s b{display:flex;align-items:center;gap:6px;font-weight:500}.ls .s small{display:block;color:#6b6965;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px}
-.ls .r{font-size:12px;color:#6b6965;background:#f4f3f0;padding:1px 8px;border-radius:99px}
-.ls i{font-style:normal;font-size:11px;font-weight:500;padding:0 6px;border-radius:99px;background:#1c1917;color:#fff}
-.ls .is-sub{background:#fff7ed;box-shadow:inset 3px 0 0 #e8730c}.ls .is-sub .s small{color:#9a4a00}
-.ls .is-can{background:#fef2f2;box-shadow:inset 3px 0 0 #b42318}.ls .is-can .s b{text-decoration:line-through;text-decoration-thickness:1px}.ls .is-can .s small{color:#b42318}
-.ls .is-now{box-shadow:inset 3px 0 0 #1c1917}
-.pw__box{border:1px solid rgb(0 0 0 / .08);border-radius:10px;padding:10px 12px;display:grid;gap:8px}
-.pw__box h4{margin:0;font-size:12px;font-weight:500;color:#6b6965}
-.ev{display:flex;gap:10px;align-items:center}.ev .d{flex:none;width:38px;text-align:center;border-radius:7px;background:#f4f3f0;padding:2px 0;font-size:11px;color:#6b6965;line-height:1.2}.ev .d b{display:block;font-size:14px;font-weight:500;color:#1c1917}
-.ev .d.is-hot{background:#fef2f2}.ev .d.is-hot b{color:#b42318}.ev small{display:block;color:#6b6965;font-size:12px}
-.todo{list-style:none;margin:0;padding:0;display:grid;gap:6px}.todo li{display:flex;gap:8px;align-items:flex-start}
-.todo .bx{flex:none;width:14px;height:14px;border-radius:4px;border:1.5px solid #c9c6c0;margin-top:2px}
-.todo .is-done{color:#8a8782;text-decoration:line-through}.todo .is-done .bx{background:#1c1917;border-color:#1c1917}
-.todo em{font-style:normal;font-size:11px;color:#a3510a;background:#fdf0e4;border-radius:5px;padding:0 5px;margin-left:4px}
+.pw__body{display:grid;grid-template-columns:172px minmax(0,1fr)}
+/* the portal's sidebar as the extension's theme draws it: ink, the current page marked */
+.pw__side{padding:14px 8px;background:#17191d;display:grid;align-content:start;gap:2px;color:#a3a8b0}
+.pw__side p{margin:6px 0 4px;padding:0 10px;font-size:11px;color:#6b7079}
+.pw__side span{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;white-space:nowrap}
+.pw__side span.is-on{background:rgb(255 255 255 / .08);color:#fff;box-shadow:inset 2px 0 0 #e8730c}
+.pw__side svg{width:12px;height:12px;flex:none;opacity:.7}
+.pw__main{padding:18px 20px 20px;min-width:0;background:#f4f4f5}
+.pw__head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+.pw__head small{display:block;color:#666b73;font-size:12px}.pw__head b{display:block;font-size:24px;font-weight:600;letter-spacing:-.04em;line-height:1.1;margin-top:2px}
+.pw__st{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:8px;font-size:12px;color:#666b73}
+.pw__st span{display:inline-flex;align-items:center;gap:6px}.pw__st span::before{content:"";width:5px;height:5px;border-radius:50%;background:#9a9fa7}
+.pw__st .is-live{color:#15171a}.pw__st .is-live::before{background:#17a34a;box-shadow:0 0 0 3px rgb(23 163 74 / .2)}
+.pw__st .is-warn{color:#8a4508}.pw__st .is-warn::before{background:#e8730c}
+.pw__kbd{flex:none;border:1px solid rgb(0 0 0 / .12);border-radius:99px;background:#fff;padding:5px 12px;color:#8a8782;font-size:12px}
+.pw__cols{display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:12px;align-items:start}
+.pw__cols>*{min-width:0}.pw__card{background:#fff;border:1px solid rgb(21 23 26 / .08);border-radius:14px;padding:6px 8px 8px}
+.pw__tabs{display:flex;gap:2px;padding:0 6px;border-bottom:1px solid rgb(21 23 26 / .08);margin-bottom:4px}
+.pw__tabs span{position:relative;padding:8px 10px 9px;color:#9a9fa7;font-size:11px}.pw__tabs b{display:block;font-weight:600;font-size:13px;color:#666b73}
+.pw__tabs .is-on b{color:#15171a}.pw__tabs .is-on::after{content:"";position:absolute;left:8px;right:8px;bottom:-1px;height:2px;border-radius:2px;background:#15171a}
+.pw__tabs i{position:absolute;top:5px;right:-2px;min-width:14px;height:14px;border-radius:7px;background:#e8730c;color:#fff;font:600 9px/14px var(--font-text);text-align:center;font-style:normal}
+/* lessons: time, a subject-coloured bar, room */
+.ls{list-style:none;margin:0;padding:0;display:grid}
+.ls li{position:relative;display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:12px;align-items:center;padding:9px 8px;border-radius:10px}
+.ls li+li{box-shadow:inset 0 1px 0 rgb(21 23 26 / .07)}
+.ls .n{font-weight:600;font-size:13px;line-height:1.15}.ls .n small{display:block;font-weight:500;font-size:10px;color:#666b73}
+.ls .s{min-width:0;padding-left:10px;border-left:3px solid var(--c,#d0d2d6)}.ls .s b{display:flex;align-items:center;gap:6px;font-weight:600;font-size:14px;letter-spacing:-.015em}
+.ls .s small{display:block;color:#666b73;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px}
+.ls .r{font-size:11px;font-weight:500;color:#666b73;border:1px solid rgb(21 23 26 / .14);padding:1px 8px;border-radius:7px}
+.ls i{font-style:normal;font-size:10px;font-weight:600;padding:0 6px;border-radius:5px;background:#f5f5f6;border:1px solid rgb(21 23 26 / .08);color:#666b73}
+.ls i.now{background:none;border:0;color:#11753a;padding:0;display:inline-flex;align-items:center;gap:4px}.ls i.now::before{content:"";width:6px;height:6px;border-radius:50%;background:#17a34a}
+.ls .is-sub,.ls .is-sub+li,.ls .is-now,.ls .is-now+li,.ls .is-can,.ls .is-can+li{box-shadow:none}
+.ls .is-sub{background:#fdf3ea}.ls .is-sub .n{color:#8a4508}.ls .is-sub .s small{color:#8a4508}
+.ls .is-now{background:#effaf3}.ls .is-now .n{color:#11753a}
+.ls .is-can{background:#fbf3f3}.ls .is-can .n{color:#a8362b}.ls .is-can .s{border-color:#d0d2d6}.ls .is-can .s b{text-decoration:line-through;text-decoration-thickness:1px;color:#666b73}.ls .is-can .s small{color:#a8362b}
+.pw__box{background:#fff;border:1px solid rgb(21 23 26 / .08);border-radius:14px;padding:12px;display:grid;gap:10px}
+.pw__box h4{margin:0;font-size:12px;font-weight:600;color:#15171a}
+.ev{display:flex;gap:10px;align-items:flex-start}.ev .d{flex:none;width:26px;font-size:10px;color:#666b73;line-height:1.15}.ev .d b{display:block;font-size:16px;font-weight:600;letter-spacing:-.03em;color:#15171a}
+.ev small{display:block;color:#666b73;font-size:11px}.ev .t{font-size:9px;font-weight:600;border-radius:4px;padding:0 4px;margin-right:4px;background:#fbe5e2;color:#9b2c1f}.ev .t.kl{background:#ececee;color:#40444b}
+.todo{list-style:none;margin:0;padding:0;display:grid;gap:7px}.todo li{display:flex;gap:8px;align-items:flex-start}
+.todo .bx{flex:none;width:14px;height:14px;border-radius:50%;border:1.5px solid #c9cbd0;margin-top:2px}
+.todo .is-done{color:#9a9fa7;text-decoration:line-through}.todo .is-done .bx{background:#15171a;border-color:#15171a}
+.todo em{font-style:normal;font-size:11px;color:#8a4508;background:#fdf3ea;border-radius:5px;padding:0 5px;margin-left:4px}
 .via{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#6b6965;background:#f4f3f0;border-radius:5px;padding:0 6px;margin-top:3px}.via svg{width:11px;height:11px}
 @media (max-width:1023px){.pw__side{display:none}.pw__body{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:760px){.pw__cols{grid-template-columns:minmax(0,1fr)}.pw__cols>aside{display:none}.pw__kbd{display:none}}
-@media (max-width:639px){.pw__addr span{display:none}.pw__main{padding:12px}}
+@media (max-width:639px){.pw__addr span{display:none}.pw__main{padding:14px 12px}}
 
 /* small pieces of the extension on the card panels */
-.fr{background:#fff;color:#1c1917;border-radius:12px;border:1px solid rgb(0 0 0 / .1);box-shadow:var(--u-shadow);font:400 13px/1.4 var(--font-text);padding:8px}
+.fr{background:#fff;color:#15171a;border-radius:14px;border:1px solid rgb(0 0 0 / .1);box-shadow:var(--u-shadow);font:400 13px/1.4 var(--font-text);padding:8px}
+.card .fr,.mo-pc__visual--lit .fr{font-size:14px;line-height:1.45;padding:10px}
 .kz{display:grid;grid-template-columns:44px 18px minmax(0,1fr);align-items:center;gap:8px;padding:9px 10px;border-radius:9px}
 .kz+.kz{border-top:1px solid rgb(0 0 0 / .06)}
 .kz code{font:500 12px var(--font-mono);color:#8a8782;text-decoration:line-through}.kz svg{width:14px;height:14px;color:#8a8782}.kz b{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -108,7 +121,7 @@ const CSS = `
 .term{background:#1c1917;color:#e7e5e2;border-radius:12px;padding:14px 16px;font:400 13px/1.7 var(--font-mono);white-space:pre;box-shadow:var(--u-shadow)}
 .term .p{color:#f8b26a}.term .ok{color:#9fe0a8}
 .ext{display:grid;gap:10px}.ext__row{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.ext__row b{font-weight:500}.ext__row small{display:block;color:#6b6965;font-size:12px}
+.ext__row+.ext__row{padding-top:10px;border-top:1px solid rgb(0 0 0 / .07)}.ext__row b{font-weight:500}.ext__row small{display:block;color:#6b6965;font-size:12px}
 .sw{width:36px;height:20px;border-radius:99px;background:#1c1917;position:relative;flex:none}.sw::after{content:"";position:absolute;right:3px;top:3px;width:14px;height:14px;border-radius:50%;background:#fff}
 .ext__btn{display:inline-flex;justify-self:start;border:1px solid rgb(0 0 0 / .14);border-radius:8px;padding:5px 10px;font-weight:500}
 .ext__btn.is-on{background:#fdf0e4;border-color:#e8730c}
@@ -132,8 +145,10 @@ main > #installieren.is-live > .mo-pc__grid{align-content:start;padding-top:var(
 /* the phone keeps each section on its screens: the lists that repeat the lead go, the AI section takes two */
 @media (max-width:639px){#ki .facts,#ki .link,#datenschutz .facts,.faq-head > p,.faq__item:nth-child(-n+2),.footer__lede{display:none}#ki .frame,#datenschutz .frame{--ratio:80%}}
 .inst-lead{margin:var(--s-5) 0 var(--s-4)}
-.inst-dl{flex-wrap:wrap;margin-bottom:var(--s-6)}
-.mo-pc__visual--lit .fr,.mo-pc__visual--lit .term{width:min(100%,380px)}
+/* the three downloads: Firefox across, Chrome and Android side by side */
+.inst-dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s-3);margin-bottom:var(--s-6)}.inst-dl .btn{justify-content:center;min-width:0;width:auto;white-space:normal;text-align:center}.inst-dl .btn--primary{grid-column:1 / -1}
+@media (max-width:639px){.inst-lead{display:none}.inst-dl{margin-top:var(--s-5)}}
+.mo-pc__visual--lit .fr,.mo-pc__visual--lit .term{width:min(100%,460px)}
 .mo-pc__visual--lit .fr{display:grid}
 /* the extension's settings, as its options page draws them */
 .opt{padding:6px 10px;display:grid}.opt h4{margin:4px 0 8px;font-size:15px;font-weight:500}
@@ -172,34 +187,37 @@ function schema() {
   ];
 }
 
-const lessons = (rows) => `<ul class="ls">${rows.map(([cls, n, t, subj, tag, who, room]) => `<li${cls ? ` class="${cls}"` : ''}><span class="n">${n}<small>${t}</small></span><span class="s"><b>${subj}${tag}</b><small>${who}</small></span><span class="r">${room}</span></li>`).join('')}</ul>`;
+// One lesson row as the extension draws it: start time over the period, a bar in the subject's colour, the room.
+const lessons = (rows) => `<ul class="ls">${rows.map(([cls, n, t, subj, tag, who, room, c]) => `<li${cls ? ` class="${cls}"` : ''}><span class="n">${t}<small>${n}. Std</small></span><span class="s" style="--c:${c}"><b>${subj}${tag}</b><small>${who}</small></span><span class="r">${room}</span></li>`).join('')}</ul>`;
 const HA = '<i>HA</i>';
+const NOW = '<i class="now">jetzt</i>';
+const PIN = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 3l5 5-2 1-3 3v4l-2 2-4-4-5 5-1-1 5-5-4-4 2-2h4l3-3z"/></svg>';
 
 // The portal with the extension: "Mein Tag" in a browser window (the product, whole).
 const portal = () => `<div class="pw ui ui-portal" aria-hidden="true">
 <div class="pw__bar"><span class="pw__dots"><i></i><i></i><i></i></span><span class="pw__addr"><b>isgy-intern.de</b><span>/index.php?page=dashboard</span></span><img class="pw__ext" src="/assets/logo-96.png" width="20" height="20" alt=""></div>
 <div class="pw__body">
-<div class="pw__side"><p>Angepinnt</p><span>📌 Vertretungsplan</span><span>📌 Klassenkalender</span><span class="is-on">Mein Tag</span><span>Stundenplan</span><span>Klassentagebuch</span><span>Nachrichten</span><span>Dokumente</span></div>
+<div class="pw__side"><p>Angepinnt</p><span>${PIN}Vertretungsplan</span><span>${PIN}Klassenkalender</span><p>Portal</p><span class="is-on">Dashboard</span><span>Stundenplan</span><span>Klassentagebuch</span><span>Nachrichten</span><span>Dokumente</span></div>
 <div class="pw__main">
-<div class="pw__head"><div><small>Donnerstag, 16. Oktober</small><b>Mein Tag</b></div><span class="pw__kbd">Suchen … Strg K</span></div>
-<div class="pw__cols"><div>
-<div class="pw__tabs"><span class="is-on"><b>Heute</b>Do, 16.10.</span><span><b>Morgen</b>Fr, 17.10.</span></div>
+<div class="pw__head"><div><small>Donnerstag, 16. Oktober</small><b>Guten Morgen, Lena</b>
+<div class="pw__st"><span>Klasse 9a</span><span class="is-live">Jetzt Englisch bis 11:15</span><span class="is-warn">2 Vertretungen heute</span></div></div><span class="pw__kbd">Suchen &nbsp;Strg K</span></div>
+<div class="pw__cols"><div class="pw__card">
+<div class="pw__tabs"><span class="is-on"><b>Heute</b>Do, 16.10.<i>2</i></span><span><b>Morgen</b>Fr, 17.10.</span><span><b>Montag</b>Mo, 20.10.</span></div>
 ${lessons([
-    ['', '1–2', '07:55', 'Mathematik', HA, 'Max Mustermann', '112'],
-    ['is-sub', '3', '09:45', 'Deutsch', '', 'Vertretung: Anna Weber statt Lena Krüger', '204'],
-    ['is-now', '4', '10:30', 'Englisch', '<i>jetzt</i>', 'Laura Schmidt', '015'],
-    ['is-can', '5', '11:30', 'Physik', '', 'Entfall: Lehrkraft auf Fortbildung', 'E12'],
-    ['', '6', '12:15', 'Biologie', HA, 'Jonas Becker', '108'],
-    ['', '7', '13:55', 'Sport', '', 'Tim Hoffmann', 'TH1'],
+    ['', '1.–2', '07:55', 'Mathematik', HA, 'Max Mustermann', '112', '#3a9a6a'],
+    ['is-sub', '3', '09:45', 'Deutsch', '', 'Vertretung: Anna Weber', '204', '#d9653b'],
+    ['is-now', '4', '10:30', 'Englisch', NOW, 'Laura Schmidt', '015', '#2f7fd1'],
+    ['is-can', '5', '11:30', 'Physik', '', 'Entfall: Lehrkraft auf Fortbildung', 'E12', '#1f9aa6'],
+    ['', '6', '12:15', 'Biologie', HA, 'Jonas Becker', '108', '#5f8a2e'],
   ])}</div>
-<aside class="pw__box"><h4>Termine</h4><div class="ev"><span class="d is-hot"><b>17</b>Okt</span><span>Mathe-Schulaufgabe<small>morgen, 1.–2. Stunde</small></span></div><div class="ev"><span class="d"><b>22</b>Okt</span><span>Bio-Kurzarbeit<small>Mittwoch</small></span></div>
+<aside class="pw__box"><h4>Termine</h4><div class="ev"><span class="d"><b>17</b>Fr</span><span><span class="t">SA</span>Mathematik<small>Max Mustermann · 1.–2. Std</small></span></div><div class="ev"><span class="d"><b>22</b>Mi</span><span><span class="t kl">KL</span>Biologie<small>Jonas Becker · 6. Std</small></span></div>
 <h4>Aufgaben &amp; Notizen</h4><ul class="todo"><li><span class="bx"></span><span>Mathe S. 42 Nr. 3<em>Fr</em></span></li><li class="is-done"><span class="bx"></span><span>Vokabeln Unit 3</span></li><li><span class="bx"></span><span>Bio-Referat vorbereiten<br><span class="via">${brandIcon('claude', 11)}über Claude angelegt</span></span></li></ul></aside>
 </div></div></div></div>`;
 
 // A feature card of the 2x2: title, two lines, a panel on its own still ground holding one piece of the extension.
 const card = (seed, title, text, piece, label) => `<article class="card card--row card--open span-6 m-nolift">
 <h3>${title}</h3><p>${text}</p>
-<div class="panel" ${GROUND(seed)} role="img" aria-label="${esc(label)}"><div class="stage stage--fade-b"><div class="at-rise fit" style="--fit-max:400px;--ax:max(24px, 50% - 200px);--ay:48px;--ay-sm:20px">${piece}</div></div></div>
+<div class="panel" ${GROUND(seed)} role="img" aria-label="${esc(label)}"><div class="stage stage--fade-b"><div class="at-rise fit" style="--fit-max:460px;--ax:max(24px, 50% - 230px);--ay:44px;--ay-sm:20px">${piece}</div></div></div>
 </article>`;
 
 const kuerzel = `<div class="fr ui ui-frag" aria-hidden="true">${[['Mm', 'Max Mustermann', 1], ['Wb', 'Anna Weber'], ['Sch', 'Laura Schmidt'], ['Bk', 'Jonas Becker'], ['Hf', 'Tim Hoffmann']]
@@ -239,7 +257,7 @@ export function homePage() {
       <div class="nav__item">
         <a class="nav__link" href="#funktionen">Funktionen ${CHEV}</a>
         <div class="nav__menu"><div class="wrap grid">
-          ${menuCard('Mein Tag', 'Stundenplan, Vertretungen und Entfälle', `<div class="fr ui ui-frag" style="width:300px" aria-hidden="true">${lessons([['is-sub', '3', '09:45', 'Deutsch', '', 'Vertretung: Anna Weber', '204'], ['is-can', '5', '11:30', 'Physik', '', 'Entfall', 'E12']])}</div>`)}
+          ${menuCard('Mein Tag', 'Stundenplan, Vertretungen und Entfälle', `<div class="fr ui ui-frag" style="width:300px" aria-hidden="true">${lessons([['is-sub', '3', '09:45', 'Deutsch', '', 'Vertretung: Anna Weber', '204', '#d9653b'], ['is-can', '5', '11:30', 'Physik', '', 'Entfall', 'E12', '#1f9aa6']])}</div>`)}
           ${menuCard('Namen statt Kürzel', 'Lehrernamen überall im Portal', `<div style="width:260px">${kuerzel}</div>`)}
           ${menuCard('Befehlspalette', 'Jede Seite mit Strg K', `<div style="width:280px">${palette}</div>`)}
         </div></div>
@@ -261,7 +279,7 @@ export function homePage() {
     <div class="wrap"><div class="hero-text">
       <div class="hero__c">
         <h1 id="hero-h">Die Erweiterung für isgy-intern.de</h1>
-        <p class="hero__lead">„Mein Tag“ zeigt Stundenplan, Vertretungen und Entfälle auf einen Blick, statt Kürzeln stehen Lehrernamen da. Kostenlos für Firefox, Chrome, Edge und alle Chromium-Browser.</p>
+        <p class="hero__lead">„Mein Tag“ zeigt Stundenplan, Vertretungen und Entfälle auf einen Blick, statt Kürzeln stehen Lehrernamen da. Kostenlos für Firefox, Chrome, Edge und Firefox auf Android.</p>
         <div class="btn-row"><a class="btn btn--primary" href="#installieren">Erweiterung installieren${ARROW}</a><a class="btn btn--secondary" href="/mcp">KI-Assistent verbinden</a></div>
       </div>
       <div class="hero__window" data-fx="fluted-glass" data-fx-seed="7">
@@ -373,7 +391,7 @@ export function homePage() {
     <div class="closing__links">
       <div class="grid">
         <div class="span-4 stack-4"><a class="nav__logo" href="#top"><img src="/assets/logo-96.png" width="28" height="28" alt="" loading="lazy">${NAME}</a><p class="footer__lede">Die inoffizielle Erweiterung für das Schulportal des Gymnasiums Ismaning.</p></div>
-        <div class="span-2 footer__col"><h3>Produkt</h3><ul><li><a href="#funktionen">Funktionen</a></li><li><a href="#ki">KI-Anbindung</a></li><li><a href="#installieren">Installieren</a></li></ul></div>
+        <div class="span-2 footer__col"><h3>Produkt</h3><ul><li><a href="/#funktionen">Funktionen</a></li><li><a href="/#ki">KI-Anbindung</a></li><li><a href="/#installieren">Installieren</a></li></ul></div>
         <div class="span-2 footer__col"><h3>KI</h3><ul><li><a href="/mcp">Assistent verbinden</a></li><li><a href="/konto">KI-Konto</a></li></ul></div>
         <div class="span-2 footer__col"><h3>Projekt</h3><ul><li><a href="${REPO}" rel="noopener">GitHub</a></li><li><a href="${REPO}/issues" rel="noopener">Fehler melden</a></li></ul></div>
         <div class="span-2 footer__col"><h3>Rechtliches</h3><ul><li><a href="/impressum">Impressum</a></li><li><a href="/datenschutz">Datenschutz</a></li></ul></div>

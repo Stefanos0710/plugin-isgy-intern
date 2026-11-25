@@ -47,6 +47,18 @@
   const clean = (s) => String(s ?? '').trim();
   // Subject codes compared loosely: case, course suffix ("_1") and trailing digits ignored. Never by prefix (K ≠ Ku, E ≠ Eth).
   const subjKey = (s) => clean(s).toLowerCase().split('_')[0].replace(/\d+$/, '');
+  // Subject codes as ISGY writes them (Sp = Spanisch, Win = Wirtschaftsinformatik); unknown codes stay as they are.
+  const SUBJECTS = { m: 'Mathematik', d: 'Deutsch', e: 'Englisch', f: 'Französisch', l: 'Latein', sp: 'Spanisch', it: 'Italienisch', gr: 'Griechisch',
+    ph: 'Physik', c: 'Chemie', b: 'Biologie', g: 'Geschichte', geo: 'Geographie', inf: 'Informatik', win: 'Wirtschaftsinformatik', wr: 'Wirtschaft und Recht',
+    mu: 'Musik', ku: 'Kunst', eth: 'Ethik', ev: 'Ev. Religion', k: 'Kath. Religion', pug: 'Politik und Gesellschaft', sk: 'Sozialkunde', nut: 'Natur und Technik' };
+  const subjectName = (code) => SUBJECTS[subjKey(code)] || clean(code);
+  // One calm colour per subject (same subject, same colour everywhere).
+  const HUES = ['#d9653b', '#2f7fd1', '#3a9a6a', '#b0499a', '#c99a1c', '#4b5bd6', '#1f9aa6', '#8a6a3c', '#c2475b', '#5f8a2e'];
+  const subjColor = (code) => { let x = 0; for (const ch of subjKey(code)) x = (x * 31 + ch.charCodeAt(0)) >>> 0; return HUES[x % HUES.length]; };
+  // The clock decides "jetzt" and when the school day is over (the portal's currentStunde is not reliable after school).
+  const minOf = (t) => { const [hh, mm] = String(t || '').split(':').map(Number); return hh * 60 + mm; };
+  const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
+  const curLesson = () => +(Object.keys(TIMES).find((n) => nowMin() >= minOf(TIMES[n]) && nowMin() < minOf(TIMES[n]) + 45) || 0);
   const getJSON = async (url, opt) => {
     const r = await fetch(url, opt);
     if (!r.ok) throw new Error(`${url} → ${r.status}`);
@@ -317,10 +329,13 @@
     const neuF = clean(v.fach_neu) && clean(v.fach_neu) !== clean(v.fach_alt) ? clean(v.fach_neu_kurz || v.fach_neu) : '';
     const neuR = clean(v.raum_neu) && clean(v.raum_neu) !== clean(v.raum_alt) ? clean(v.raum_neu) : '';
     const parts = [];
-    if (full) parts.push(...[neu, neuF, neuR && 'Raum ' + neuR].filter(Boolean));
+    if (full) parts.push(...[neu, neuF && subjectName(neuF), neuR && 'Raum ' + neuR].filter(Boolean));
     if (clean(v.info_1)) parts.push(clean(v.info_1));
     const cancel = /entf|fällt aus|frei/i.test(kind) || neuT === 'XXX';
-    return { cancel, neu, neuF, neuR, el: h('div', { class: 'ip-sub' }, h('b', {}, kind), parts.length ? ' · ' + parts.join(' · ') : '') };
+    // A "Vertretung" without a teacher (XXX) is an Entfall in practice: say so, keep the portal's word after it.
+    const label = cancel && !/entf|fällt aus/i.test(kind) ? 'Entfällt' : kind;
+    if (label !== kind) parts.unshift(kind);
+    return { cancel, neu, neuF, neuR, el: h('div', { class: 'ip-sub' }, h('b', {}, label), parts.length ? ' · ' + parts.join(' · ') : '') };
   }
   // Old value struck through, new value after it.
   const changed = (old, neu) => neu && neu !== old ? [h('s', { class: 'ip-old' }, old), ' → ', h('b', { class: 'ip-new' }, neu)] : old;
@@ -339,10 +354,11 @@
     const detail = h('div', { class: 'ip-detail', hidden: true, onclick: (e) => e.stopPropagation() });
     const hw = h('span', { class: 'ip-pill', hidden: true, title: 'Im letzten Eintrag steht eine Hausaufgabe' }, 'HA');
     const row = h('div', {
-      class: 'ip-lesson' + (subs.length ? ' is-sub' : '') + (cancelled ? ' is-cancel' : '') + (isNow ? ' is-now' : ''),
+      class: 'ip-lesson' + (subs.length ? ' is-sub' : '') + (cancelled ? ' is-cancel' : '') + (isNow && !cancelled ? ' is-now' : '') + (it.par ? ' is-par' : '') + (it.parFirst ? ' is-par-first' : ''),
+      style: `--subj:${subjColor(slot.subject)}`,
       tabindex: 0, role: 'button', 'aria-expanded': 'false',
       onclick: async (e) => {
-        if (e.target.closest('a')) return;
+        if (e.target.closest('a, .ip-hide')) return;
         // Only one lesson open at a time.
         if (detail.hidden) document.querySelectorAll('.ip-lesson[aria-expanded="true"]').forEach((o) => { if (o !== row) { o.querySelector('.ip-detail').hidden = true; o.setAttribute('aria-expanded', 'false'); } });
         detail.hidden = !detail.hidden;
@@ -350,7 +366,7 @@
         if (!detail.hidden && !detail.childElementCount) {
           detail.append(h('div', { class: 'ip-muted' }, 'Suche letzten Tagebucheintrag …'));
           detail.replaceChildren(entryView(await lastEntry(slot.subject), slot.subject),
-            h('button', { class: 'ip-textbtn', title: 'Rückgängig in den Einstellungen', onclick: () => hideSubject(slot.subject) }, `Ich habe ${slot.subject} nicht – ausblenden`));
+            h('button', { class: 'ip-textbtn', title: 'Rückgängig in den Einstellungen', onclick: () => hideSubject(slot.subject) }, `Ich habe ${subjectName(slot.subject)} (${slot.subject}) nicht – ausblenden`));
         }
       },
       onkeydown: (e) => { if (e.target === row && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); row.click(); } },
@@ -359,10 +375,14 @@
       h('div', { class: 'ip-num' }, it.from === it.to ? it.from : `${it.from}–${it.to}`),
       h('div', { class: 'ip-time' }, TIMES[it.from] || '')),
     h('div', { class: 'ip-what' },
-      h('div', { class: 'ip-subj' }, changed(slot.subject, subs.map((x) => x.neuF).find(Boolean)), hw, isNow ? h('span', { class: 'ip-pill ip-pill-now' }, 'jetzt') : null),
+      h('div', { class: 'ip-subj', title: slot.subject }, changed(subjectName(slot.subject), subjectName(subs.map((x) => x.neuF).find(Boolean) || '') || ''),
+        // Parallel groups differ only by their course code (C_2 / C_3): show it there.
+        it.par && subjectName(slot.subject) !== slot.subject ? h('span', { class: 'ip-code' }, slot.subject) : null, hw, isNow && !cancelled ? h('span', { class: 'ip-pill ip-pill-now' }, 'jetzt') : null),
       h('div', { class: 'ip-teacher', title: clean(slot.teacher) }, changed(teacherName(slot.teacher), subs.map((x) => x.neu).find(Boolean))),
       subs.map((s) => s.el)),
     h('div', { class: 'ip-room' }, changed(slot.room, subs.map((x) => x.neuR).find(Boolean))),
+    // Parallel courses (Religion/Ethik, groups): one click hides the one the user doesn't take.
+    it.par ? h('button', { class: 'ip-hide', type: 'button', title: `Ich habe ${subjectName(slot.subject)} nicht – ausblenden (rückgängig in den Einstellungen)`, 'aria-label': `${subjectName(slot.subject)} ausblenden`, onclick: (e) => { e.stopPropagation(); hideSubject(slot.subject); } }, 'Nicht meins') : null,
     detail);
     lastEntry(slot.subject).then((r) => { if (r?.entries.some((e) => clean(e.homework))) hw.hidden = false; });
     return row;
@@ -372,6 +392,8 @@
   // only lesson of that hour; an entry for another subject never does (Ethik must not show Religion's Entfall).
   const slotMatch = (v, s) => (clean(v.fach_alt) && subjKey(v.fach_alt) === subjKey(s.subject)) || (clean(v.user_alt_kurz) && clean(v.user_alt_kurz) === clean(s.teacher));
   const anonymous = (v) => !clean(v.fach_alt) && !clean(v.user_alt_kurz);
+  // What a substitution changes, without the hour: equal keys in consecutive hours read as one double lesson.
+  const subsKey = (subs) => JSON.stringify(subs.map((v) => [v.info_2, v.info_1, v.user_neu_kurz, v.user_neu_title, v.fach_neu, v.raum_neu].map(clean)));
 
   function dayView(date, sp, vplan, hidden, mine) {
     const plan = sp.plan?.[(date.getDay() + 6) % 7] || [];
@@ -387,13 +409,19 @@
       for (const s of shown) {
         const subs = subsHere.filter((v) => slotMatch(v, s) || (shown.length === 1 && anonymous(v)));
         subs.forEach((v) => used.add(v));
-        // Merge double lessons (same slot in consecutive hours, no substitution on either).
+        // Merge double lessons (same slot in consecutive hours, and the same change on both, if any).
         const prev = items.find((it) => it.to === n - 1 && it.slot.subject === s.subject && it.slot.teacher === s.teacher && it.slot.room === s.room);
-        if (prev && !prev.subs.length && !subs.length) prev.to = n;
+        if (prev && subsKey(prev.subs) === subsKey(subs)) prev.to = n;
         else items.push({ from: n, to: n, slot: s, subs });
       }
     });
-    const now = iso(date) === iso(today()) ? Number(sp.currentStunde) : -1;
+    // Several lessons in the same hours = parallel courses; the first of each group carries the time.
+    items.forEach((it) => {
+      const same = items.filter((o) => o.from === it.from && o.to === it.to);
+      it.par = same.length > 1;
+      it.parFirst = it.par && same[0] === it;
+    });
+    const now = iso(date) === iso(today()) ? curLesson() : -1;
     // Unmatched entries are only shown when they could be the user's: no subject given, or a subject they have.
     const orphan = vp.filter((v) => !used.has(v) && (!clean(v.fach_alt) || mine.has(subjKey(v.fach_alt))));
     const dayNotes = notes.filter((x) => x.type !== 'note' && x.date === iso(date) && !x.done);
@@ -401,20 +429,29 @@
     return {
       subCount: items.reduce((n, it) => n + it.subs.length, 0) + orphan.length,
       hours: real.flatMap((it) => lessonsOf(`${it.from}-${it.to}`)),
+      real,
       el: h('div', { class: 'ip-day' },
-        dayNotes.map((x) => h('div', { class: 'ip-callout' }, '☐ ', x.text)),
+        dayNotes.map((x) => h('div', { class: 'ip-callout' }, h('b', {}, 'Aufgabe'), x.text)),
         items.length ? h('div', { class: 'ip-lessons' }, items.map((it, i) => { const r = lessonRow(it, now >= it.from && now <= it.to); r.style.setProperty('--i', i); return r; })) : h('div', { class: 'ip-empty' }, 'Kein Unterricht.'),
         orphan.length ? h('div', { class: 'ip-lessons ip-orphans' }, h('div', { class: 'ip-label' }, 'Weitere Vertretungen'),
           orphan.map((v) => {
             const s = subLine(v, true);
             return h('div', { class: 'ip-lesson is-sub' + (s.cancel ? ' is-cancel' : '') },
               h('div', { class: 'ip-when' }, h('div', { class: 'ip-num' }, clean(v.stunde))),
-              h('div', { class: 'ip-what' }, h('div', { class: 'ip-subj' }, clean(v.fach_alt)), s.el));
+              h('div', { class: 'ip-what' }, h('div', { class: 'ip-subj', title: clean(v.fach_alt) }, subjectName(v.fach_alt)), s.el));
           })) : null),
     };
   }
 
-  async function eventsCard(cls) {
+  // Calendar titles look like "9a: SA - M - La" (kind, subject code, teacher code); free titles stay as they are.
+  // The portal's fach_title is not reliable (it said "Biologie" for "SA - WR - Fb"), so the code in the title wins.
+  function eventInfo(e, cls) {
+    const title = clean(e.title).replace(new RegExp('^' + cls + ':\\s*'), '');
+    const m = /^([A-Za-zÄÖÜäöü]{1,4})\s+[-–]\s+(\S+)\s+[-–]\s+(\S+)$/.exec(title);
+    if (!m) return { name: title, subj: '', teacher: '' };
+    return { name: SUBJECTS[subjKey(m[2])] || clean(e.fach_title) || m[2], subj: m[2], teacher: teacherName(m[3]) };
+  }
+  async function eventsCard(cls, hiddenKeys = new Set()) {
     const list = h('div', { class: 'ip-events' }, h('div', { class: 'ip-muted' }, 'Lade …'));
     const card = h('section', { class: 'ip-card' }, h('h3', {}, 'Termine'), list);
     try {
@@ -425,17 +462,26 @@
       fd.append('kalenders', ids.join(','));
       const ev = await getJSON('rest.php/klassenkalender/getEvents', { method: 'POST', body: fd, headers: H });
       const from = iso(today()), to = iso(addDays(today(), S.eventDays));
+      // Exams of a course the user doesn't take (hidden subjects, e.g. the other Religion) are left out.
       const items = (Array.isArray(ev) ? ev : []).filter((e) => (e.dateEnd || e.dateStart) >= from && e.dateStart <= to)
-        .sort((a, b) => (a.dateStart + a.timeStart).localeCompare(b.dateStart + b.timeStart));
-      list.replaceChildren(...items.map((e) => {
+        .map((e) => ({ e, ...eventInfo(e, cls) })).filter((x) => !x.subj || !hiddenKeys.has(subjKey(x.subj)))
+        .sort((a, b) => (a.e.dateStart + a.e.timeStart).localeCompare(b.e.dateStart + b.e.timeStart));
+      const thisMonth = today().getMonth();
+      let lastDay = '', lastMonth = thisMonth;
+      list.replaceChildren(...items.flatMap(({ e, name, subj, teacher }) => {
         const d = new Date(e.dateStart + 'T00:00');
-        const title = clean(e.title).replace(new RegExp('^' + cls + ':\\s*'), '');
-        return h('div', { class: 'ip-event' },
-          h('div', { class: 'ip-datebox' }, h('b', {}, d.getDate()), h('span', {}, DAYS[d.getDay()].slice(0, 2))),
+        // A month line where a new month starts; the date only once per day.
+        const month = d.getMonth() !== lastMonth ? h('div', { class: 'ip-ev-month' }, d.toLocaleDateString('de-DE', { month: 'long' })) : null;
+        lastMonth = d.getMonth();
+        const first = e.dateStart !== lastDay;
+        lastDay = e.dateStart;
+        const hours = clean(e.stunde) && `${clean(e.stunde).replace(/,\s*/g, '.–')}. Std`;
+        return [month, h('div', { class: 'ip-event' + (first ? '' : ' is-same-day'), style: subj ? `--subj:${subjColor(subj)}` : '' },
+          h('div', { class: 'ip-datebox' }, first ? [h('b', {}, d.getDate()), h('span', {}, DAYS[d.getDay()].slice(0, 2))] : null),
           h('div', { class: 'ip-ev-body' },
-            h('div', { class: 'ip-ev-title' }, e.lnw ? h('span', { class: 'ip-tag', style: `--tag:${e.lnw.color || '#888'}`, title: e.lnw.title }, e.lnw.short) : null, e.fach_title || title),
-            h('div', { class: 'ip-muted' }, [e.fach_title && title, e.stunde && `${e.stunde}. Std`, e.place].filter(Boolean).join(' · '))));
-      }));
+            h('div', { class: 'ip-ev-title' }, e.lnw ? h('span', { class: 'ip-tag', style: `--tag:${e.lnw.color || '#888'}`, title: e.lnw.title }, e.lnw.short) : null, name),
+            h('div', { class: 'ip-muted' }, [teacher, hours, clean(e.place)].filter(Boolean).join(' · '))))];
+      }).filter(Boolean));
       if (!items.length) list.replaceChildren(h('div', { class: 'ip-empty' }, `Keine Termine in den nächsten ${S.eventDays} Tagen.`));
     } catch (err) {
       list.replaceChildren(h('div', { class: 'ip-empty' }, 'Klassenkalender nicht erreichbar.'));
@@ -574,17 +620,24 @@
       // After the last lesson of today, open the next day first.
       // Counts only the user's own lessons that take place (hidden subjects and Entfall left out).
       const lastToday = Math.max(0, ...views[0].hours);
-      const start = iso(days[0]) === iso(today()) && Number(sp.currentStunde) > lastToday ? 1 : 0;
-      // Status chips under the greeting: class, when school ends / starts, number of substitutions.
+      const isToday = iso(days[0]) === iso(today());
+      // After the last lesson that takes place today (or on a day without any), open the next school day.
+      const start = isToday && (!lastToday || nowMin() >= minOf(TIMES[lastToday]) + 45) ? 1 : 0;
+      // Status chips under the greeting: class, what is now / next, when school ends / starts, substitutions.
       const hoursOf = (i) => [...new Set(views[i].hours)].sort((a, b) => a - b);
-      const endOf = (n) => { const [hh, mm] = (TIMES[n] || '').split(':').map(Number); if (isNaN(hh)) return ''; const t = hh * 60 + mm + 45; return `${pad(Math.floor(t / 60))}:${pad(t % 60)}`; };
+      const endOf = (n) => { const t = minOf(TIMES[n]) + 45; return isNaN(t) ? '' : `${pad(Math.floor(t / 60))}:${pad(t % 60)}`; };
       const chip = (text, cls2 = '') => h('span', { class: 'ip-chip ' + cls2 }, text);
       const focus = days[start], hrs = hoursOf(start);
       const subs = views[start].subCount;
+      const roomOf = (it) => it.subs.map((v) => clean(v.raum_neu)).find(Boolean) || clean(it.slot.room);
+      const live = isToday && !start ? views[0].real.find((it) => curLesson() >= it.from && curLesson() <= it.to) : null;
+      const next = isToday && !start ? views[0].real.find((it) => nowMin() < minOf(TIMES[it.from])) : null;
       chips.replaceChildren(...[
         cls ? chip(`Klasse ${cls}`) : null,
+        live ? chip(`Jetzt ${subjectName(live.slot.subject)} bis ${endOf(live.to)}`, 'is-live')
+          : next ? chip(`Gleich ${subjectName(next.slot.subject)} um ${TIMES[next.from]}${roomOf(next) ? ' in ' + roomOf(next) : ''}`, 'is-live') : null,
         hrs.length ? chip(iso(focus) === iso(today()) ? `Heute ${hrs.length} Std · Schluss ${endOf(hrs.at(-1))}` : `${label(focus)} ab ${TIMES[hrs[0]] || hrs[0] + '. Std'} · ${hrs.length} Std`) : null,
-        start === 1 && iso(days[0]) === iso(today()) ? chip('Schulschluss für heute ✓', 'is-ok') : null,
+        start === 1 && isToday ? chip(lastToday ? 'Schulschluss für heute' : 'Heute kein Unterricht', 'is-ok') : null,
         subs ? chip(`${subs} ${subs === 1 ? 'Vertretung' : 'Vertretungen'} ${iso(focus) === iso(today()) ? 'heute' : label(focus) === 'Morgen' ? 'morgen' : 'am ' + label(focus)}`, 'is-warn') : null].filter(Boolean));
       const btns = days.map((d, i) => h('button', { class: 'ip-tab', role: 'tab', onclick: () => select(i) },
         h('b', {}, label(d)), h('span', {}, `${DAYS[d.getDay()].slice(0, 2)}, ${deShort(d)}`),
@@ -600,7 +653,7 @@
       tabs.replaceChildren(...btns);
       select(start);
       if (S.showNotes) side.append(notesCard());
-      side.append(await eventsCard(cls));
+      side.append(await eventsCard(cls, hiddenKeys));
     } catch (err) {
       dayBox.replaceChildren(h('div', { class: 'ip-empty' }, 'Stundenplan konnte nicht geladen werden: ' + err.message));
     }
@@ -712,18 +765,20 @@
       .filter((c) => c.label && !c.href.startsWith('#') && !seen.has(c.href) && seen.add(c.href));
     const current = location.pathname.slice(1) + location.search;
     const pageTitle = clean(document.querySelector('h1, .content-header h1, main h2')?.textContent) || document.title;
+    // Right-hand hint: the g-shortcut of a page, else what kind of entry it is.
+    const keyOf = Object.fromEntries(Object.entries(gotoMap()).map(([k, href]) => [href, 'g ' + k]));
     return [
-      ...(S.pins || []).map((p) => ({ label: '📌 ' + p.label, href: p.href })),
-      ...nav.map((c) => ({ ...c, label: '→ ' + c.label })),
+      ...(S.pins || []).map((p, i) => ({ label: p.label, href: p.href, kbd: i < 9 ? 'Alt ' + (i + 1) : '', meta: 'Angepinnt' })),
+      ...nav.map((c) => ({ ...c, kbd: keyOf[c.href] || '', meta: 'Seite' })),
       { label: 'Einstellungen öffnen', run: openOptions },
-      { label: '📌 Aktuelle Seite anpinnen / lösen', run: () => togglePin(current, pageTitle) },
-      { label: '📝 Notiz hinzufügen', run: () => { const t = prompt('Notiz:'); if (t) { notes.push({ id: Date.now(), text: t, date: '', done: false }); saveNotes(); } } },
-      { label: '🔍 Letzten Tagebucheintrag für Fach suchen …', run: () => { const s = prompt('Fach-Kürzel (z. B. M_1, D, E_1):'); if (s) showLastEntry(s.trim()); } },
-      { label: '🔄 Kürzel-Liste neu laden', run: async () => { try { await loadKuerzel(true); alert(`${Object.keys(KZ).length} Kürzel geladen.`); location.reload(); } catch (e) { alert(e.message); } } },
-      { label: '⌨ Tastenkürzel anzeigen', run: showHelp },
-      { label: '🤖 KI-Verbindungscode kopieren', keys: 'ki-code kicode mcp ai claude chatgpt gemini', run: copyAiCode },
-      { label: '👤 KI-Konto: anmelden / verwalten', keys: 'login anmelden konto account mcp', run: openOptions },
-      { label: '🔄 Mit KI-Konto synchronisieren', keys: 'mcp sync', run: async () => {
+      { label: 'Aktuelle Seite anpinnen / lösen', run: () => togglePin(current, pageTitle) },
+      { label: 'Notiz hinzufügen', run: () => { const t = prompt('Notiz:'); if (t) { notes.push({ id: Date.now(), text: t, date: '', done: false }); saveNotes(); } } },
+      { label: 'Letzten Tagebucheintrag für ein Fach suchen …', run: () => { const s = prompt('Fach-Kürzel (z. B. M_1, D, E_1):'); if (s) showLastEntry(s.trim()); } },
+      { label: 'Kürzel-Liste neu laden', run: async () => { try { await loadKuerzel(true); alert(`${Object.keys(KZ).length} Kürzel geladen.`); location.reload(); } catch (e) { alert(e.message); } } },
+      { label: 'Tastenkürzel anzeigen', kbd: '?', run: showHelp },
+      { label: 'KI-Verbindungscode kopieren', keys: 'ki-code kicode mcp ai claude chatgpt gemini', run: copyAiCode },
+      { label: 'KI-Konto: anmelden / verwalten', keys: 'login anmelden konto account mcp', run: openOptions },
+      { label: 'Mit KI-Konto synchronisieren', keys: 'mcp sync', run: async () => {
         if (!(await local.get('aiAccount')).aiAccount?.token) return openOptions();
         try { await aiSync(true); const { aiAccount: a } = await local.get('aiAccount'); alert(a.error ? 'KI-Konto: ' + a.error : 'Mit dem KI-Konto synchronisiert.'); } catch (e) { alert(e.message); }
       } },
@@ -736,7 +791,8 @@
     const input = h('input', { class: 'ip-input', placeholder: 'Seite oder Befehl suchen …' });
     const list = h('div', { class: 'ip-pal-list' });
     const draw = () => {
-      list.replaceChildren(...shown.map((c, i) => h('div', { class: 'ip-pal-item' + (i === sel ? ' is-sel' : ''), onmousedown: (e) => { e.preventDefault(); run(c); } }, c.label)));
+      list.replaceChildren(...(shown.length ? shown.map((c, i) => h('div', { class: 'ip-pal-item' + (i === sel ? ' is-sel' : ''), onmousedown: (e) => { e.preventDefault(); run(c); } },
+        h('span', {}, c.label), c.kbd ? h('kbd', {}, c.kbd) : h('span', { class: 'ip-pal-meta' }, c.meta || 'Aktion'))) : [h('div', { class: 'ip-empty' }, 'Nichts gefunden.')]));
       list.children[sel]?.scrollIntoView({ block: 'nearest' });
     };
     const norm = (s) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');

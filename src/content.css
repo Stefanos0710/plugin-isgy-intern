@@ -65,6 +65,8 @@ main.ip-hide-original > :not(#isgy-plus) { display: none !important; }
 .ip-chip.is-warn::before { background: var(--ip-accent); }
 .ip-chip.is-ok { color: #11753a; }
 .ip-chip.is-ok::before { background: var(--ip-live); }
+.ip-chip.is-live { color: var(--ip-ink); }
+.ip-chip.is-live::before { background: var(--ip-live); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ip-live) 22%, transparent); }
 
 .ip-skel {
   height: 64px; border-radius: 12px; margin: 6px 0;
@@ -119,7 +121,7 @@ main.ip-hide-original > :not(#isgy-plus) { display: none !important; }
 /* Lessons: a ruled timeline. Time on the left, subject in the middle, room on the right. */
 .ip-lessons { display: flex; flex-direction: column; padding: 0 4px; }
 .ip-lesson {
-  position: relative; display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; column-gap: 20px; align-items: center;
+  position: relative; display: grid; grid-template-columns: 64px minmax(0, 1fr) auto auto; column-gap: 20px; align-items: center;
   padding: 18px 16px; border-radius: 14px; cursor: pointer;
 }
 .ip-lesson + .ip-lesson::before { content: ''; position: absolute; left: 16px; right: 16px; top: 0; height: 1px; background: var(--ip-line); }
@@ -129,6 +131,18 @@ main.ip-hide-original > :not(#isgy-plus) { display: none !important; }
 .ip-time { order: -1; font-size: 16px; font-weight: 600; letter-spacing: -.01em; line-height: 1.25; }
 .ip-num { font-size: 12px; font-weight: 500; color: var(--ip-muted); line-height: 1.4; }
 .ip-num::after { content: '. Std'; }
+/* Each subject keeps one colour: a short bar in front of the name. */
+.ip-what { position: relative; padding-left: 16px; }
+.ip-what::before { content: ''; position: absolute; left: 0; top: 2px; bottom: 2px; width: 3px; border-radius: 3px; background: var(--subj, var(--ip-line-strong)); }
+.ip-lesson.is-cancel .ip-what::before { background: var(--ip-line-strong); }
+/* Parallel courses: one time for the group, a quiet "Nicht meins" to hide the course you don't take. */
+.ip-lesson.is-par:not(.is-par-first) .ip-when { visibility: hidden; }
+.ip-lesson.is-par:not(.is-par-first)::before { left: 100px; }
+.ip-code { font-size: 12px; font-weight: 500; letter-spacing: 0; color: var(--ip-faint); }
+.ip-hide { border: 1px solid var(--ip-line-strong); background: #fff; color: var(--ip-muted); font-size: 12px; font-weight: 500; height: 28px; padding: 0 10px; border-radius: 999px; cursor: pointer; opacity: 0; white-space: nowrap; }
+.ip-lesson:hover .ip-hide, .ip-hide:focus-visible { opacity: 1; }
+.ip-hide:hover { color: var(--ip-cancel-text); border-color: currentColor; }
+@media (hover: none) { .ip-hide { opacity: 1; } }
 .ip-subj { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 600; letter-spacing: -.02em; line-height: 1.25; }
 .ip-teacher { color: var(--ip-muted); font-size: 14px; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ip-lesson.is-sub .ip-teacher { white-space: normal; }
@@ -152,7 +166,8 @@ main.ip-hide-original > :not(#isgy-plus) { display: none !important; }
 
 .ip-orphans { margin-top: 20px; }
 .ip-label { font-size: 13px; font-weight: 600; color: var(--ip-muted); padding: 0 16px 6px; }
-.ip-callout { background: var(--ip-soft); color: var(--ip-ink); border-radius: 12px; padding: 12px 16px; margin: 0 4px 10px; font-size: 14px; }
+.ip-callout { display: flex; gap: 10px; align-items: baseline; background: var(--ip-tint); color: var(--ip-ink); border-radius: 12px; padding: 12px 16px; margin: 4px 4px 10px; font-size: 14px; }
+.ip-callout b { font-size: 12px; font-weight: 600; color: var(--ip-sub-text); }
 
 /* Expanded diary entry */
 .ip-detail {
@@ -174,6 +189,9 @@ main.ip-hide-original > :not(#isgy-plus) { display: none !important; }
 .ip-event:first-child { padding-top: 0; }
 .ip-event:last-child { padding-bottom: 0; }
 .ip-event + .ip-event { border-top: 1px solid var(--ip-line); }
+.ip-event.is-same-day { border-top: 0; padding-top: 0; }
+.ip-ev-month { padding: 18px 0 6px 52px; font-size: 12px; font-weight: 600; color: var(--ip-muted); border-top: 1px solid var(--ip-line); }
+.ip-ev-month + .ip-event { border-top: 0; padding-top: 6px; }
 .ip-datebox { flex: none; width: 36px; text-align: left; line-height: 1.1; }
 .ip-datebox b { display: block; font-size: 22px; font-weight: 600; letter-spacing: -.03em; }
 .ip-datebox span { font-size: 12px; font-weight: 500; color: var(--ip-muted); }
@@ -237,8 +255,10 @@ main.ip-hide-original > :not(#isgy-plus) { display: none !important; }
 .ip-modal > :not(.ip-modal-head) { padding: 16px 22px 22px; }
 .ip-palette { padding: 8px 10px 10px !important; }
 .ip-palette .ip-input { width: 100%; height: 48px; font-size: 17px; border: 0; background: transparent; padding: 0 12px; }
-.ip-pal-list { margin-top: 4px; max-height: 50vh; overflow: auto; border-top: 1px solid var(--ip-line); padding-top: 6px; }
-.ip-pal-item { padding: 11px 12px; border-radius: 10px; cursor: pointer; font-size: 15px; }
+.ip-pal-list { margin-top: 4px; max-height: 50vh; overflow: auto; border-top: 1px solid var(--ip-line); padding-top: 6px; scrollbar-width: thin; scrollbar-color: var(--ip-line-strong) transparent; }
+.ip-pal-item { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 10px 12px; border-radius: 10px; cursor: pointer; font-size: 15px; }
+.ip-pal-meta { font-size: 12px; color: var(--ip-faint); }
+.ip-pal-item.is-sel .ip-pal-meta { color: var(--ip-muted); }
 .ip-pal-item.is-sel, .ip-pal-item:hover { background: var(--ip-soft); }
 .ip-pal-item.is-sel { box-shadow: inset 2px 0 0 var(--ip-accent); }
 .ip-help { border-collapse: collapse; width: 100%; }
@@ -263,6 +283,11 @@ main.ip-hide-original > :not(#isgy-plus) { display: none !important; }
   .ip-card { padding: 20px; }
   .ip-main { padding: 8px 6px 10px; }
   .ip-lesson { grid-template-columns: 52px minmax(0, 1fr) auto; column-gap: 12px; padding: 16px 10px; }
+  /* Narrow: the room goes under the teacher, so long changes (C-OG2-07 → D-EG-08) fit. */
+  .ip-when { grid-row: 1 / span 2; align-self: start; }
+  .ip-room { grid-column: 2; grid-row: 2; justify-self: start; margin: 8px 0 0 16px; }
+  .ip-hide { grid-column: 3; grid-row: 1; }
+  .ip-lesson.is-par:not(.is-par-first)::before { left: 74px; }
   .ip-subj { font-size: 17px; }
   .ip-search { min-width: 0; flex: 1; }
   .ip-search kbd { display: none; }

@@ -32,6 +32,23 @@ html:not(.ip-no-theme) {
   & body { font-family: 'Geist Plus', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif; -webkit-font-smoothing: antialiased; letter-spacing: -.003em; }
   & h1, & h2, & h3, & .box-title { letter-spacing: -.02em; }
 
+  /* ---------- Top bar: white with a hairline instead of the bright orange skin ---------- */
+  & .main-header .navbar,
+  & .main-header .logo { background: #fff !important; color: #15171a !important; border: 0; box-shadow: none; }
+  & .main-header { border-bottom: 1px solid rgba(21, 23, 26, .08); }
+  & .main-header .logo { border-right: 1px solid rgba(21, 23, 26, .08); }
+  & .main-header .logo b, & .main-header .logo span { color: #15171a !important; }
+  & .main-header .navbar a, & .main-header .navbar .sidebar-toggle, & .main-header .navbar-custom-menu > ul > li > a { color: #40444b !important; background: transparent !important; }
+  & .main-header .navbar a:hover, & .main-header .navbar .sidebar-toggle:hover { color: #15171a !important; background: #f5f5f6 !important; }
+  & .main-header .ext-user-profile-widget__toggle { background: transparent !important; color: #15171a !important; border-radius: 999px; }
+  & .main-header .ext-user-profile-widget__toggle:hover { background: #f5f5f6 !important; }
+  & .main-header .label, & .main-header .badge { background: var(--ip-accent, #e8730c) !important; color: #fff !important; }
+
+  /* ---------- Sidebar: ink instead of slate blue ---------- */
+  & .su-portal-sidebar, & .su-portal-sidebar__inner { background: #17191d !important; }
+  & .su-sidebar-nav__link { color: #a3a8b0; border-radius: 10px; transition: color .25s var(--ip-ease), background .25s var(--ip-ease); }
+  & .su-sidebar-nav__link:hover { color: #fff; background: rgba(255, 255, 255, .06); }
+
   /* ---------- Page canvas: one calm grey, no white block behind it ---------- */
   & .content-wrapper,
   & .content-wrapper > .content { background: var(--ip-page-bg); }
