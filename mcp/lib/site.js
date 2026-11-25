@@ -40,7 +40,7 @@ export const DESCRIPTION = 'Kostenlose Browser-Erweiterung für isgy-intern.de: 
 export const MCP_TITLE = 'ISGY Intern im KI-Chat – für Claude, ChatGPT & Gemini';
 export const MCP_DESCRIPTION = 'Frag Claude, ChatGPT oder Gemini nach Stundenplan, Vertretungen, Hausaufgaben & Prüfungen von isgy-intern.de. Kostenloser MCP-Server, in einer Minute verbunden.';
 export const OG_ALT = 'ISGY Intern Plus: Dein Schulportal im KI-Chat – für Claude, ChatGPT und Gemini';
-export const VERSION = '1.5.0'; // extension version shown on the site (manifest.json)
+export const VERSION = '1.5.1'; // extension version shown on the site (manifest.json)
 
 // ---------- static assets (assets/ is bundled with the function, see vercel.json includeFiles) ----------
 // kit/ holds the start page's design system (CSS, JS modules, self-hosted fonts), copied from the taste-skill kit.
