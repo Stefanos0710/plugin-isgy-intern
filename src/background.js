@@ -11,14 +11,24 @@ async function aiCall(path, body, token, server) {
   return { status: r.status, data: await r.json().catch(() => ({})) };
 }
 async function aiLogin({ email, password, server }) {
+  if (!(await dcGranted())) return { error: 'Ohne deine Zustimmung zur Datenübertragung kann das KI-Konto nicht verbunden werden.' };
   const { status, data } = await aiCall('login', { email, password }, null, server);
   if (status !== 200 || !data.token) return { error: data.error || `Anmeldung fehlgeschlagen (${status}).` };
   await chrome.storage.local.set({ aiAccount: { server, token: data.token, email: data.email }, aiLastSync: 0 });
   return { ok: true, email: data.email };
 }
+// Firefox: the KI-Konto sends data only after the user agreed (optional data_collection_permissions, asked in the
+// settings). Other browsers have no such permission.
+const DC = chrome.runtime.getManifest().browser_specific_settings?.gecko?.data_collection_permissions?.optional || [];
+const dcGranted = async () => !DC.length || chrome.permissions.contains({ data_collection: DC }).catch(() => false);
+
 async function aiSync({ session, notes }, sender) {
   const { aiAccount: a } = await chrome.storage.local.get('aiAccount');
   if (!a?.token) return { off: true };
+  if (!(await dcGranted())) {
+    await chrome.storage.local.set({ aiAccount: { ...a, error: 'Bitte in den Einstellungen die Datenübertragung erlauben.' } });
+    return { error: 'consent' };
+  }
   const body = { notes };
   if (session) body.session = { ...session, c: await portalCookies(sender.url) };
   const { status, data } = await aiCall('sync', body, a.token, a.server).catch((e) => ({ status: 0, data: { error: e.message } }));

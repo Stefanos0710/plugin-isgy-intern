@@ -99,6 +99,10 @@ $('exportNotes').onclick = async () => {
 load();
 
 // ---------- KI-Konto ----------
+// Firefox asks for consent before the KI-Konto may send data (optional data_collection_permissions in the manifest).
+const DC = chrome.runtime.getManifest().browser_specific_settings?.gecko?.data_collection_permissions?.optional || [];
+const askConsent = () => !DC.length || chrome.permissions.request({ data_collection: DC }).catch(() => false);
+$('aiGrant').onclick = async () => { if (await askConsent()) { const { aiAccount: a } = await chrome.storage.local.get('aiAccount'); await chrome.storage.local.set({ aiAccount: { ...a, error: '' } }); } loadAi(); };
 async function loadAi() {
   const { aiAccount: a } = await chrome.storage.local.get('aiAccount');
   const server = a?.server || ISGY_AI_SERVER;
@@ -107,6 +111,7 @@ async function loadAi() {
   const on = !!a?.token;
   $('aiOn').hidden = !on;
   $('aiOff').hidden = on;
+  $('aiGrant').hidden = !on || !DC.length || await chrome.permissions.contains({ data_collection: DC }).catch(() => true);
   if (on) {
     $('aiEmail').textContent = a.email;
     $('aiDot').classList.toggle('err', !!a.error);
@@ -119,6 +124,8 @@ async function loadAi() {
   }
 }
 $('aiLogin').onclick = async () => {
+  // First thing in the click handler: Firefox only shows the consent prompt during a user action.
+  if (!(await askConsent())) { $('aiErr').textContent = 'Ohne deine Zustimmung zur Datenübertragung kann das KI-Konto nicht verbunden werden.'; return; }
   const btn = $('aiLogin');
   btn.disabled = true;
   $('aiErr').textContent = '';
