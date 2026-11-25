@@ -7,3 +7,6 @@ dist/
 .env.*
 !.env.example
 release/
+
+# taste-skill build state, Chrome profiles and screenshots (local only)
+.taste-skill/

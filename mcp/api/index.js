@@ -5,7 +5,7 @@ import { kontoGet, kontoPost, extApi } from '../lib/konto.js';
 import { mcpPage, errorPage } from '../lib/pages.js';
 import { homePage } from '../lib/home.js';
 import { impressumPage, datenschutzPage } from '../lib/legal.js';
-import { SITE, LEGACY_HOSTS, verification, asset, robotsTxt, sitemapXml, manifestJson, llmsTxt } from '../lib/site.js';
+import { SITE, LEGACY_HOSTS, FIREFOX_FILE, verification, asset, robotsTxt, sitemapXml, manifestJson, llmsTxt } from '../lib/site.js';
 import { loadPdfjs } from '../lib/portal.js';
 
 const CORS = {
@@ -22,10 +22,12 @@ const PAGE_HEADERS = {
   'Referrer-Policy': 'same-origin',
   'X-Content-Type-Options': 'nosniff',
   'X-Robots-Tag': 'noindex, nofollow', // only / and /mcp (in a browser) are meant for search engines
-  'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'",
+  'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'self' data:; manifest-src 'self'; frame-ancestors 'none'; base-uri 'none'",
 };
 // The start page is public and identical for everyone: let the CDN cache it.
 const HOME_HEADERS = { ...PAGE_HEADERS, 'X-Robots-Tag': 'index, follow', 'Cache-Control': 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400' };
+// The start page loads its design kit (CSS, JS modules, fonts) from /assets/kit: same origin only, still nothing from third parties.
+const START_HEADERS = { ...HOME_HEADERS, 'Content-Security-Policy': "default-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'none'" };
 // /mcp is also the MCP endpoint, so its page is never cached by the CDN (an MCP client must not get HTML).
 const MCP_PAGE_HEADERS = { ...HOME_HEADERS, 'Cache-Control': 'public, max-age=0, must-revalidate', Vary: 'Accept, Authorization' };
 const FILE_CACHE = 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400';
@@ -133,7 +135,7 @@ export default async function handler(req, res) {
     if (path === '/' && m === 'GET') {
       // Older addresses keep working for the connection itself, but the start page lives in one place (duplicate-content / canonical).
       if (LEGACY_HOSTS.includes(new URL(o).host)) return send(res, 301, null, { Location: SITE + '/', 'Cache-Control': 'public, max-age=3600' });
-      return send(res, 200, homePage(), HOME_HEADERS);
+      return send(res, 200, homePage(), START_HEADERS);
     }
 
     // ----- legal pages (readable by anyone, kept out of search results) -----
@@ -149,10 +151,17 @@ export default async function handler(req, res) {
     const vf = /^\/(google[0-9a-f]{8,40}\.html)$/.exec(path);
     if (vf && m === 'GET' && vf[1] === verification().googleFile) return send(res, 200, `google-site-verification: ${vf[1]}`, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': FILE_CACHE, 'X-Robots-Tag': 'noindex' });
     const fileName = { '/favicon.ico': 'favicon.ico', '/apple-touch-icon.png': 'apple-touch-icon.png', '/apple-touch-icon-precomposed.png': 'apple-touch-icon.png' }[path]
-      || (/^\/assets\/([a-z0-9-]+\.(?:png|svg|ico|webp))$/.exec(path) || [])[1];
+      || (/^\/assets\/(.+)$/.exec(path) || [])[1]; // asset() only accepts known, safe names
     if (fileName && m === 'GET') {
       const f = asset(fileName);
       if (f) return send(res, 200, f.body, { 'Content-Type': f.type, 'Cache-Control': FILE_CACHE, 'X-Content-Type-Options': 'nosniff' });
+    }
+    // The signed Firefox build from the newest GitHub release, served with the add-on type so Firefox offers to
+    // install it right away (GitHub sends it as a plain download). Unlisted files on AMO are not public.
+    if (path === '/download/firefox.xpi' && m === 'GET') {
+      const r = await fetch(FIREFOX_FILE);
+      if (!r.ok) return send(res, 502, errorPage('Download nicht erreichbar', 'GitHub antwortet gerade nicht. Versuch es gleich noch einmal.'), PAGE_HEADERS);
+      return send(res, 200, Buffer.from(await r.arrayBuffer()), { 'Content-Type': 'application/x-xpinstall', 'Content-Disposition': 'inline; filename="isgy-intern-plus.xpi"', 'Cache-Control': 'public, max-age=0, s-maxage=600' });
     }
     if (path === '/health') {
       // Also proves the pdf.js bundle (only loaded lazily for the Kürzel list) made it into the deployment.

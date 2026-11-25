@@ -19,7 +19,9 @@ Welches Tool wofür:
 - Schulaufgaben/Exen/Tests und Lernstoff dafür → pruefungen
 - Alles zu einem Fach → fach; verpasster Stoff → tagebuch
 - Vertretungen gezielt → vertretungen; Wochenplan → stundenplan; Termine → termine; Kürzel → lehrer
-- Dateien: Schuldokumente (Formulare, Hausordnung, Grundwissen …) → dokumente; Arbeitsblätter/Anhänge stehen bei den Tagebucheinträgen; Inhalt jeder Datei → datei_lesen mit der ref
+- Dateien: Schuldokumente (Formulare, Hausordnung, Grundwissen …) → dokumente; Arbeitsblätter/Anhänge stehen bei den Tagebucheinträgen; Inhalt jeder Datei → datei_lesen mit der ref (Fotos/Bilder, Scans und Word/Excel kommen als Bild bzw. Anhang direkt mit – schau sie dir an, statt den Nutzer auf das Portal zu verweisen)
+- Formulare (Beurlaubung, Attest, Unfallanzeige …): Zuerst dokumente mit suche. Fehlt das Formular dort, heißt das NICHT, dass es keins gibt – nicht alle Formulare sind über die Schnittstelle sichtbar (z. B. der „Beurlaubungsantrag Unterricht oder Nachmittagsbetreuung“ liegt im Portal unter Dokumente und Formulare → Elterndateien → Formulare und im Sekretariat). Dann das „ISGY A-Z“ (dokumente, Kategorie Allgemein, Datei „ISGY A-Z Schueler“) mit datei_lesen nach dem Stichwort durchsuchen, Fundort, Frist und Regeln nennen und dem Nutzer sagen, wo er das Formular selbst öffnet. Gib ein Formular nie als „existiert nicht“ aus, nur weil es hier fehlt.
+- Du reichst NIE etwas für den Nutzer ein: keine Formulare absenden oder online ausfüllen, die direkt an Sekretariat, Schulleitung oder Lehrkräfte gehen, und keine Nachrichten. Du darfst Angaben und Begründung vorbereiten (Text zum Kopieren); abgeben, von den Eltern unterschreiben lassen und einreichen macht der Nutzer selbst. Weise auf Fristen und Hindernisse hin (z. B. angekündigter Leistungsnachweis am Tag).
 - Nachrichten im Portal-Postfach → nachrichten (Liste), nachricht (Text). Nur lesen: du kannst keine Nachrichten senden, beantworten, löschen oder verschieben – sag das, wenn der Nutzer es möchte.
 - Eigene Aufgaben & Notizen des Nutzers (aus der Browser-Erweiterung, nur mit ISGY-KI-Konto) → notizen; neue anlegen → notiz_anlegen; abhaken → aufgabe_erledigt; löschen → notiz_loeschen
 
@@ -47,8 +49,9 @@ async function callTool(auth, params) {
   const cred = auth.cred || credOf(auth.acc);
   const ctx = { acc: auth.acc, origin: auth.origin, portal: cred ? portalFor(cred) : null };
   try {
-    const text = `Stand: ${nowLabel()}\n\n` + await tool.run(ctx.portal, args, ctx);
-    return { result: { content: [{ type: 'text', text }] } };
+    const r = await tool.run(ctx.portal, args, ctx); // string, or { text, blocks } with extra image/resource blocks
+    const text = `Stand: ${nowLabel()}\n\n` + (typeof r === 'string' ? r : r.text);
+    return { result: { content: [{ type: 'text', text }, ...(r.blocks || [])] } };
   } catch (e) {
     let text = e.message || String(e);
     if (e instanceof AuthError) {

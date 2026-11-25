@@ -275,10 +275,11 @@ export const I = {
   alert: '<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 10 5Zm0 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd"/></svg>',
   bolt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z"/></svg>',
 };
-export function head(title, { description = DESCRIPTION, path = '', index = false, jsonld = [], robots: robotsOverride, css = '' } = {}) {
+export function head(title, { description = DESCRIPTION, path = '', index = false, jsonld = [], robots: robotsOverride, css = '', base = true, pre = '', attrs = '', meta = '' } = {}) {
+  // base=false: a page with its own design system (the start page on assets/kit), light only; its links come in via pre.
   const url = SITE + (path || '/');
   const robots = robotsOverride || (index ? 'index,follow,max-image-preview:large,max-snippet:-1' : 'noindex,nofollow');
-  return `<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  return `<!doctype html><html lang="de"${attrs}><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(description)}"><meta name="robots" content="${robots}">
 ${index ? `<link rel="canonical" href="${url}"><link rel="alternate" hreflang="de" href="${url}"><link rel="alternate" hreflang="x-default" href="${url}">
@@ -288,12 +289,12 @@ ${index ? `<link rel="canonical" href="${url}"><link rel="alternate" hreflang="d
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(title)}"><meta name="twitter:description" content="${esc(description)}"><meta name="twitter:image" content="${SITE}/assets/og.png"><meta name="twitter:image:alt" content="${esc(OG_ALT)}">
 ${verification().google ? `<meta name="google-site-verification" content="${esc(verification().google)}">` : ''}${verification().bing ? `<meta name="msvalidate.01" content="${esc(verification().bing)}">` : ''}
 <meta name="author" content="${AUTHOR.name}"><meta name="application-name" content="${NAME}"><meta name="apple-mobile-web-app-title" content="ISGY Plus">
-` : ''}<meta name="theme-color" content="#f7f6f3" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#111113" media="(prefers-color-scheme: dark)">
-<meta name="color-scheme" content="light dark"><meta name="format-detection" content="telephone=no">
+` : ''}${base ? `<meta name="theme-color" content="#f7f6f3" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#111113" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">` : '<meta name="theme-color" content="#f7f6f3"><meta name="color-scheme" content="light">'}${meta}<meta name="format-detection" content="telephone=no">
 <link rel="icon" href="/favicon.ico" sizes="48x48"><link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png"><link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest">
 ${jsonld.map((j) => `<script type="application/ld+json">${JSON.stringify(j).replace(/</g, '\\u003c')}</script>`).join('\n')}
-<style>${CSS}${css}</style></head>`;
+${pre}<style>${base ? CSS : ''}${css}</style></head>`;
 }
 export const tail = (js = '') => `<script>${JS}${js}</script></body></html>`;
 export const logo = (href = '/') => `<a class="logo" href="${href}" aria-label="ISGY Intern Plus – Startseite"><img class="mark-img" src="/assets/logo-96.png" width="32" height="32" alt=""><span class="lt">ISGY Intern <small>Plus</small></span></a>`;

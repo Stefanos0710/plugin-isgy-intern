@@ -6,11 +6,15 @@ export const SITE_HOST = new URL(SITE).host;
 // Older addresses that answer too (existing connections keep working); only the start page redirects to SITE.
 export const LEGACY_HOSTS = (process.env.LEGACY_HOSTS ?? 'isgy-intern-mcp.vercel.app').split(',').map((h) => h.trim()).filter(Boolean);
 export const REPO = 'https://github.com/Stefanos0710/plugin-isgy-intern';
-// Signed Firefox build on addons.mozilla.org (one click, updates itself).
-export const FIREFOX_XPI = 'https://addons.mozilla.org/firefox/downloads/file/5134563/isgy_intern_plus-1.3.3.xpi';
+// Firefox on the computer: /download/firefox.xpi serves the signed .xpi of the newest release with the add-on type,
+// so Firefox offers to install it. (Unlisted files on addons.mozilla.org can only be downloaded by their author.)
+export const FIREFOX_XPI = '/download/firefox.xpi';
+// Assets of the newest GitHub release (fixed names, so the links never change): Chrome & Co. and Firefox for Android.
+export const CHROME_ZIP = `${REPO}/releases/latest/download/isgy-intern-plus-chromium.zip`;
+export const FIREFOX_FILE = `${REPO}/releases/latest/download/isgy-intern-plus-firefox.xpi`;
 export const AUTHOR = { name: 'Stefanos0710', url: 'https://github.com/Stefanos0710' };
 // Bump when the start page content changes (sitemap <lastmod>).
-export const UPDATED = '2026-10-17';
+export const UPDATED = '2026-11-25';
 
 // Who runs the site (Impressum / Datenschutz). Kept in environment variables (not in the public repository).
 export const operator = () => ({
@@ -30,19 +34,22 @@ export const LEGAL_UPDATED = '17. Oktober 2026';
 
 export const NAME = 'ISGY Intern Plus';
 // Start page (/): the project as a whole, mainly the browser extension.
-export const TITLE = 'ISGY Intern Plus – isgy-intern.de, endlich übersichtlich';
-export const DESCRIPTION = 'Kostenlose Browser-Erweiterung für isgy-intern.de: „Mein Tag“ mit Vertretungen, Lehrernamen statt Kürzel, Aufgaben & Notizen – und dein Schulportal im KI-Chat.';
+export const TITLE = 'ISGY Intern Plus: Browser-Erweiterung für isgy-intern.de';
+export const DESCRIPTION = 'Kostenlose Browser-Erweiterung für isgy-intern.de: „Mein Tag“ mit Vertretungen, Lehrernamen statt Kürzel, Hausaufgaben, Notizen – und dein Schulportal im KI-Chat.';
 // AI page (/mcp, also the MCP server URL).
 export const MCP_TITLE = 'ISGY Intern im KI-Chat – für Claude, ChatGPT & Gemini';
 export const MCP_DESCRIPTION = 'Frag Claude, ChatGPT oder Gemini nach Stundenplan, Vertretungen, Hausaufgaben & Prüfungen von isgy-intern.de. Kostenloser MCP-Server, in einer Minute verbunden.';
 export const OG_ALT = 'ISGY Intern Plus: Dein Schulportal im KI-Chat – für Claude, ChatGPT und Gemini';
-export const VERSION = '1.3.1'; // extension version shown on the site (manifest.json)
+export const VERSION = '1.4.0'; // extension version shown on the site (manifest.json)
 
 // ---------- static assets (assets/ is bundled with the function, see vercel.json includeFiles) ----------
-const TYPES = { png: 'image/png', svg: 'image/svg+xml', ico: 'image/x-icon', webp: 'image/webp' };
+// kit/ holds the start page's design system (CSS, JS modules, self-hosted fonts), copied from the taste-skill kit.
+const TYPES = { png: 'image/png', svg: 'image/svg+xml', ico: 'image/x-icon', webp: 'image/webp', jpg: 'image/jpeg',
+  css: 'text/css; charset=utf-8', js: 'text/javascript; charset=utf-8', json: 'application/json', woff2: 'font/woff2' };
 const cache = new Map();
 export function asset(name) {
-  if (!/^[a-z0-9-]+\.(png|svg|ico|webp)$/.test(name)) return null;
+  // Lower-case segments only, so no "..": nothing outside assets/ can be read.
+  if (!/^(?:kit\/(?:[a-z0-9_-]+\/)*[a-z0-9_-]+\.(?:css|js|json|woff2|jpg|png|svg)|[a-z0-9-]+\.(?:png|svg|ico|webp|jpg))$/.test(name)) return null;
   if (!cache.has(name)) {
     try { cache.set(name, { body: readFileSync(new URL(`../assets/${name}`, import.meta.url)), type: TYPES[name.split('.').pop()] }); }
     catch { cache.set(name, null); }

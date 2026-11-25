@@ -37,7 +37,20 @@ Browser-Erweiterung (Chrome / Edge / Brave / Firefox, Manifest V3) und MCP-Serve
 
 ## Installation
 
-### 1. Paket bauen
+### Schnell (ohne Bauen)
+
+| Browser | So geht's |
+| --- | --- |
+| **Firefox** (Computer) | [Hier installieren](https://isgy-intern-plus.vercel.app/download/firefox.xpi) und „Zulassen“ klicken |
+| **Chrome, Edge, Brave, Opera, Vivaldi, Arc** | [`isgy-intern-plus-chromium.zip`](https://github.com/Stefanos0710/plugin-isgy-intern/releases/latest/download/isgy-intern-plus-chromium.zip) laden und entpacken. Dann `chrome://extensions` öffnen (Edge: `edge://extensions`), **Entwicklermodus** einschalten, **„Entpackte Erweiterung laden“** und den entpackten Ordner wählen. |
+| **Android** (Firefox) | [`isgy-intern-plus-firefox.xpi`](https://github.com/Stefanos0710/plugin-isgy-intern/releases/latest/download/isgy-intern-plus-firefox.xpi) laden. In Firefox: Einstellungen › Über Firefox, fünfmal aufs Logo tippen, zurück, **„Erweiterung aus Datei installieren“** und die Datei wählen. |
+| **iPhone** | Geht nicht als Erweiterung (Apple erlaubt das nur über den App Store). Nutze die [KI-Variante](#ki-assistenten--ki-konto): Claude oder ChatGPT in der App fragen. |
+
+Alle Dateien liegen auch unter [Releases](https://github.com/Stefanos0710/plugin-isgy-intern/releases).
+
+### Selbst bauen
+
+#### 1. Paket bauen
 Du brauchst nur [Node.js](https://nodejs.org) (ab Version 18), sonst nichts.
 
 ```bash
@@ -51,7 +64,7 @@ Danach liegt im Ordner `dist/` alles, was du brauchst:
 | `dist/chromium/` und `dist/isgy-intern-plus-<version>-chromium.zip` | Chrome, Edge, Brave, Opera, Vivaldi, Arc und alle anderen Chromium-Browser |
 | `dist/firefox/` und `dist/isgy-intern-plus-<version>-firefox.zip` | Firefox |
 
-### 2. Im Browser hinzufügen
+#### 2. Im Browser hinzufügen
 
 **Chrome / Brave / Vivaldi / Arc**
 1. `chrome://extensions` öffnen (Brave: `brave://extensions`)
@@ -99,7 +112,7 @@ Bei einem Update: `version` in `manifest.json` erhöhen (Mozilla signiert jede V
 
 **Safari** wird nicht direkt unterstützt. Auf einem Mac lässt sich der Chromium-Ordner mit `xcrun safari-web-extension-converter dist/chromium` in ein Safari-Projekt umwandeln.
 
-### 3. Benutzen
+#### 3. Benutzen
 isgy-intern.de öffnen und einloggen. Das Dashboard erscheint jetzt als „Mein Tag“. Beim ersten Besuch wird die Kürzel-Liste einmalig geladen. Optional: [KI-Konto einrichten](#ki-assistenten--ki-konto).
 
 ### Aktualisieren
