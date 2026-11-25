@@ -17,6 +17,10 @@
     if (ch.pins) renderPins();
   });
   document.documentElement.style.setProperty('--ip-accent', S.accent);
+  // Geist ships with the extension (fonts/, OFL); injected here so the URL is right in Chromium and Firefox.
+  document.head.append(Object.assign(document.createElement('style'), {
+    textContent: `@font-face{font-family:'Geist Plus';src:url(${chrome.runtime.getURL('fonts/geist.woff2')}) format('woff2');font-weight:100 900;font-display:swap}`,
+  }));
   document.documentElement.classList.toggle('ip-no-theme', !S.modernTheme);
   const page = new URLSearchParams(location.search).get('page') || '';
 
@@ -41,6 +45,8 @@
   const DAYS = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
   const TIMES = { 1: '07:55', 2: '08:40', 3: '09:45', 4: '10:30', 5: '11:30', 6: '12:15', 7: '13:55', 8: '14:40' };
   const clean = (s) => String(s ?? '').trim();
+  // Subject codes compared loosely: case, course suffix ("_1") and trailing digits ignored. Never by prefix (K ≠ Ku, E ≠ Eth).
+  const subjKey = (s) => clean(s).toLowerCase().split('_')[0].replace(/\d+$/, '');
   const getJSON = async (url, opt) => {
     const r = await fetch(url, opt);
     if (!r.ok) throw new Error(`${url} → ${r.status}`);
@@ -328,7 +334,7 @@
 
   function lessonRow(it, isNow) {
     const { slot } = it;
-    const subs = it.subs.map(subLine);
+    const subs = it.subs.map((v) => subLine(v));
     const cancelled = subs.some((s) => s.cancel);
     const detail = h('div', { class: 'ip-detail', hidden: true, onclick: (e) => e.stopPropagation() });
     const hw = h('span', { class: 'ip-pill', hidden: true, title: 'Im letzten Eintrag steht eine Hausaufgabe' }, 'HA');
@@ -362,7 +368,12 @@
     return row;
   }
 
-  function dayView(date, sp, vplan, hidden) {
+  // A Vertretungsplan entry belongs to a slot when subject or teacher match. An entry without either goes to the
+  // only lesson of that hour; an entry for another subject never does (Ethik must not show Religion's Entfall).
+  const slotMatch = (v, s) => (clean(v.fach_alt) && subjKey(v.fach_alt) === subjKey(s.subject)) || (clean(v.user_alt_kurz) && clean(v.user_alt_kurz) === clean(s.teacher));
+  const anonymous = (v) => !clean(v.fach_alt) && !clean(v.user_alt_kurz);
+
+  function dayView(date, sp, vplan, hidden, mine) {
     const plan = sp.plan?.[(date.getDay() + 6) % 7] || [];
     const vp = vplan.filter((v) => v.date === deFull(date));
     const items = [];
@@ -371,8 +382,10 @@
       const n = i + 1;
       const subsHere = vp.filter((v) => lessonsOf(v.stunde).includes(n));
       const shown = slots.filter((s) => !hidden.has(s.subject));
+      // Entries for a subject the user has hidden (a parallel group) are not theirs: drop them.
+      slots.filter((s) => hidden.has(s.subject)).forEach((s) => subsHere.filter((v) => slotMatch(v, s)).forEach((v) => used.add(v)));
       for (const s of shown) {
-        const subs = subsHere.filter((v) => clean(v.fach_alt) === s.subject || clean(v.user_alt_kurz) === s.teacher || shown.length === 1);
+        const subs = subsHere.filter((v) => slotMatch(v, s) || (shown.length === 1 && anonymous(v)));
         subs.forEach((v) => used.add(v));
         // Merge double lessons (same slot in consecutive hours, no substitution on either).
         const prev = items.find((it) => it.to === n - 1 && it.slot.subject === s.subject && it.slot.teacher === s.teacher && it.slot.room === s.room);
@@ -381,10 +394,13 @@
       }
     });
     const now = iso(date) === iso(today()) ? Number(sp.currentStunde) : -1;
-    const orphan = vp.filter((v) => !used.has(v));
+    // Unmatched entries are only shown when they could be the user's: no subject given, or a subject they have.
+    const orphan = vp.filter((v) => !used.has(v) && (!clean(v.fach_alt) || mine.has(subjKey(v.fach_alt))));
     const dayNotes = notes.filter((x) => x.type !== 'note' && x.date === iso(date) && !x.done);
+    const real = items.filter((it) => !it.subs.some((v) => subLine(v).cancel));
     return {
-      subCount: vp.length,
+      subCount: items.reduce((n, it) => n + it.subs.length, 0) + orphan.length,
+      hours: real.flatMap((it) => lessonsOf(`${it.from}-${it.to}`)),
       el: h('div', { class: 'ip-day' },
         dayNotes.map((x) => h('div', { class: 'ip-callout' }, '☐ ', x.text)),
         items.length ? h('div', { class: 'ip-lessons' }, items.map((it, i) => { const r = lessonRow(it, now >= it.from && now <= it.to); r.style.setProperty('--i', i); return r; })) : h('div', { class: 'ip-empty' }, 'Kein Unterricht.'),
@@ -462,7 +478,7 @@
             h('input', { type: 'checkbox', checked: n.done, onchange: (e) => { n.done = e.target.checked; save(); } }),
             h('span', { class: 'ip-note-text' }, n.text, due ? h('span', { class: 'ip-due' + due.cls }, due.text) : null),
             h('button', { class: 'ip-x', title: 'Löschen', onclick: (e) => { e.preventDefault(); notes = notes.filter((x) => x !== n); save(); } }, '×'));
-        }) : h('div', { class: 'ip-empty' }, 'Keine Aufgaben. 🎉')),
+        }) : h('div', { class: 'ip-empty' }, 'Alles erledigt.')),
         done ? h('button', { class: 'ip-textbtn', onclick: () => { notes = notes.filter((n) => isNote(n) || !n.done); save(); } }, `${done} erledigte entfernen`) : null,
       ];
     }
@@ -522,7 +538,7 @@
     const panel = h('div', { id: 'isgy-plus' },
       h('header', { class: 'ip-head' },
         h('div', { class: 'ip-date-kicker' }, dateText),
-        h('h2', {}, firstName ? `${greeting}, ${firstName}` : greeting, h('span', { class: 'ip-wave', 'aria-hidden': 'true' }, '👋')),
+        h('h2', {}, firstName ? `${greeting}, ${firstName}` : greeting),
         chips,
         h('div', { class: 'ip-actions' },
           h('button', { class: 'ip-search', onclick: openPalette, title: 'Seiten & Befehle suchen' }, 'Suchen', h('kbd', {}, 'Strg K')),
@@ -539,10 +555,13 @@
       const cls = sp.active;
       local.set({ stundenplan: { plan: sp.plan, cls } }); // for the subject picker on the options page
       const hidden = new Set(S.hiddenSubjects.split(',').map((s) => s.trim()).filter(Boolean));
+      // Subjects the user actually has (every visible slot of the week).
+      const mine = new Set((sp.plan || []).flat(2).filter((s) => s && !hidden.has(s.subject)).map((s) => subjKey(s.subject)));
+      const hiddenKeys = new Set([...hidden].map(subjKey));
       let vplan = [];
       try {
         const vl = await getJSON('rest.php/vplan/getList', { headers: await authHeaders() });
-        vplan = Object.values(vl).flatMap((x) => x?.data || []).filter((v) => classMatch(v.klasse, cls));
+        vplan = Object.values(vl).flatMap((x) => x?.data || []).filter((v) => classMatch(v.klasse, cls) && !hiddenKeys.has(subjKey(v.fach_alt)));
       } catch (err) { console.warn('[ISGY Plus] vplan', err); }
       // Show every school day up to the last published Vertretungsplan date (max. one month ahead), at least the rest of this week.
       const lastVp = Math.max(...vplan.map((v) => { const [d, m, y] = String(v.date).split('.').map(Number); return new Date(y, m - 1, d).getTime() || 0; }), 0);
@@ -551,16 +570,17 @@
       const days = [];
       for (let d = today(); d <= end || days.length < 2; d = addDays(d, 1)) if (!isWeekend(d)) days.push(d);
       const label = (d) => { const diff = Math.round((d - today()) / 864e5); return diff === 0 ? 'Heute' : diff === 1 ? 'Morgen' : DAYS[d.getDay()]; };
-      const views = days.map((d) => dayView(d, sp, vplan, hidden));
+      const views = days.map((d) => dayView(d, sp, vplan, hidden, mine));
       // After the last lesson of today, open the next day first.
-      const lastToday = (sp.plan?.[(days[0].getDay() + 6) % 7] || []).reduce((m, x, i) => (x.length ? i + 1 : m), 0);
+      // Counts only the user's own lessons that take place (hidden subjects and Entfall left out).
+      const lastToday = Math.max(0, ...views[0].hours);
       const start = iso(days[0]) === iso(today()) && Number(sp.currentStunde) > lastToday ? 1 : 0;
       // Status chips under the greeting: class, when school ends / starts, number of substitutions.
-      const hoursOf = (d) => (sp.plan?.[(d.getDay() + 6) % 7] || []).map((x, i) => (x.some((s) => !hidden.has(s.subject)) ? i + 1 : 0)).filter(Boolean);
+      const hoursOf = (i) => [...new Set(views[i].hours)].sort((a, b) => a - b);
       const endOf = (n) => { const [hh, mm] = (TIMES[n] || '').split(':').map(Number); if (isNaN(hh)) return ''; const t = hh * 60 + mm + 45; return `${pad(Math.floor(t / 60))}:${pad(t % 60)}`; };
       const chip = (text, cls2 = '') => h('span', { class: 'ip-chip ' + cls2 }, text);
-      const focus = days[start], hrs = hoursOf(focus);
-      const subs = vplan.filter((v) => v.date === deFull(focus)).length;
+      const focus = days[start], hrs = hoursOf(start);
+      const subs = views[start].subCount;
       chips.replaceChildren(...[
         cls ? chip(`Klasse ${cls}`) : null,
         hrs.length ? chip(iso(focus) === iso(today()) ? `Heute ${hrs.length} Std · Schluss ${endOf(hrs.at(-1))}` : `${label(focus)} ab ${TIMES[hrs[0]] || hrs[0] + '. Std'} · ${hrs.length} Std`) : null,

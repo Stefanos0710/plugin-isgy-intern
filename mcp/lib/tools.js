@@ -84,6 +84,9 @@ function resolveSubject(input, subjects) {
   if (alias) { const a = subjects.filter((x) => base(x) === alias.toLowerCase()); if (a.length) return a; }
   return subjects.filter((x) => x.toLowerCase().startsWith(s));
 }
+// Subject codes compared loosely: case, course suffix ("_1") and trailing digits ignored; never by prefix (K ≠ Ku).
+const subjKey = (s) => clean(s).toLowerCase().split('_')[0].replace(/\d+$/, '');
+const slotMatch = (v, s) => (clean(v.fach_alt) && subjKey(v.fach_alt) === subjKey(s.subject)) || (clean(v.user_alt_kurz) && clean(v.user_alt_kurz) === clean(s.teacher));
 const subjectMatches = (entrySubject, wanted) => wanted.some((w) => clean(entrySubject) === w || clean(entrySubject).split('_')[0] === w);
 function requireSubject(input, sp) {
   const all = subjectsOf(sp);
@@ -326,7 +329,9 @@ function buildDay(ds, sp, vplanAll, cls, teacher) {
     const n = i + 1;
     const subsHere = vp.filter((v) => lessonsOf(v.stunde).includes(n));
     for (const s of slots || []) {
-      const subs = subsHere.filter((v) => clean(v.fach_alt) === clean(s.subject) || clean(v.user_alt_kurz) === clean(s.teacher) || slots.length === 1);
+      // Subject or teacher must match; an entry without either goes to the only lesson of that hour. An entry for
+      // another subject (a parallel group, e.g. Religion while the plan shows Ethik) never does.
+      const subs = subsHere.filter((v) => slotMatch(v, s) || (slots.length === 1 && !clean(v.fach_alt) && !clean(v.user_alt_kurz)));
       subs.forEach((v) => used.add(v));
       const prev = items.find((it) => it.to === n - 1 && it.slot.subject === s.subject && it.slot.teacher === s.teacher && it.slot.room === s.room);
       if (prev && !prev.subs.length && !subs.length) prev.to = n;
@@ -350,7 +355,9 @@ function buildDay(ds, sp, vplanAll, cls, teacher) {
     lines.push(`${range(it.from, it.to)} Std ${span(it.from, it.to)}  ${clean(s.subject)} · ${teacher(s.teacher)}${clean(s.room) ? ' · Raum ' + clean(s.room) : ''}${state}`);
     for (const v of it.subs) lines.push('     → ' + subInfo(v, teacher).text);
   }
-  const orphans = vp.filter((v) => !used.has(v)).map((v) => `${clean(v.stunde)}. Std ${clean(v.fach_alt)}: ${subInfo(v, teacher).text}`);
+  // Unmatched entries only when they could be this class's lessons: no subject, or a subject in its timetable.
+  const own = new Set(subjectsOf(sp).map(subjKey));
+  const orphans = vp.filter((v) => !used.has(v) && (!clean(v.fach_alt) || own.has(subjKey(v.fach_alt)))).map((v) => `${clean(v.stunde)}. Std ${clean(v.fach_alt)}: ${subInfo(v, teacher).text}`);
   const real = items.filter((it) => !it.cancel);
   const first = real.length ? Math.min(...real.map((x) => x.from)) : 0, last = real.length ? Math.max(...real.map((x) => x.to)) : 0;
   const planned = items.length ? Math.max(...items.map((x) => x.to)) : 0;
@@ -713,7 +720,7 @@ async function dokumente(portal, args) {
         ...names.map((nm) => `  ${nm} [datei_lesen ref „${dlRef(f.id, nm)}“]`));
     }
   }
-  if (!n) return `Keine Dokumente${q ? ` zu „${args.suche}“` : ''}${k ? ` in Kategorie „${args.kategorie}“` : ''}. Kategorien: ${cats.map((c) => clean(c.title)).join(', ')}`;
+  if (!n) return `Keine Dokumente${q ? ` zu „${args.suche}“` : ''}${k ? ` in Kategorie „${args.kategorie}“` : ''}. Kategorien: ${cats.map((c) => clean(c.title)).join(', ')}\nHinweis: Nicht alle Formulare sind über die Schnittstelle sichtbar (z. B. Beurlaubungsantrag: Portal → Dokumente und Formulare → Elterndateien → Formulare, liegt auch im Sekretariat). Sag nicht „gibt es nicht“: such im „ISGY A-Z“ (Kategorie Allgemein, datei_lesen) nach dem Stichwort und nenne dem Nutzer den Fundort. Du reichst nichts selbst ein – das macht der Nutzer.`;
   return [`Dokumente (isgy-intern → Dokumente)${q ? `, Suche „${args.suche}“` : ''}: ${n} Einträge. Inhalt mit datei_lesen und der ref lesen.`, ...out].join('\n');
 }
 
@@ -740,20 +747,39 @@ async function refPath(portal, ref) {
   throw new InputError(`Unbekannte ref „${ref}“. Erwartet z. B. „dl:32:Hausordnung.pdf“, „tb:2026-10-06:123“ oder „msg:abc123“ – aus den Tools dokumente, tagebuch, hausaufgaben oder nachricht.`);
 }
 
+// Binary files go to the client as MCP content blocks (base64). Vercel caps a response at 4.5 MB; base64 adds a third.
+const MAX_BINARY = 3 * 1024 * 1024;
+const MAGIC = [['image/png', [0x89, 0x50, 0x4e, 0x47]], ['image/jpeg', [0xff, 0xd8, 0xff]], ['image/gif', [0x47, 0x49, 0x46, 0x38]]];
+function fileType(buf, type) {
+  if (type && type !== 'application/octet-stream') return type;
+  const m = MAGIC.find(([, sig]) => sig.every((b, i) => buf[i] === b));
+  if (m) return m[0];
+  return buf.length > 11 && Buffer.from(buf.subarray(0, 4)).toString() === 'RIFF' && Buffer.from(buf.subarray(8, 12)).toString() === 'WEBP' ? 'image/webp' : type;
+}
+// A file the model should look at itself (image, scan, Word/Excel …): text note + image/resource block.
+function binaryResult(head, buf, type, ref, note) {
+  if (buf.length > MAX_BINARY) return `${head}\n${note} Die Datei ist mit ${(buf.length / 1048576).toFixed(1)} MB zu groß, um sie zu übertragen – der Nutzer öffnet sie auf isgy-intern.de.`;
+  const data = Buffer.from(buf).toString('base64');
+  const block = /^image\/(png|jpe?g|gif|webp)$/.test(type) ? { type: 'image', data, mimeType: type }
+    : { type: 'resource', resource: { uri: `isgy-intern://datei/${encodeURIComponent(ref)}`, mimeType: type || 'application/octet-stream', blob: data } };
+  return { text: `${head}\n${note} Die Datei hängt als ${block.type === 'image' ? 'Bild' : 'Anhang'} an dieser Antwort.`, blocks: [block] };
+}
+
 async function dateiLesen(portal, args) {
   const { path, name } = await refPath(needPortal(portal), args.ref);
-  const { buf, type } = await portal.file(path);
+  const file = await portal.file(path);
+  const { buf } = file;
+  const type = fileType(buf, file.type);
   const isPdf = type.includes('pdf') || Buffer.from(buf.subarray(0, 5)).toString() === '%PDF-';
   const head = `Datei: ${name || args.ref} (${type || '?'}, ${Math.round(buf.length / 1024)} KB)`;
   if (isPdf) {
     const max = clamp(args.max_zeichen, 30000, 1000, 100000);
     const r = await pdfText(buf, max);
-    if (!r.text.replace(/--- Seite \d+ ---/g, '').trim()) return `${head}\nDas PDF enthält keinen auslesbaren Text (vermutlich eingescannt).`;
+    if (!r.text.replace(/--- Seite \d+ ---/g, '').trim()) return binaryResult(head, buf, 'application/pdf', args.ref, 'Das PDF enthält keinen auslesbaren Text (vermutlich eingescannt).');
     return `${head}, ${r.total} Seite(n)${r.cut ? ` – gekürzt auf ${r.pages} Seite(n) / ${max} Zeichen (max_zeichen erhöhen)` : ''}\n\n${r.text}`;
   }
   if (/^text\/|json|xml/.test(type)) return `${head}\n\n${(type.includes('html') ? htmlText : multiline)(Buffer.from(buf).toString('utf8')).slice(0, 30000)}`;
-  if (type.startsWith('image/')) return `${head}\nDas ist ein Bild – den Inhalt kann ich als Text nicht lesen. Öffne es auf isgy-intern.de.`;
-  return `${head}\nDieses Dateiformat kann ich nicht als Text lesen (nur PDF und Text).`;
+  return binaryResult(head, buf, type, args.ref, type.startsWith('image/') ? 'Das ist ein Bild.' : 'Dieses Dateiformat lese ich nicht als Text.');
 }
 
 // ---------- nachrichten (portal messages, read-only) ----------
@@ -982,14 +1008,14 @@ export const TOOLS = [
   {
     name: 'dokumente',
     title: 'Dokumente',
-    description: 'Dateien aus dem Bereich „Dokumente“ von isgy-intern (Formulare, Hausordnung, Mathe-Grundwissen, Berufsberatung …) nach Kategorien, mit ref zum Lesen über datei_lesen. Für „Gibt es das Formular für …?“, „Was steht in der Hausordnung zu …?“.',
+    description: 'Dateien aus dem Bereich „Dokumente“ von isgy-intern (Formulare, Hausordnung, Mathe-Grundwissen, Berufsberatung …) nach Kategorien, mit ref zum Lesen über datei_lesen. Für „Gibt es das Formular für …?“, „Was steht in der Hausordnung zu …?“. Nicht jedes Formular ist hier sichtbar (z. B. Beurlaubungsantrag): bei keinem Treffer im „ISGY A-Z“ nachlesen, nie behaupten, es gäbe das Formular nicht. Nur lesen – Formulare werden nicht von dir eingereicht.',
     inputSchema: { type: 'object', properties: { suche: { type: 'string', description: 'Optional: Suchbegriff in Titel/Dateiname.' }, kategorie: { type: 'string', description: 'Optional: Teil des Kategorienamens.' } }, additionalProperties: false },
     run: dokumente,
   },
   {
     name: 'datei_lesen',
     title: 'Datei lesen',
-    description: 'Liest den Text einer Datei aus isgy-intern: Dokumente (ref „dl:…“ aus dokumente), Anhänge im Klassentagebuch, z. B. Arbeitsblätter (ref „tb:…“ aus tagebuch/hausaufgaben/letzter_eintrag) und Anhänge von Nachrichten (ref „msg:…“ aus nachricht). PDFs als Text; Bilder können nicht gelesen werden.',
+    description: 'Öffnet eine Datei aus isgy-intern: Dokumente (ref „dl:…“ aus dokumente), Anhänge im Klassentagebuch, z. B. Arbeitsblätter, Fotos von Tafelbildern (ref „tb:…“ aus tagebuch/hausaufgaben/letzter_eintrag) und Anhänge von Nachrichten (ref „msg:…“ aus nachricht). PDFs und Textdateien als Text; Bilder, eingescannte PDFs und andere Dokumente (Word, Excel …) werden bis ca. 3 MB als Bild bzw. Anhang direkt mitgeschickt.',
     inputSchema: { type: 'object', properties: { ref: { type: 'string', description: 'Die ref aus einem anderen Tool, z. B. „tb:2026-10-06:123“.' }, max_zeichen: { type: 'integer', minimum: 1000, maximum: 100000, description: 'Höchstens so viele Zeichen Text (Standard 30000).' } }, required: ['ref'], additionalProperties: false },
     run: dateiLesen,
   },

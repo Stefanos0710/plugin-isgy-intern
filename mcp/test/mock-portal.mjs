@@ -1,4 +1,5 @@
 // Fake isgy-intern.de for tests. Behaves like the real portal as far as the MCP server relies on it.
+const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
 import { createServer } from 'node:http';
 import { today, addDays, deDate, isWeekend } from '../lib/dates.js';
 
@@ -72,6 +73,7 @@ export function startMock(port) {
       const pdf = (page === 'ext_downloads' && url.searchParams.get('task') === 'download' && ['80', '32'].includes(url.searchParams.get('id')))
         || (page === 'ext_tagebuch' && url.searchParams.get('uploadID') === '5') || (page === 'ext_inbox' && url.searchParams.get('fid') === 'abc123');
       if (pdf) { res.writeHead(200, { 'content-type': 'application/pdf' }); return res.end(kuerzelPdf()); }
+      if (page === 'ext_tagebuch' && url.searchParams.get('uploadID') === '6') { res.writeHead(200, { 'content-type': 'image/png' }); return res.end(PNG); }
       if (url.searchParams.get('task') === 'download' || url.searchParams.get('uploadID') || url.searchParams.get('fid')) { res.writeHead(404); return res.end(); }
       // Enough of the real page for the extension: sidebar (= logged in), main, session in localStorage.
       return html(res, `<!doctype html><html><head><meta charset="utf-8"></head><body><nav class="su-sidebar-nav"><a href="index.php?page=ext_dashboard">Dashboard</a></nav>
@@ -86,6 +88,8 @@ export function startMock(port) {
         if (ep === 'vplan/getList') return json(res, 200, { heute: { data: [
           { date: deDate(D1), stunde: '3', klasse: '10b', fach_alt: 'D', user_alt_kurz: 'Sw', fach_neu: 'D', user_neu_kurz: 'Mm', user_neu_title: '', raum_alt: '101', raum_neu: '204', info_1: 'Arbeitsauftrag', info_2: 'Vertretung' },
           { date: deDate(D1), stunde: '4', klasse: '10b', fach_alt: 'E_1', user_alt_kurz: 'Hb', fach_neu: '', user_neu_kurz: '', user_neu_title: 'XXX', raum_alt: '102', raum_neu: '', info_1: '', info_2: 'Entfall' },
+          // A parallel group of the class (Religion) that is not in this timetable: must not cancel the M lesson.
+          { date: deDate(D1), stunde: '1', klasse: '10b_K', fach_alt: 'K', user_alt_kurz: 'Rk', user_neu_title: 'XXX', raum_alt: 'K1', info_1: 'Religion-Gruppe', info_2: 'Entfall' },
           { date: deDate(D1), stunde: '1-2', klasse: '9a', fach_alt: 'M', user_alt_kurz: 'Mm', user_neu_kurz: 'Kl', raum_alt: '1', info_2: 'Vertretung' },
         ] }, morgen: null });
         if (ep === 'klassenkalender/getKalenders') return json(res, 200, [{ id: 7, title: '10b' }, { id: 8, title: 'Schule', preSelect: false }]);
@@ -130,7 +134,8 @@ export function startMock(port) {
           { subject: 'M', lesson: 1, teacher: 'Mm', topic: `Quadratische Funktionen (${d})`, homework: d === LAST ? 'S. 42 Nr. 3a–c\n\nbis Freitag' : '', notes: '', substitution: false, cancelled: false },
           { subject: 'M', lesson: 2, teacher: 'Mm', topic: `Quadratische Funktionen (${d})`, homework: d === LAST ? 'S. 42 Nr. 3a–c\n\nbis Freitag' : '', notes: '' },
           { subject: 'E_1', lesson: 4, teacher: 'Hb', topic: 'Reported speech', homework: 'Vocab unit 3', notes: '',
-            publicFiles: d === LAST ? [{ id: 5, name: 'AB Vokabeln.pdf', url: `http://${req.headers.host}/index.php?page=ext_tagebuch&uploadID=5&accessCode=x&fd=1` }] : [] },
+            publicFiles: d === LAST ? [{ id: 5, name: 'AB Vokabeln.pdf', url: `http://${req.headers.host}/index.php?page=ext_tagebuch&uploadID=5&accessCode=x&fd=1` },
+              { id: 6, name: 'Tafelbild.png', url: `http://${req.headers.host}/index.php?page=ext_tagebuch&uploadID=6&accessCode=x&fd=1` }] : [] },
           // Test preparation: due on the Ex day (Wed), not at the next Ph lesson (Tue).
           ...(d === addDays(LAST, -1) ? [{ subject: 'Ph', lesson: 2, teacher: 'Kl', topic: 'Optik', homework: 'Lernen auf die angesagte Ex', notes: '' }] : []),
         ];

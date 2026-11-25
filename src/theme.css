@@ -2,22 +2,22 @@
    Most of the portal's own components (su-*) are driven by the design tokens from style/core/su-tokens.css,
    so overriding those tokens restyles them all; the rest are AdminLTE/Bootstrap leftovers styled directly. */
 html:not(.ip-no-theme) {
-  --ip-page-bg: #f3f4f7;
-  --ip-card-shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 4px 16px rgba(16, 24, 40, .05);
+  --ip-page-bg: #f4f4f5;
+  --ip-card-shadow: 0 0 0 1px rgba(21, 23, 26, .07), 0 1px 2px rgba(21, 23, 26, .04), 0 18px 40px -18px rgba(21, 23, 26, .12);
   --ip-ease: cubic-bezier(.16, 1, .3, 1);
 
   /* Beats ".skin-yellow .su-theme" from su-skins.css. */
   & body,
   & body .su-theme,
   & body .su-app {
-    --su-font-sans: inherit;
+    --su-font-sans: 'Geist Plus', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
     --su-color-canvas: transparent;
-    --su-color-surface-soft: #f6f7f9;
-    --su-color-table-stripe: #f9fafb;
-    --su-color-border: #eceef1;
-    --su-color-border-strong: #dfe3e8;
+    --su-color-surface-soft: #f5f5f6;
+    --su-color-table-stripe: #fafafa;
+    --su-color-border: #ececee;
+    --su-color-border-strong: #dedee2;
     --su-radius-control: 10px;
-    --su-radius-panel: 16px;
+    --su-radius-panel: 20px;
     --su-color-primary: var(--ip-accent, #e8730c);
     --su-color-primary-hover: color-mix(in srgb, var(--ip-accent, #e8730c) 88%, #000);
     --su-color-primary-active: color-mix(in srgb, var(--ip-accent, #e8730c) 80%, #000);
@@ -28,6 +28,9 @@ html:not(.ip-no-theme) {
     --su-heading-accent: var(--ip-accent, #e8730c);
     --su-heading-accent-soft: color-mix(in srgb, var(--ip-accent, #e8730c) 14%, #fff);
   }
+
+  & body { font-family: 'Geist Plus', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif; -webkit-font-smoothing: antialiased; letter-spacing: -.003em; }
+  & h1, & h2, & h3, & .box-title { letter-spacing: -.02em; }
 
   /* ---------- Page canvas: one calm grey, no white block behind it ---------- */
   & .content-wrapper,
@@ -41,38 +44,38 @@ html:not(.ip-no-theme) {
   & .page-submenue { display: flex; flex-wrap: wrap; gap: 6px; background: none; border: 0; }
   & .page-submenue a {
     display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border: 0; border-radius: 999px;
-    background: transparent; color: #6b7280; font-size: 15px; font-weight: 600; text-decoration: none;
+    background: transparent; color: #666b73; font-size: 15px; font-weight: 500; text-decoration: none;
     transition: background .35s var(--ip-ease), color .35s var(--ip-ease), box-shadow .35s var(--ip-ease);
   }
-  & .page-submenue a:hover { background: rgba(255, 255, 255, .7); color: #1f2937; }
+  & .page-submenue a:hover { background: rgba(255, 255, 255, .7); color: #15171a; }
   & .page-submenue a.active,
   & .page-submenue-mobile a:only-child {
-    background: #fff; color: #1f2937; box-shadow: 0 1px 3px rgba(16, 24, 40, .1);
+    background: #fff; color: #15171a; box-shadow: 0 0 0 1px rgba(21, 23, 26, .08), 0 1px 2px rgba(21, 23, 26, .06);
   }
-  & .page-submenue-mobile a:only-child { font-size: 22px; font-weight: 700; padding: 0; background: none; box-shadow: none; letter-spacing: -.01em; }
-  & .page-submenue a i { color: var(--ip-accent, #e8730c); }
+  & .page-submenue-mobile a:only-child { font-size: 24px; font-weight: 600; padding: 0; background: none; box-shadow: none; letter-spacing: -.03em; }
+  & .page-submenue a i { color: var(--ip-accent, #e8730c); opacity: .9; }
 
   /* ---------- Cards ---------- */
   & .content .box,
   & .content .su-panel,
   & .content .panel,
   & .content .card {
-    background: #fff; border: 0; border-radius: 16px; box-shadow: var(--ip-card-shadow);
+    background: #fff; border: 0; border-radius: 20px; box-shadow: var(--ip-card-shadow);
   }
   & .content .box { padding: 8px; margin-bottom: 24px; }
   & .content .box-header { border: 0; padding: 14px 16px 6px; }
-  & .content .box-header .box-title { font-size: 17px; font-weight: 700; }
+  & .content .box-header .box-title { font-size: 16px; font-weight: 600; }
   & .content .box-body { padding: 12px 16px 16px; }
-  & .content .su-panel .su-panel { box-shadow: none; border: 1px solid #eceef1; }
-  & .dashboard-front-card { transition: transform .45s var(--ip-ease), box-shadow .45s var(--ip-ease); }
-  & .dashboard-front-card:hover { transform: translateY(-2px); box-shadow: 0 2px 4px rgba(16, 24, 40, .05), 0 14px 30px rgba(16, 24, 40, .08); }
+  & .content .su-panel .su-panel { box-shadow: none; border: 1px solid #ececee; }
+  & .dashboard-front-card { transition: box-shadow .45s var(--ip-ease); }
+  & .dashboard-front-card:hover { box-shadow: 0 0 0 1px rgba(21, 23, 26, .12), 0 1px 2px rgba(21, 23, 26, .05), 0 22px 44px -18px rgba(21, 23, 26, .18); }
 
   /* ---------- Info banners ---------- */
   & .content .callout {
     border: 0; border-radius: 14px; padding: 14px 18px; margin-bottom: 20px;
-    background: #eff6ff !important; color: #1e3a8a !important; box-shadow: var(--ip-card-shadow);
+    background: #fff !important; color: #15171a !important; box-shadow: var(--ip-card-shadow);
   }
-  & .content .callout a, & .content .callout .btn { color: #1d4ed8 !important; }
+  & .content .callout a, & .content .callout .btn { color: #15171a !important; text-decoration: underline; text-underline-offset: 3px; }
   & .content .su-alert, & .content .su-toast { border-radius: 12px; }
 
   /* ---------- Tables ---------- */
@@ -80,38 +83,38 @@ html:not(.ip-no-theme) {
   & .content .table > thead > tr > th,
   & .content .si-table thead th,
   & .content .su-table__head-cell {
-    background: transparent; border: 0; border-bottom: 1px solid #eceef1;
-    color: #6b7280; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; padding: 10px 12px;
+    background: transparent; border: 0; border-bottom: 1px solid #ececee;
+    color: #666b73; font-size: 13px; font-weight: 500; padding: 10px 12px;
   }
   & .content .table > tbody > tr > td,
-  & .content .si-table td { border-top: 0; border-bottom: 1px solid #f0f1f4; padding: 11px 12px; vertical-align: middle; }
+  & .content .si-table td { border-top: 0; border-bottom: 1px solid #f0f0f2; padding: 12px 12px; vertical-align: middle; }
   & .content .table > tbody > tr:last-child > td,
   & .content .si-table tbody tr:last-child td { border-bottom: 0; }
-  & .content .table-striped > tbody > tr:nth-of-type(odd) { background: #fafbfc; }
+  & .content .table-striped > tbody > tr:nth-of-type(odd) { background: #fafafa; }
   & .content .table > tbody > tr,
   & .content .si-table tbody tr,
   & .content .su-table__row { transition: background .3s var(--ip-ease); }
   & .content .table-hover > tbody > tr:hover,
   & .content .si-table tbody tr:hover,
-  & .content .su-table__row:hover { background: #f6f7f9; }
+  & .content .su-table__row:hover { background: #f5f5f6; }
 
   /* ---------- Timetable page ---------- */
   & .stundenplan-table-wrap { border: 0; }
   & .stundenplan-hour-cell, & .stundenplan-hour-head { background: transparent !important; }
   & .stundenplan-slot {
-    background: #f6f7f9; border: 0; border-radius: 10px; padding: 8px 10px;
+    background: #f5f5f6; border: 0; border-radius: 12px; padding: 9px 12px;
     transition: background .35s var(--ip-ease), transform .35s var(--ip-ease), box-shadow .35s var(--ip-ease);
   }
-  & .stundenplan-slot:hover { background: #fff; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(16, 24, 40, .08); }
-  & .stundenplan-slot-subject { font-weight: 700; }
+  & .stundenplan-slot:hover { background: #fff; box-shadow: 0 0 0 1px rgba(21, 23, 26, .1), 0 6px 16px -6px rgba(21, 23, 26, .14); }
+  & .stundenplan-slot-subject { font-weight: 600; letter-spacing: -.01em; }
 
   /* ---------- Tagebuch ---------- */
   & .tagebuch-schedule { border: 0; }
-  & .tagebuch-schedule__row { border-color: #f0f1f4; }
+  & .tagebuch-schedule__row { border-color: #f0f0f2; }
 
   /* ---------- Controls ---------- */
   & .content .btn, & .content .si-btn {
-    border-radius: 10px; transition: filter .3s var(--ip-ease), transform .2s var(--ip-ease), box-shadow .3s var(--ip-ease), background .3s var(--ip-ease);
+    border-radius: 12px; font-weight: 500; transition: filter .3s var(--ip-ease), transform .2s var(--ip-ease), box-shadow .3s var(--ip-ease), background .3s var(--ip-ease);
   }
   & .content .btn:active, & .content .si-btn:active, & .content .su-button:active { transform: scale(.97); }
   & .content .btn-primary, & .content .si-btn-active {
@@ -119,15 +122,15 @@ html:not(.ip-no-theme) {
   }
   & .content .btn-primary:hover { filter: brightness(.95); }
   & .content .form-control, & .content .si-input, & .content select.si-input {
-    height: 40px; border-radius: 10px; border: 1px solid #e3e6ea; background: #f6f7f9; box-shadow: none;
+    height: 40px; border-radius: 12px; border: 1px solid #e0e0e4; background: #fff; box-shadow: none;
     transition: border-color .3s var(--ip-ease), background .3s var(--ip-ease), box-shadow .3s var(--ip-ease);
   }
   & .content textarea.form-control, & .content textarea.si-input { height: auto; }
   & .content .form-control:focus, & .content .si-input:focus {
-    border-color: var(--ip-accent, #e8730c); background: #fff;
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ip-accent, #e8730c) 20%, transparent); outline: none;
+    border-color: #15171a; background: #fff;
+    box-shadow: 0 0 0 4px rgba(21, 23, 26, .07); outline: none;
   }
-  & .content .nav-tabs-custom { border-radius: 16px; box-shadow: var(--ip-card-shadow); overflow: hidden; }
+  & .content .nav-tabs-custom { border-radius: 20px; box-shadow: var(--ip-card-shadow); overflow: hidden; }
   & .content .label, & .content .badge { border-radius: 999px; padding: .25em .7em; }
 
   /* ---------- Footer: quiet everywhere, gone on the dashboard ---------- */
@@ -137,7 +140,7 @@ html:not(.ip-no-theme) {
 }
 
 /* ---------- Entrance animations on every page ---------- */
-@keyframes ip-theme-rise { from { opacity: 0; transform: translateY(16px); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes ip-theme-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: no-preference) {
   html:not(.ip-no-theme) {
     & .content.body > :is(.flex-row, .box, .callout, #app, div),

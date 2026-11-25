@@ -73,7 +73,7 @@ async function connect(p) {
   }
   return client;
 }
-const text = (r) => r.content.map((c) => c.text).join('\n');
+const text = (r) => r.content.filter((c) => c.type === 'text').map((c) => c.text).join('\n');
 
 await step('401 + WWW-Authenticate without token', async () => {
   const r = await fetch(MCP, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
@@ -105,6 +105,8 @@ const calls = [
   ['pruefungen', { fach: 'Englisch' }, [/Keine Prüfungen in E_1/]],
   ['fach', { fach: 'Mathe' }, [/Fach M – Klasse 10b/, /Lehrkraft: Max Mustermann \(Mm\)/, /Wochenstunden: 4/, /Anstehende Prüfungen/, /Nächste Stunden/]],
   ['tagesplan', { datum: 'morgen' }, [/Klasse 10b/]],
+  // Another group's Entfall (Religion) in the same hour must not cancel this lesson or show up at all.
+  ['tagesplan', { datum: D1 }, [/1\.–2\. Std 07:55–09:25  M/, /^(?![\s\S]*Religion-Gruppe)/]],
   ['tagesplan', { datum: D1 }, [/Klasse 10b/, /ENTFÄLLT/, /Lehrkraft: Max Mustermann \(Mm\)/, /Raum: 204/, /Schulaufgabe/, /Unterricht 07:55–10:30/, /an diesem Tag fällig/,
     /- M: nichts fällig – die Hausaufgabe vom Fr, 16\.10\. ist laut Text erst am Freitag, 23\.10\.2026 fällig/, // "bis Freitag" in the text
     /- E_1: Stunde ENTFÄLLT laut Vertretungsplan .* Mittwoch, 21\.10\.2026/, /- D: Für die Stunde davor \(Do, 15\.10\.\) kein Tagebucheintrag/]],
@@ -119,6 +121,7 @@ const calls = [
   // Files: diary attachments, Dokumente, message attachments – read as text. Refs are checked, no arbitrary URLs.
   ['tagebuch', { datum: '16.10.2026', fach: 'Englisch' }, [/Anhänge: AB Vokabeln\.pdf \[datei_lesen ref „tb:2026-10-16:5“\]/]],
   ['datei_lesen', { ref: 'tb:2026-10-16:5' }, [/Datei: AB Vokabeln\.pdf \(application\/pdf/, /Max Mustermann/]],
+  ['tagebuch', { datum: '16.10.2026', fach: 'Englisch' }, [/Tafelbild\.png \[datei_lesen ref „tb:2026-10-16:6“\]/]],
   ['dokumente', {}, [/Allgemein \(1\):/, /Hausordnung\.pdf \[datei_lesen ref „dl:32:Hausordnung\.pdf“\]/, /Formulare für Eltern/]],
   ['dokumente', { suche: 'sport' }, [/Befreiung Sportunterricht/, /^(?![\s\S]*Hausordnung)/]],
   ['datei_lesen', { ref: 'dl:32:Hausordnung.pdf' }, [/Max Mustermann/]],
@@ -157,6 +160,14 @@ for (const [name, args, res] of calls) {
     if (process.env.VERBOSE) console.log(t.replace(/^/gm, '    '));
   });
 }
+
+await step('datei_lesen sends images as image blocks', async () => {
+  const r = await client.callTool({ name: 'datei_lesen', arguments: { ref: 'tb:2026-10-16:6' } });
+  assert.match(text(r), /Datei: Tafelbild\.png \(image\/png/);
+  const img = r.content.find((c) => c.type === 'image');
+  assert.equal(img?.mimeType, 'image/png');
+  assert.equal(Buffer.from(img.data, 'base64').subarray(1, 4).toString(), 'PNG');
+});
 
 await step('reading messages writes nothing except restoring "unread"', async () => {
   assert.deepEqual(writes, ['setUnread 101']);
@@ -508,7 +519,7 @@ await step('login page shows the real logo of the connecting assistant', async (
 await step('start page (/) and AI page (/mcp); MCP clients still get the endpoint', async () => {
   const home = await (await fetch(BASE + '/')).text();
   for (const id of ['funktionen', 'installieren', 'ki', 'datenschutz', 'faq']) assert.ok(home.includes(`id="${id}"`), 'section ' + id);
-  assert.ok(home.includes('href="/mcp"') && home.includes('id="br-chrome"') && home.includes('<use href="#br-firefox"/>'), 'links to /mcp, browser logos');
+  assert.ok(home.includes('href="/mcp"') && home.includes('<use href="#ai-claude"/>') && home.includes('/assets/kit/system.css'), 'links to /mcp, AI logos, design kit');
   assert.ok(!(await (await fetch(BASE + '/konto')).text()).includes('id="br-chrome"'), 'browser logos only where used');
   const page = await (await fetch(BASE + '/mcp', { headers: { accept: 'text/html' } })).text();
   assert.match(page, /<code id="url">http:\/\/localhost:3100\/mcp<\/code>/);
