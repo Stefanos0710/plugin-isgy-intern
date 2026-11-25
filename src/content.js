@@ -609,14 +609,9 @@
         const vl = await getJSON('rest.php/vplan/getList', { headers: await authHeaders() });
         vplan = Object.values(vl).flatMap((x) => x?.data || []).filter((v) => classMatch(v.klasse, cls) && !hiddenKeys.has(subjKey(v.fach_alt)));
       } catch (err) { console.warn('[ISGY Plus] vplan', err); }
-      // Show every school day up to the last published Vertretungsplan date (max. one month ahead), at least the rest of this week.
-      const lastVp = Math.max(...vplan.map((v) => { const [d, m, y] = String(v.date).split('.').map(Number); return new Date(y, m - 1, d).getTime() || 0; }), 0);
-      // Always the rest of this week and all five days of next week (on a weekend: the coming week).
-      const friday = addDays(today(), (12 - today().getDay()) % 7);
-      const nextFriday = addDays(friday, isWeekend(today()) ? 0 : 7);
-      const end = Math.min(addDays(today(), 31).getTime(), Math.max(lastVp, nextFriday.getTime()));
+      // Six school days from today; five of them are shown (see `start` below).
       const days = [];
-      for (let d = today(); d <= end || days.length < 2; d = addDays(d, 1)) if (!isWeekend(d)) days.push(d);
+      for (let d = today(); days.length < 6; d = addDays(d, 1)) if (!isWeekend(d)) days.push(d);
       const label = (d) => { const diff = Math.round((d - today()) / 864e5); return diff === 0 ? 'Heute' : diff === 1 ? 'Morgen' : DAYS[d.getDay()]; };
       const views = days.map((d) => dayView(d, sp, vplan, hidden, mine));
       // After the last lesson of today, open the next day first.
@@ -641,22 +636,24 @@
         hrs.length ? chip(iso(focus) === iso(today()) ? `Heute ${hrs.length} Std · Schluss ${endOf(hrs.at(-1))}` : `${label(focus)} ab ${TIMES[hrs[0]] || hrs[0] + '. Std'} · ${hrs.length} Std`) : null,
         start === 1 && isToday ? chip(lastToday ? 'Schulschluss für heute' : 'Heute kein Unterricht', 'is-ok') : null,
         subs ? chip(`${subs} ${subs === 1 ? 'Vertretung' : 'Vertretungen'} ${iso(focus) === iso(today()) ? 'heute' : label(focus) === 'Morgen' ? 'morgen' : 'am ' + label(focus)}`, 'is-warn') : null].filter(Boolean));
-      const btns = days.map((d, i) => h('button', { class: 'ip-tab' + (i && d.getDay() === 1 ? ' is-newweek' : ''), role: 'tab', onclick: () => select(i) },
-        // Short labels so both weeks fit in one row: "Heute"/"Morgen", else the weekday as two letters.
-        ...(i < 2 && /Heute|Morgen/.test(label(d))
+      // Five tabs: from today, or (school is over for today) from the next school day.
+      const shown = days.slice(start, start + 5);
+      const btns = shown.map((d, k) => { const i = k + start; return h('button', { class: 'ip-tab' + (k && d.getDay() === 1 ? ' is-newweek' : ''), role: 'tab', onclick: () => select(k) },
+        // "Heute"/"Morgen", else the weekday as two letters.
+        ...(/Heute|Morgen/.test(label(d))
           ? [h('b', {}, label(d)), h('span', {}, `${DAYS[d.getDay()].slice(0, 2)}, ${deShort(d)}`)]
           : [h('b', { title: `${DAYS[d.getDay()]}, ${deFull(d)}` }, DAYS[d.getDay()].slice(0, 2)), h('span', {}, deShort(d))]),
-        views[i].subCount ? h('span', { class: 'ip-count', title: `${views[i].subCount} Vertretung(en)` }, views[i].subCount) : null));
+        views[i].subCount ? h('span', { class: 'ip-count', title: `${views[i].subCount} Vertretung(en)` }, views[i].subCount) : null); });
       let cur = 0;
-      const select = (i) => {
+      const select = (k) => {
         // The new day slides in from the side of the tab that was clicked.
-        dayBox.style.setProperty('--ip-dir', `${i < cur ? -16 : 16}px`);
-        cur = i;
-        btns.forEach((b, j) => { b.classList.toggle('is-active', j === i); b.setAttribute('aria-selected', String(j === i)); });
-        dayBox.replaceChildren(views[i].el);
+        dayBox.style.setProperty('--ip-dir', `${k < cur ? -16 : 16}px`);
+        cur = k;
+        btns.forEach((b, j) => { b.classList.toggle('is-active', j === k); b.setAttribute('aria-selected', String(j === k)); });
+        dayBox.replaceChildren(views[k + start].el);
       };
       tabs.replaceChildren(...btns);
-      select(start);
+      select(0);
       if (S.showNotes) side.append(notesCard());
       side.append(await eventsCard(cls, hiddenKeys));
     } catch (err) {
