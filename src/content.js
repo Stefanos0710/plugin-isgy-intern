@@ -639,11 +639,9 @@
       // Five tabs: from today, or (school is over for today) from the next school day.
       const shown = days.slice(start, start + 5);
       const btns = shown.map((d, k) => { const i = k + start; return h('button', { class: 'ip-tab' + (k && d.getDay() === 1 ? ' is-newweek' : ''), role: 'tab', onclick: () => select(k) },
-        // "Heute"/"Morgen", else the weekday as two letters.
-        ...(/Heute|Morgen/.test(label(d))
-          ? [h('b', {}, label(d)), h('span', {}, `${DAYS[d.getDay()].slice(0, 2)}, ${deShort(d)}`)]
-          : [h('b', { title: `${DAYS[d.getDay()]}, ${deFull(d)}` }, DAYS[d.getDay()].slice(0, 2)), h('span', {}, deShort(d))]),
-        views[i].subCount ? h('span', { class: 'ip-count', title: `${views[i].subCount} Vertretung(en)` }, views[i].subCount) : null); });
+        // The day written out ("Heute", "Morgen", "Freitag"), the substitution count right next to it, the date below.
+        h('b', {}, label(d), views[i].subCount ? h('span', { class: 'ip-count', title: `${views[i].subCount} Vertretung(en)` }, views[i].subCount) : null),
+        h('span', {}, /Heute|Morgen/.test(label(d)) ? `${DAYS[d.getDay()].slice(0, 2)}, ${deShort(d)}` : deShort(d))); });
       let cur = 0;
       const select = (k) => {
         // The new day slides in from the side of the tab that was clicked.
