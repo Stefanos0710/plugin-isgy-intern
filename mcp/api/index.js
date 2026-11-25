@@ -22,7 +22,7 @@ const PAGE_HEADERS = {
   'Referrer-Policy': 'same-origin',
   'X-Content-Type-Options': 'nosniff',
   'X-Robots-Tag': 'noindex, nofollow', // only / and /mcp (in a browser) are meant for search engines
-  'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'self' data:; manifest-src 'self'; frame-ancestors 'none'; base-uri 'none'",
+  'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; font-src 'self'; img-src 'self' data:; manifest-src 'self'; frame-ancestors 'none'; base-uri 'none'",
 };
 // The start page is public and identical for everyone: let the CDN cache it.
 const HOME_HEADERS = { ...PAGE_HEADERS, 'X-Robots-Tag': 'index, follow', 'Cache-Control': 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400' };

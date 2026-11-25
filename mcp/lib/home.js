@@ -100,13 +100,13 @@ const CSS = `
 .kz{display:grid;grid-template-columns:44px 18px minmax(0,1fr);align-items:center;gap:8px;padding:9px 10px;border-radius:9px}
 .kz+.kz{border-top:1px solid rgb(0 0 0 / .06)}
 .kz code{font:500 12px var(--font-mono);color:#8a8782;text-decoration:line-through}.kz svg{width:14px;height:14px;color:#8a8782}.kz b{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.kz.is-on{background:#fdf0e4}.kz.is-on svg{color:#a3510a}
+.kz.is-on{background:#f5f5f6}.kz.is-on svg{color:#15171a}.kz.is-on b{font-weight:600}
 .en{padding:6px 8px;display:grid;gap:6px}.en__top{display:flex;justify-content:space-between;color:#6b6965;font-size:12px}.en__top b{color:#1c1917;font-weight:500;font-size:13px}
 .en p{margin:0}.en .k{display:inline-block;min-width:52px;font-size:12px;color:#8a8782}
-.en mark{background:#fdf0e4;color:#7a3c06;border-radius:4px;padding:0 3px}
+.en mark{background:#fdf3ea;color:#8a4508;border-radius:6px;padding:1px 6px}
 .pal__q{display:flex;align-items:center;gap:8px;padding:8px 10px 10px;border-bottom:1px solid rgb(0 0 0 / .07);font-size:14px}.pal__q svg{width:15px;height:15px;color:#8a8782}
 .pal ul{list-style:none;margin:0;padding:6px 0 0;display:grid;gap:2px}.pal li{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;color:#4a4744}
-.pal li.is-on{background:#fdf0e4;color:#1c1917}.pal kbd{margin-left:auto;font:500 11px var(--font-mono);border:1px solid rgb(0 0 0 / .12);border-bottom-width:2px;border-radius:5px;padding:0 5px;color:#6b6965}
+.pal li.is-on{background:#f5f5f6;color:#15171a;box-shadow:inset 2px 0 0 #e8730c}.pal kbd{margin-left:auto;font:500 11px var(--font-mono);border:1px solid rgb(0 0 0 / .12);border-bottom-width:2px;border-radius:5px;padding:0 5px;color:#6b6965}
 .fr .todo{padding:6px 8px;gap:9px}
 /* the AI exchange */
 .chat{padding:14px;display:grid;gap:10px}
@@ -133,7 +133,7 @@ const CSS = `
 #funktionen .panel{--p-h:300px}
 /* the close's name, hand-set to run from line to line (16 letters, about 6.7em wide in Geist 500) */
 .close__word{font-size:min(190px,calc((100vw - 2 * var(--gut)) / 6.8));line-height:1.1;white-space:nowrap}
-@media (min-width:1024px){#datenschutz .frame{--ratio:96%}}
+@media (min-width:1024px){#ki .frame,#datenschutz .frame{--ratio:96%}}
 /* the steps stand static on a phone (the moment pins only from 1024): two whole phone screens */
 @media (max-width:639px){main > #installieren[data-moment]:not(.is-live){min-height:calc(2 * 100lvh)}}
 /* the 2x2 at the tablet: each card across the row, so a screen holds the h2 and two cards */

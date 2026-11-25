@@ -1,24 +1,24 @@
 // HTML pages: AI page (/mcp) with setup instructions, login (OAuth authorize), personal access key, account, errors.
 // The start page (/) is in home.js and shares head/nav/footer from here.
-// Self-contained (inline CSS/JS, inline SVG), so the strict CSP in api/index.js holds. Light + dark, mobile first.
+// Self-contained (inline CSS/JS, inline SVG; only the Geist font from /assets/kit), so the strict CSP in api/index.js holds.
+// Same look as the start page (light, Geist, warm paper, ink), mobile first.
 import { SITE, REPO, NAME, verification, DESCRIPTION, MCP_TITLE, MCP_DESCRIPTION, OG_ALT, AUTHOR, VERSION, logoSprite, brandIcon, brandOf } from './site.js';
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 const CSS = `
+@font-face{font-family:"Geist";src:url(/assets/kit/fonts/geist.woff2) format("woff2");font-weight:100 900;font-display:swap}
+@font-face{font-family:"Geist Mono";src:url(/assets/kit/fonts/geist-mono.woff2) format("woff2");font-weight:100 900;font-display:swap}
+/* Same system as the start page (assets/kit + home.js): warm paper, ink, the extension's orange, Geist, hairlines. Light only. */
 :root{
-  --accent:#e8730c;--accent-2:#f59e0b;--accent-ink:#fff;--accent-soft:#fdf0e4;
-  --bg:#f7f6f3;--bg-2:#efede8;--card:#fff;--text:#18181b;--muted:#5f5f68;--faint:#8b8b94;--line:#e6e3dc;--line-2:#d9d5cc;
+  --accent:#cf6309;--accent-2:#e8730c;--accent-ink:#111111;--accent-soft:#fdf0e4;
+  --bg:#f7f6f3;--bg-2:#ebe9e6;--card:#fff;--text:#1c1917;--muted:#666461;--faint:#8a8782;--line:rgb(28 25 23 / .1);--line-2:rgb(28 25 23 / .16);
   --err:#b42318;--errbg:#fdecea;--ok:#067647;--okbg:#e7f6ee;
-  --shadow:0 1px 2px rgba(24,24,27,.04),0 8px 24px -12px rgba(24,24,27,.12);
-  --r:16px;--mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  --shadow:0 1px 2px rgb(28 25 23 / .04),0 18px 40px -22px rgb(28 25 23 / .18);
+  --r:20px;--mono:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
 }
-@media (prefers-color-scheme:dark){:root{
-  --accent:#f08a2c;--accent-soft:#3a2614;--bg:#111113;--bg-2:#18181b;--card:#1c1c1f;--text:#f4f4f5;--muted:#a8a8b0;--faint:#77777f;
-  --line:#2c2c31;--line-2:#3a3a40;--err:#ff9b8f;--errbg:#3b1714;--ok:#6ee7a8;--okbg:#10291c;--shadow:0 1px 2px rgba(0,0,0,.3),0 12px 32px -16px rgba(0,0,0,.6);
-}}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
-body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 "Geist",system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 a{color:var(--accent);text-underline-offset:2px}
 .wrap{width:100%;max-width:1080px;margin:0 auto;padding:0 16px}
 @media (min-width:640px){.wrap{padding:0 28px}}
@@ -250,6 +250,39 @@ details summary::before{content:"▸";display:inline-block;margin-right:6px;tran
 .legal .warn{background:var(--errbg);color:var(--err);padding:12px 14px;border-radius:12px;margin:12px 0}
 .foot-mini{text-align:center;color:var(--faint);font-size:.8rem;padding:0 16px 28px}
 .foot-mini a{color:var(--faint)}
+
+/* ---- the start page's look: quiet type, no glows or gradient text, ink accents, pill buttons, dark footer ---- */
+a{color:var(--text);text-decoration-color:var(--line-2);text-underline-offset:3px}a:hover{text-decoration-color:var(--accent-2)}
+.logo{font-weight:500;letter-spacing:-.01em}.logo small{font-weight:400}
+.mark-img{border-radius:8px;box-shadow:none}
+.nav-links a{font-weight:500;color:var(--muted)}.nav-links a[aria-current=page]{background:var(--bg-2)}
+.hero::before{display:none}
+h1{font-weight:500;letter-spacing:-.045em;line-height:1.04}
+h1 .hl{background:none;-webkit-background-clip:border-box;background-clip:border-box;color:var(--muted)}
+h2{font-weight:500;letter-spacing:-.035em}h3{font-weight:500}
+.kicker{display:none}
+.eyebrow{box-shadow:none;font-weight:500}
+.btn{font-weight:500;border-radius:999px;padding:11px 20px;transition:background .2s,transform .12s}
+.btn:hover{filter:none;background:var(--accent-2)}.btn:active{transform:scale(.98)}
+.btn.ghost{background:var(--card);color:var(--text);box-shadow:inset 0 0 0 1px var(--line-2)}.btn.ghost:hover{background:var(--card);box-shadow:inset 0 0 0 1px var(--text)}
+.btn:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+.card,.tabs,.chat,.copybox,.works .w,.faq details,.auth-card{border-color:var(--line);box-shadow:var(--shadow)}
+.ask q,.faq summary,.works .w,.field label,.seg label,.tab-bar label{font-weight:500}
+.feat-ico,.steps li::before,.mini li b.n{background:var(--bg-2);color:var(--text)}
+.steps li::before{font-weight:500}
+.faq summary::before{color:var(--muted);font-weight:500}
+.msg.me{background:var(--text);color:#fff}
+.tool svg,.bh svg,.st.warn svg{color:var(--accent-2)}
+.tag.org{color:#8a4508}
+.connect .av.isgy,.me-av{background:var(--text)}
+.input{background:var(--card)}.input:focus{border-color:var(--text);box-shadow:0 0 0 4px rgb(28 25 23 / .07)}
+details summary{color:var(--text)}
+.nlist em{color:#8a4508;font-weight:500}
+.foot{background:#1c1917;color:#9c9997;border-top:0}
+.foot .logo{color:#f7f6f3}.foot h2{text-transform:none;letter-spacing:0;font-size:.9rem;font-weight:500;color:#9c9997}
+.foot a{color:#f7f6f3}.foot a:hover{color:#f8b26a}
+.foot-brand p{color:#9c9997}.foot-bottom{border-top-color:rgb(255 255 255 / .12);color:#8a8782}
+.foot .logo small{color:#9c9997}
 `;
 
 const JS = `
@@ -289,8 +322,7 @@ ${index ? `<link rel="canonical" href="${url}"><link rel="alternate" hreflang="d
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(title)}"><meta name="twitter:description" content="${esc(description)}"><meta name="twitter:image" content="${SITE}/assets/og.png"><meta name="twitter:image:alt" content="${esc(OG_ALT)}">
 ${verification().google ? `<meta name="google-site-verification" content="${esc(verification().google)}">` : ''}${verification().bing ? `<meta name="msvalidate.01" content="${esc(verification().bing)}">` : ''}
 <meta name="author" content="${AUTHOR.name}"><meta name="application-name" content="${NAME}"><meta name="apple-mobile-web-app-title" content="ISGY Plus">
-` : ''}${base ? `<meta name="theme-color" content="#f7f6f3" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#111113" media="(prefers-color-scheme: dark)">
-<meta name="color-scheme" content="light dark">` : '<meta name="theme-color" content="#f7f6f3"><meta name="color-scheme" content="light">'}${meta}<meta name="format-detection" content="telephone=no">
+` : ''}<meta name="theme-color" content="#f7f6f3"><meta name="color-scheme" content="light">${meta}<meta name="format-detection" content="telephone=no">
 <link rel="icon" href="/favicon.ico" sizes="48x48"><link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png"><link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest">
 ${jsonld.map((j) => `<script type="application/ld+json">${JSON.stringify(j).replace(/</g, '\\u003c')}</script>`).join('\n')}
